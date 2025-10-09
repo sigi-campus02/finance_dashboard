@@ -5,3 +5,5 @@ python-dateutil>=2.8
 Django>=5.2
 gunicorn
 whitenoise
+dj-database-url
+environ~=1.0
