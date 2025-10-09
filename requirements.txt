@@ -1,5 +1,7 @@
-Django>=4.2
 psycopg2-binary>=2.9
 django-environ>=0.11
 pandas>=2.0
 python-dateutil>=2.8
+Django>=5.2
+gunicorn
+whitenoise
