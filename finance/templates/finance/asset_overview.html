@@ -1,0 +1,244 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Vermögensübersicht - Finance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Vermögensübersicht</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <form method="get" class="d-flex">
+                <input type="month" name="date" class="form-control" 
+                       value="{{ current_date|date:'Y-m' }}" 
+                       onchange="this.form.submit()">
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Gesamtsummen Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Aktueller Gesamtwert</h6>
+                        <h3 class="mb-0">€ {{ total_current|floatformat:2 }}</h3>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Vormonat</h6>
+                        <h4 class="mb-0">€ {{ total_prev_month|floatformat:2 }}</h4>
+                        {% if total_delta_month %}
+                        <small class="{% if total_delta_month >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if total_delta_month >= 0 %}+{% endif %}{{ total_delta_month|floatformat:1 }}%
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Vorjahr</h6>
+                        <h4 class="mb-0">€ {{ total_prev_year|floatformat:2 }}</h4>
+                        {% if total_delta_year %}
+                        <small class="{% if total_delta_year >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if total_delta_year >= 0 %}+{% endif %}{{ total_delta_year|floatformat:1 }}%
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Stichtag</h6>
+                        <h4 class="mb-0">{{ current_date|date:"F Y" }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detaillierte Übersicht -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Zeilenbeschriftungen</th>
+                        <th class="text-end">Kontostand</th>
+                        <th class="text-end">Kontostand Vormonat</th>
+                        <th class="text-end">Δ</th>
+                        <th class="text-end">Kontostand Vorjahr</th>
+                        <th class="text-end">Δ Vorjahr</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <!-- Kategorie Header -->
+                    <tr class="table-secondary fw-bold">
+                        <td>
+                            <i class="bi bi-folder"></i> {{ category.display_name }}
+                        </td>
+                        <td class="text-end">€ {{ category.total_current|floatformat:2 }}</td>
+                        <td class="text-end">€ {{ category.total_prev_month|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if category.delta_month %}
+                            <span class="badge {% if category.delta_month >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if category.delta_month >= 0 %}+{% endif %}{{ category.delta_month|floatformat:1 }}%
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">€ {{ category.total_prev_year|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if category.delta_year %}
+                            <span class="badge {% if category.delta_year >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if category.delta_year >= 0 %}+{% endif %}{{ category.delta_year|floatformat:1 }}%
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Positionen unter der Kategorie -->
+                    {% for position in category.positions %}
+                    <tr>
+                        <td class="ps-4">
+                            <i class="bi bi-{{ position.icon }}"></i> {{ position.name }}
+                        </td>
+                        <td class="text-end">€ {{ position.current_balance|floatformat:2 }}</td>
+                        <td class="text-end">€ {{ position.prev_month_balance|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if position.delta_month %}
+                            <small class="{% if position.delta_month >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if position.delta_month >= 0 %}+{% endif %}{{ position.delta_month|floatformat:1 }}%
+                            </small>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">€ {{ position.prev_year_balance|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if position.delta_year %}
+                            <small class="{% if position.delta_year >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if position.delta_year >= 0 %}+{% endif %}{{ position.delta_year|floatformat:1 }}%
+                            </small>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                    
+                    <!-- Gesamtergebnis -->
+                    <tr class="table-dark fw-bold">
+                        <td>Gesamtergebnis</td>
+                        <td class="text-end">€ {{ total_current|floatformat:2 }}</td>
+                        <td class="text-end">€ {{ total_prev_month|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if total_delta_month %}
+                            <span class="badge {% if total_delta_month >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if total_delta_month >= 0 %}+{% endif %}{{ total_delta_month|floatformat:1 }}%
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">€ {{ total_prev_year|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if total_delta_year %}
+                            <span class="badge {% if total_delta_year >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if total_delta_year >= 0 %}+{% endif %}{{ total_delta_year|floatformat:1 }}%
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Kategorien-Charts -->
+<div class="row mt-4">
+    {% for category in categories %}
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">{{ category.display_name }} - Entwicklung</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="chart-{{ category.name|slugify }}"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Charts für jede Kategorie
+{% for category in categories %}
+{
+    const ctx = document.getElementById('chart-{{ category.name|slugify }}').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [
+                '{{ prev_year|date:"b Y" }}',
+                '{{ prev_month|date:"b Y" }}',
+                '{{ current_date|date:"b Y" }}'
+            ],
+            datasets: [{
+                label: '{{ category.display_name }}',
+                data: [
+                    {{ category.total_prev_year }},
+                    {{ category.total_prev_month }},
+                    {{ category.total_current }}
+                ],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€ ' + value.toLocaleString('de-DE');
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '€ ' + context.parsed.y.toLocaleString('de-DE', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+{% endfor %}
+</script>
+{% endblock %}

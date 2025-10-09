@@ -1,0 +1,106 @@
+{% extends 'finance/base.html' %}
+{% load finance_filters %}
+
+{% block title %}Transaktionen - Finance{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">Transaktionen</h1>
+
+<!-- Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Jahr</label>
+                <select name="year" class="form-select">
+                    <option value="">Alle</option>
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y|stringformat:"i" == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Monat</label>
+                <select name="month" class="form-select">
+                    <option value="">Alle</option>
+                    {% for m in "123456789101112" %}
+                    <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Konto</label>
+                <select name="account" class="form-select">
+                    <option value="">Alle</option>
+                    {% for acc in accounts %}
+                    <option value="{{ acc.id }}" {% if acc.id|stringformat:"i" == selected_account %}selected{% endif %}>
+                        {{ acc.account }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Suche</label>
+                <input type="text" name="search" class="form-control" placeholder="Payee oder Memo" value="{{ search_query }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Filtern
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabelle -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Konto</th>
+                        <th>Payee</th>
+                        <th>Kategorie</th>
+                        <th>Memo</th>
+                        <th class="text-end">Ausgaben</th>
+                        <th class="text-end">Einnahmen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trans in transactions %}
+                    <tr>
+                        <td>{{ trans.date|date:"d.m.Y" }}</td>
+                        <td>
+                            {% if trans.account %}
+                            <i class="bi bi-{{ trans.account.account|account_icon }} text-muted"></i>
+                            {{ trans.account }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>{{ trans.payee|default:"-" }}</td>
+                        <td>
+                            <small class="text-muted">{{ trans.category.categorygroup|default:"-" }}</small><br>
+                            {{ trans.category|default:"-" }}
+                        </td>
+                        <td><small>{{ trans.memo|default:"-"|truncatewords:5 }}</small></td>
+                        <td class="text-end text-danger">
+                            {% if trans.outflow %}€ {{ trans.outflow|floatformat:2 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="text-end text-success">
+                            {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">Keine Transaktionen gefunden</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

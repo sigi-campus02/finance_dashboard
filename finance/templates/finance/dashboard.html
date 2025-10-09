@@ -1,0 +1,248 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Dashboard - Finance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard {{ current_year }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-calendar"></i> Jahr: {{ current_year }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card income">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Einnahmen</h6>
+                        <h3 class="card-title mb-0">€ {{ total_inflow|floatformat:2 }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-arrow-down-circle text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card expense">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Ausgaben</h6>
+                        <h3 class="card-title mb-0">€ {{ total_outflow|floatformat:2 }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-arrow-up-circle text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card balance">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Saldo</h6>
+                        <h3 class="card-title mb-0" style="color: {% if netto >= 0 %}#28a745{% else %}#dc3545{% endif %}">
+                            € {{ netto|floatformat:2 }}
+                        </h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-wallet2 text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card transactions">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Transaktionen</h6>
+                        <h3 class="card-title mb-0">{{ transaction_count }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-receipt text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-md-8 mb-3">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">Monatliche Übersicht</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">Ausgaben nach Kategorie</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">Top Kategorien</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Kategorie</th>
+                                <th class="text-end">Betrag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat in top_categories %}
+                            <tr>
+                                <td>{{ cat.category__categorygroup__category_group|default:"Unbekannt" }}</td>
+                                <td class="text-end">€ {{ cat.total|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">Letzte Transaktionen</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Payee</th>
+                                <th class="text-end">Betrag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trans in recent_transactions %}
+                            <tr>
+                                <td>{{ trans.date|date:"d.m.Y" }}</td>
+                                <td>{{ trans.payee|default:"-" }}</td>
+                                <td class="text-end">
+                                    {% if trans.outflow %}
+                                        <span class="text-danger">- € {{ trans.outflow|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span class="text-success">+ € {{ trans.inflow|floatformat:2 }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Monatlicher Chart
+fetch("{% url 'finance:api_monthly_spending' %}?year={{ current_year }}")
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '€ ' + value.toLocaleString('de-DE');
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': € ' + 
+                                       context.parsed.y.toLocaleString('de-DE', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+// Kategorien Pie Chart
+fetch("{% url 'finance:api_category_breakdown' %}?year={{ current_year }}")
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': € ' + 
+                                       context.parsed.toLocaleString('de-DE', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
