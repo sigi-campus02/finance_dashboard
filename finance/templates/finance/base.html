@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Finance Dashboard{% endblock %}</title>
     
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Persönliches Finance Dashboard">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Finance">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="shortcut icon" href="/static/icons/icon-192x192.png">
+    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
@@ -65,11 +81,23 @@
         .sidebar .nav-link i {
             margin-right: 0.5rem;
         }
+        
+        /* PWA Install Button */
+        #installButton {
+            display: none;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- PWA Install Banner -->
+    <div id="installBanner" class="alert alert-info alert-dismissible fade show m-3" role="alert" style="display: none;">
+        <strong>📱 App installieren!</strong> Installiere Finance Dashboard als App auf deinem Gerät.
+        <button type="button" id="installButton" class="btn btn-sm btn-primary ms-2">Installieren</button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
@@ -166,6 +194,50 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- PWA Registration -->
+    <script>
+        // Service Worker registrieren
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registriert:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker Registrierung fehlgeschlagen:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installButton = document.getElementById('installButton');
+        const installBanner = document.getElementById('installBanner');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBanner.style.display = 'block';
+            installButton.style.display = 'inline-block';
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response: ${outcome}`);
+                deferredPrompt = null;
+                installBanner.style.display = 'none';
+            }
+        });
+
+        // App wurde installiert
+        window.addEventListener('appinstalled', () => {
+            console.log('Finance Dashboard wurde installiert! 🎉');
+            installBanner.style.display = 'none';
+        });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>
