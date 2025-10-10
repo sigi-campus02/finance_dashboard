@@ -28,4 +28,8 @@ urlpatterns = [
 
     # API Endpoints für Formular
     path('api/payee-suggestions/', views.api_get_payee_suggestions, name='api_payee_suggestions'),
+
+    # API Endpoint für Cron-Job
+    path('api/cron/process-scheduled/', views.process_scheduled_transactions, name='process_scheduled'),
+
 ]

@@ -24,21 +24,3 @@ services:
         value: .onrender.com
       - key: CSRF_TRUSTED_ORIGINS
         value: https://*.onrender.com
-
-  # Cron Job für Scheduled Transactions
-  - type: cron
-    name: scheduled-transactions-executor
-    env: python
-    plan: free
-    schedule: "0 6 * * *"  # Täglich um 6:00 Uhr UTC (8:00 MEZ)
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python manage.py execute_scheduled_transactions"
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: finance-db
-          property: connectionString
-      - key: SECRET_KEY
-        generateValue: true
-      - key: DEBUG
-        value: False

@@ -15,6 +15,15 @@ from collections import defaultdict
 from decimal import Decimal
 from .utils import get_account_category, calculate_account_balance, CATEGORY_CONFIG
 
+from django.http import HttpResponse, HttpResponseForbidden
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.conf import settings
+from datetime import date
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def user_is_not_robert(user):
     """Prüft ob User NICHT robert ist"""
@@ -1037,3 +1046,61 @@ def scheduled_transaction_execute_now(request, pk):
         messages.error(request, f'Fehler: {str(e)}')
 
     return redirect('finance:scheduled_transactions')
+
+
+@csrf_exempt
+@require_POST
+def process_scheduled_transactions(request):
+    """
+    Endpoint für Cron-Job um geplante Transaktionen zu verarbeiten
+    Wird von cron-job.org aufgerufen
+    """
+    # Token-Authentifizierung
+    provided_token = request.headers.get('X-Cron-Token')
+
+    if not provided_token or provided_token != settings.CRON_SECRET_TOKEN:
+        logger.warning('Unauthorized cron job attempt')
+        return HttpResponseForbidden('Invalid token')
+
+    today = date.today()
+
+    # Hole alle aktiven scheduled transactions, die heute oder früher fällig sind
+    due_transactions = ScheduledTransaction.objects.filter(
+        is_active=True,
+        next_execution_date__lte=today
+    )
+
+    executed_count = 0
+    failed_count = 0
+    results = []
+
+    for scheduled_tx in due_transactions:
+        try:
+            transaction = scheduled_tx.execute()
+            if transaction:
+                executed_count += 1
+                results.append(f"✓ {scheduled_tx.payee} - €{scheduled_tx.outflow or scheduled_tx.inflow}")
+                logger.info(f'Executed scheduled transaction: {scheduled_tx}')
+            else:
+                # Transaction war nicht fällig oder deaktiviert
+                if not scheduled_tx.is_active:
+                    results.append(f"○ {scheduled_tx.payee} (deactivated/expired)")
+        except Exception as e:
+            failed_count += 1
+            results.append(f"✗ {scheduled_tx.payee}: {str(e)}")
+            logger.error(f'Failed to execute scheduled transaction {scheduled_tx}: {str(e)}')
+
+    response_text = f"""Scheduled Transactions Processing Complete
+
+Date: {today}
+Executed: {executed_count}
+Failed: {failed_count}
+Total processed: {len(due_transactions)}
+
+Details:
+{chr(10).join(results) if results else 'No transactions due'}
+"""
+
+    logger.info(f'Cron job completed: {executed_count} executed, {failed_count} failed')
+
+    return HttpResponse(response_text, content_type='text/plain')

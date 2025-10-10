@@ -14,6 +14,8 @@ from pathlib import Path
 import environ
 import os
 import dj_database_url
+import secrets
+
 
 env = environ.Env(DEBUG=(bool, False))
 
@@ -240,3 +242,8 @@ LOGGING = {
         },
     },
 }
+
+
+CRON_SECRET_TOKEN = os.environ.get('CRON_SECRET_TOKEN')
+if not CRON_SECRET_TOKEN and not DEBUG:
+    raise ValueError("CRON_SECRET_TOKEN muss als Environment Variable gesetzt sein!")
