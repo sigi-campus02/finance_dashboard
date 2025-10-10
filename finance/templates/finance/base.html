@@ -92,17 +92,20 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}" 
-                           href="{% url 'finance:asset_overview' %}">
+                        <a class="nav-link" href="{% url 'finance:asset_overview' %}">
                             <i class="bi bi-wallet2"></i> Vermögen
                         </a>
                     </li>
-                    <!-- NEU: Logout Button -->
+                    {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'logout' %}">
-                            <i class="bi bi-box-arrow-right"></i> Logout ({{ user.username }})
-                        </a>
+                        <form method="post" action="{% url 'logout' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link btn btn-link text-white-50" style="border: none; background: none;">
+                                <i class="bi bi-box-arrow-right"></i> Logout ({{ user.username }})
+                            </button>
+                        </form>
                     </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
