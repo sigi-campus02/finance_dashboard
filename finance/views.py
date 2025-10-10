@@ -825,14 +825,17 @@ def api_get_payee_suggestions(request):
 @login_required
 def scheduled_transactions_list(request):
     """Liste aller Scheduled Transactions"""
-    # Robert darf nicht darauf zugreifen
+    # Robert sieht nur seine eigenen
     if request.user.username == 'robert':
-        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
-        return redirect('finance:household_transactions')
-
-    scheduled = ScheduledTransaction.objects.select_related(
-        'account', 'payee', 'category', 'category__categorygroup', 'flag'
-    ).all()
+        scheduled = ScheduledTransaction.objects.filter(
+            target_table='robert'
+        ).select_related(
+            'account', 'payee', 'category', 'category__categorygroup', 'flag'
+        ).all()
+    else:
+        scheduled = ScheduledTransaction.objects.select_related(
+            'account', 'payee', 'category', 'category__categorygroup', 'flag'
+        ).all()
 
     # Statistiken
     active_count = scheduled.filter(is_active=True).count()
@@ -845,6 +848,7 @@ def scheduled_transactions_list(request):
         'scheduled_transactions': scheduled,
         'active_count': active_count,
         'overdue_count': overdue_count,
+        'is_robert': request.user.username == 'robert',
     }
 
     return render(request, 'finance/scheduled_transactions.html', context)
@@ -853,10 +857,6 @@ def scheduled_transactions_list(request):
 @login_required
 def scheduled_transaction_create(request):
     """Neue Scheduled Transaction erstellen"""
-    if request.user.username == 'robert':
-        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
-        return redirect('finance:household_transactions')
-
     if request.method == 'POST':
         try:
             # Payee holen oder erstellen
@@ -870,9 +870,15 @@ def scheduled_transaction_create(request):
             outflow = amount if transaction_type == 'outflow' else None
             inflow = amount if transaction_type == 'inflow' else None
 
+            # Target Table: Für Robert immer 'robert', sonst aus Form
+            if request.user.username == 'robert':
+                target_table = 'robert'
+            else:
+                target_table = request.POST.get('target_table', 'sigi')
+
             # Erstelle Scheduled Transaction
             scheduled = ScheduledTransaction.objects.create(
-                target_table=request.POST.get('target_table', 'sigi'),
+                target_table=target_table,
                 account_id=request.POST.get('account'),
                 flag_id=request.POST.get('flag') or None,
                 payee=payee,
@@ -898,7 +904,12 @@ def scheduled_transaction_create(request):
             messages.error(request, f'Fehler beim Erstellen: {str(e)}')
 
     # Daten für Formular
-    accounts = DimAccount.objects.all()
+    # Robert sieht nur Roberts Account (ID 18)
+    if request.user.username == 'robert':
+        accounts = DimAccount.objects.filter(id=18)
+    else:
+        accounts = DimAccount.objects.all()
+
     flags = DimFlag.objects.all()
     payees = DimPayee.objects.all().order_by('payee')
     category_groups = DimCategoryGroup.objects.all().order_by('category_group')
@@ -911,6 +922,7 @@ def scheduled_transaction_create(request):
         'category_groups': category_groups,
         'categories': categories,
         'today': date.today(),
+        'is_robert': request.user.username == 'robert',
     }
 
     return render(request, 'finance/scheduled_transaction_form.html', context)
@@ -919,11 +931,13 @@ def scheduled_transaction_create(request):
 @login_required
 def scheduled_transaction_edit(request, pk):
     """Scheduled Transaction bearbeiten"""
-    if request.user.username == 'robert':
-        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
-        return redirect('finance:household_transactions')
-
+    # Hole Scheduled Transaction
     scheduled = ScheduledTransaction.objects.get(pk=pk)
+
+    # Berechtigungsprüfung: Robert darf nur seine eigenen bearbeiten
+    if request.user.username == 'robert' and scheduled.target_table != 'robert':
+        messages.error(request, 'Du darfst nur deine eigenen Scheduled Transactions bearbeiten.')
+        return redirect('finance:scheduled_transactions')
 
     if request.method == 'POST':
         try:
@@ -936,7 +950,12 @@ def scheduled_transaction_edit(request, pk):
             transaction_type = request.POST.get('transaction_type')
 
             # Update Felder
-            scheduled.target_table = request.POST.get('target_table', 'sigi')
+            # Target Table: Für Robert immer 'robert', sonst aus Form
+            if request.user.username == 'robert':
+                scheduled.target_table = 'robert'
+            else:
+                scheduled.target_table = request.POST.get('target_table', 'sigi')
+
             scheduled.account_id = request.POST.get('account')
             scheduled.flag_id = request.POST.get('flag') or None
             scheduled.payee = payee
@@ -958,7 +977,12 @@ def scheduled_transaction_edit(request, pk):
             messages.error(request, f'Fehler beim Aktualisieren: {str(e)}')
 
     # Daten für Formular
-    accounts = DimAccount.objects.all()
+    # Robert sieht nur Roberts Account (ID 18)
+    if request.user.username == 'robert':
+        accounts = DimAccount.objects.filter(id=18)
+    else:
+        accounts = DimAccount.objects.all()
+
     flags = DimFlag.objects.all()
     payees = DimPayee.objects.all().order_by('payee')
     category_groups = DimCategoryGroup.objects.all().order_by('category_group')
@@ -972,6 +996,7 @@ def scheduled_transaction_edit(request, pk):
         'category_groups': category_groups,
         'categories': categories,
         'is_edit': True,
+        'is_robert': request.user.username == 'robert',
     }
 
     return render(request, 'finance/scheduled_transaction_form.html', context)
@@ -983,11 +1008,13 @@ def scheduled_transaction_toggle(request, pk):
     if request.method != 'POST':
         return redirect('finance:scheduled_transactions')
 
-    if request.user.username == 'robert':
-        messages.warning(request, 'Du hast keine Berechtigung für diese Aktion.')
-        return redirect('finance:household_transactions')
-
     scheduled = ScheduledTransaction.objects.get(pk=pk)
+
+    # Berechtigungsprüfung: Robert darf nur seine eigenen togglen
+    if request.user.username == 'robert' and scheduled.target_table != 'robert':
+        messages.error(request, 'Du darfst nur deine eigenen Scheduled Transactions verwalten.')
+        return redirect('finance:scheduled_transactions')
+
     scheduled.is_active = not scheduled.is_active
     scheduled.save()
 
@@ -1003,12 +1030,14 @@ def scheduled_transaction_delete(request, pk):
     if request.method != 'POST':
         return redirect('finance:scheduled_transactions')
 
-    if request.user.username == 'robert':
-        messages.warning(request, 'Du hast keine Berechtigung für diese Aktion.')
-        return redirect('finance:household_transactions')
-
     try:
         scheduled = ScheduledTransaction.objects.get(pk=pk)
+
+        # Berechtigungsprüfung: Robert darf nur seine eigenen löschen
+        if request.user.username == 'robert' and scheduled.target_table != 'robert':
+            messages.error(request, 'Du darfst nur deine eigenen Scheduled Transactions löschen.')
+            return redirect('finance:scheduled_transactions')
+
         payee_name = str(scheduled.payee)
         scheduled.delete()
 
@@ -1025,12 +1054,14 @@ def scheduled_transaction_execute_now(request, pk):
     if request.method != 'POST':
         return redirect('finance:scheduled_transactions')
 
-    if request.user.username == 'robert':
-        messages.warning(request, 'Du hast keine Berechtigung für diese Aktion.')
-        return redirect('finance:household_transactions')
-
     try:
         scheduled = ScheduledTransaction.objects.get(pk=pk)
+
+        # Berechtigungsprüfung: Robert darf nur seine eigenen ausführen
+        if request.user.username == 'robert' and scheduled.target_table != 'robert':
+            messages.error(request, 'Du darfst nur deine eigenen Scheduled Transactions ausführen.')
+            return redirect('finance:scheduled_transactions')
+
         transaction = scheduled.execute()
 
         if transaction:

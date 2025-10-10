@@ -1,8 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{% extends 'finance/base.html' %}
+{% extends 'finance/base.html' %}
 
 {% block title %}{% if is_edit %}Bearbeiten{% else %}Erstellen{% endif %} - Scheduled Transaction{% endblock %}
 
@@ -26,7 +22,8 @@
                 <form method="post" id="scheduledForm">
                     {% csrf_token %}
                     
-                    <!-- Tabelle auswählen -->
+                    <!-- Tabelle auswählen (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
                     <div class="mb-3">
                         <label class="form-label">Zieltabelle <span class="text-danger">*</span></label>
                         <div>
@@ -47,27 +44,38 @@
                             In welche Tabelle sollen die Transaktionen erstellt werden?
                         </small>
                     </div>
+                    {% else %}
+                    <!-- Robert: verstecktes Feld -->
+                    <input type="hidden" name="target_table" value="robert">
+                    {% endif %}
                     
                     <!-- Account -->
                     <div class="mb-3">
                         <label for="account" class="form-label">
                             Konto <span class="text-danger">*</span>
                         </label>
-                        <select name="account" id="account" class="form-select" required>
+                        <select name="account" id="account" class="form-select" required 
+                                {% if is_robert %}disabled{% endif %}>
                             <option value="">Bitte wählen...</option>
                             {% for acc in accounts %}
                             <option value="{{ acc.id }}" 
-                                    {% if is_edit and scheduled.account.id == acc.id %}selected{% endif %}>
+                                    {% if is_edit and scheduled.account.id == acc.id %}selected{% endif %}
+                                    {% if is_robert %}selected{% endif %}>
                                 {{ acc.account }}
                             </option>
                             {% endfor %}
                         </select>
+                        {% if is_robert %}
+                        <!-- Hidden Field für Robert, damit der Wert submitted wird -->
+                        <input type="hidden" name="account" value="18">
+                        <small class="form-text text-muted">Dein Account ist vorausgewählt</small>
+                        {% endif %}
                     </div>
                     
                     <!-- Flag -->
                     <div class="mb-3">
                         <label for="flag" class="form-label">Flag</label>
-                        <select name="flag" id="flag" class="form-select">
+                        <select name="flag" id="flag" class="form-select" {% if is_robert %}disabled{% endif %}>
                             <option value="">Keine Flag</option>
                             {% for f in flags %}
                             <option value="{{ f.id }}" 
@@ -76,6 +84,9 @@
                             </option>
                             {% endfor %}
                         </select>
+                        {% if is_robert %}
+                        <input type="hidden" name="flag" value="">
+                        {% endif %}
                     </div>
                     
                     <!-- Payee -->
@@ -144,7 +155,8 @@
                         </div>
                     </div>
                     
-                    <!-- Typ -->
+                    <!-- Typ (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
                     <div class="mb-3">
                         <label class="form-label">Typ <span class="text-danger">*</span></label>
                         <div>
@@ -162,6 +174,13 @@
                             </div>
                         </div>
                     </div>
+                    {% else %}
+                    <!-- Robert: nur Ausgaben -->
+                    <input type="hidden" name="transaction_type" value="outflow">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Deine Transaktionen werden automatisch als <strong>Ausgaben</strong> erfasst.
+                    </div>
+                    {% endif %}
                     
                     <hr class="my-4">
                     
@@ -295,9 +314,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% endblock %}</title>
-</head>
-<body>
-
-</body>
-</html>
+{% endblock %}

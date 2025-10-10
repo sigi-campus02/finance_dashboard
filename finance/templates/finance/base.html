@@ -177,12 +177,12 @@
                             <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
                         </a>
                     </li>
-                    {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:scheduled_transactions' %}">
                             <i class="bi bi-calendar-event"></i> Scheduled Transactions
                         </a>
                     </li>
+                    {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:asset_overview' %}">
                             <i class="bi bi-wallet2"></i> Vermögen
@@ -234,14 +234,14 @@
                                 Transaktionen Haushalt
                             </a>
                         </li>
-                        {% if user.username != 'robert' %}
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' %}active{% endif %}"
+                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
                                href="{% url 'finance:scheduled_transactions' %}">
                                 <i class="bi bi-calendar-event"></i>
                                 Scheduled Transactions
                             </a>
                         </li>
+                        {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
                                href="{% url 'finance:asset_overview' %}">
