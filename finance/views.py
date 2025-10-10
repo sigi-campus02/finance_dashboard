@@ -7,7 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
-    DimAccount, DimCategory, DimPayee, DimCategoryGroup
+    DimAccount, DimCategory, DimPayee, DimCategoryGroup, DimFlag,
+    ScheduledTransaction
 )
 from .forms import TransactionForm
 from collections import defaultdict
@@ -810,3 +811,229 @@ def api_get_payee_suggestions(request):
         return JsonResponse({
             'error': f'Fehler: {str(e)}'
         }, status=500)
+
+
+@login_required
+def scheduled_transactions_list(request):
+    """Liste aller Scheduled Transactions"""
+    # Robert darf nicht darauf zugreifen
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
+        return redirect('finance:household_transactions')
+
+    scheduled = ScheduledTransaction.objects.select_related(
+        'account', 'payee', 'category', 'category__categorygroup', 'flag'
+    ).all()
+
+    # Statistiken
+    active_count = scheduled.filter(is_active=True).count()
+    overdue_count = scheduled.filter(
+        is_active=True,
+        next_execution_date__lt=date.today()
+    ).count()
+
+    context = {
+        'scheduled_transactions': scheduled,
+        'active_count': active_count,
+        'overdue_count': overdue_count,
+    }
+
+    return render(request, 'finance/scheduled_transactions.html', context)
+
+
+@login_required
+def scheduled_transaction_create(request):
+    """Neue Scheduled Transaction erstellen"""
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
+        return redirect('finance:household_transactions')
+
+    if request.method == 'POST':
+        try:
+            # Payee holen oder erstellen
+            payee_name = request.POST.get('payee').strip()
+            payee, _ = DimPayee.objects.get_or_create(payee=payee_name)
+
+            # Betrag und Typ
+            amount = Decimal(request.POST.get('amount'))
+            transaction_type = request.POST.get('transaction_type')
+
+            outflow = amount if transaction_type == 'outflow' else None
+            inflow = amount if transaction_type == 'inflow' else None
+
+            # Erstelle Scheduled Transaction
+            scheduled = ScheduledTransaction.objects.create(
+                target_table=request.POST.get('target_table', 'sigi'),
+                account_id=request.POST.get('account'),
+                flag_id=request.POST.get('flag') or None,
+                payee=payee,
+                category_id=request.POST.get('category'),
+                memo=request.POST.get('memo', ''),
+                outflow=outflow,
+                inflow=inflow,
+                frequency=request.POST.get('frequency'),
+                start_date=request.POST.get('start_date'),
+                end_date=request.POST.get('end_date') or None,
+                next_execution_date=request.POST.get('start_date'),
+                created_by=request.user.username,
+            )
+
+            messages.success(
+                request,
+                f'Scheduled Transaction erstellt: {scheduled.payee} - '
+                f'{scheduled.get_frequency_display()}'
+            )
+            return redirect('finance:scheduled_transactions')
+
+        except Exception as e:
+            messages.error(request, f'Fehler beim Erstellen: {str(e)}')
+
+    # Daten für Formular
+    accounts = DimAccount.objects.all()
+    flags = DimFlag.objects.all()
+    payees = DimPayee.objects.all().order_by('payee')
+    category_groups = DimCategoryGroup.objects.all().order_by('category_group')
+    categories = DimCategory.objects.select_related('categorygroup').all()
+
+    context = {
+        'accounts': accounts,
+        'flags': flags,
+        'payees': payees,
+        'category_groups': category_groups,
+        'categories': categories,
+        'today': date.today(),
+    }
+
+    return render(request, 'finance/scheduled_transaction_form.html', context)
+
+
+@login_required
+def scheduled_transaction_edit(request, pk):
+    """Scheduled Transaction bearbeiten"""
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
+        return redirect('finance:household_transactions')
+
+    scheduled = ScheduledTransaction.objects.get(pk=pk)
+
+    if request.method == 'POST':
+        try:
+            # Payee holen oder erstellen
+            payee_name = request.POST.get('payee').strip()
+            payee, _ = DimPayee.objects.get_or_create(payee=payee_name)
+
+            # Betrag und Typ
+            amount = Decimal(request.POST.get('amount'))
+            transaction_type = request.POST.get('transaction_type')
+
+            # Update Felder
+            scheduled.target_table = request.POST.get('target_table', 'sigi')
+            scheduled.account_id = request.POST.get('account')
+            scheduled.flag_id = request.POST.get('flag') or None
+            scheduled.payee = payee
+            scheduled.category_id = request.POST.get('category')
+            scheduled.memo = request.POST.get('memo', '')
+            scheduled.outflow = amount if transaction_type == 'outflow' else None
+            scheduled.inflow = amount if transaction_type == 'inflow' else None
+            scheduled.frequency = request.POST.get('frequency')
+            scheduled.start_date = request.POST.get('start_date')
+            scheduled.end_date = request.POST.get('end_date') or None
+            scheduled.next_execution_date = request.POST.get('next_execution_date')
+
+            scheduled.save()
+
+            messages.success(request, 'Scheduled Transaction aktualisiert!')
+            return redirect('finance:scheduled_transactions')
+
+        except Exception as e:
+            messages.error(request, f'Fehler beim Aktualisieren: {str(e)}')
+
+    # Daten für Formular
+    accounts = DimAccount.objects.all()
+    flags = DimFlag.objects.all()
+    payees = DimPayee.objects.all().order_by('payee')
+    category_groups = DimCategoryGroup.objects.all().order_by('category_group')
+    categories = DimCategory.objects.select_related('categorygroup').all()
+
+    context = {
+        'scheduled': scheduled,
+        'accounts': accounts,
+        'flags': flags,
+        'payees': payees,
+        'category_groups': category_groups,
+        'categories': categories,
+        'is_edit': True,
+    }
+
+    return render(request, 'finance/scheduled_transaction_form.html', context)
+
+
+@login_required
+def scheduled_transaction_toggle(request, pk):
+    """Toggle Active/Inactive Status"""
+    if request.method != 'POST':
+        return redirect('finance:scheduled_transactions')
+
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Aktion.')
+        return redirect('finance:household_transactions')
+
+    scheduled = ScheduledTransaction.objects.get(pk=pk)
+    scheduled.is_active = not scheduled.is_active
+    scheduled.save()
+
+    status = 'aktiviert' if scheduled.is_active else 'deaktiviert'
+    messages.success(request, f'Scheduled Transaction {status}: {scheduled.payee}')
+
+    return redirect('finance:scheduled_transactions')
+
+
+@login_required
+def scheduled_transaction_delete(request, pk):
+    """Scheduled Transaction löschen"""
+    if request.method != 'POST':
+        return redirect('finance:scheduled_transactions')
+
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Aktion.')
+        return redirect('finance:household_transactions')
+
+    try:
+        scheduled = ScheduledTransaction.objects.get(pk=pk)
+        payee_name = str(scheduled.payee)
+        scheduled.delete()
+
+        messages.success(request, f'Scheduled Transaction gelöscht: {payee_name}')
+    except Exception as e:
+        messages.error(request, f'Fehler beim Löschen: {str(e)}')
+
+    return redirect('finance:scheduled_transactions')
+
+
+@login_required
+def scheduled_transaction_execute_now(request, pk):
+    """Führt eine Scheduled Transaction sofort aus"""
+    if request.method != 'POST':
+        return redirect('finance:scheduled_transactions')
+
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Aktion.')
+        return redirect('finance:household_transactions')
+
+    try:
+        scheduled = ScheduledTransaction.objects.get(pk=pk)
+        transaction = scheduled.execute()
+
+        if transaction:
+            messages.success(
+                request,
+                f'Transaktion erstellt: {scheduled.payee} - '
+                f'€{scheduled.outflow or scheduled.inflow}'
+            )
+        else:
+            messages.warning(request, 'Transaktion konnte nicht erstellt werden.')
+
+    except Exception as e:
+        messages.error(request, f'Fehler: {str(e)}')
+
+    return redirect('finance:scheduled_transactions')

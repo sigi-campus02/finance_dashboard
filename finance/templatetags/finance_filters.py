@@ -39,3 +39,17 @@ def icon_tag(icon_name, css_class=''):
     Ergebnis: <i class="bi bi-bank text-primary"></i>
     """
     return f'<i class="bi bi-{icon_name} {css_class}"></i>'
+
+
+@register.filter(name='abs')
+def abs_filter(value):
+    """
+    Template-Filter: Gibt den Absolutwert zurück
+
+    Verwendung: {{ number|abs }}
+    Ergebnis: Positive Zahl
+    """
+    try:
+        return abs(value)
+    except (ValueError, TypeError):
+        return value

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% extends 'finance/base.html' %}
+
+{% block title %}{% if is_edit %}Bearbeiten{% else %}Erstellen{% endif %} - Scheduled Transaction{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-calendar-event"></i> 
+        {% if is_edit %}Scheduled Transaction bearbeiten{% else %}Neue Scheduled Transaction{% endif %}
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    {% if is_edit %}Bearbeiten{% else %}Erstellen{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="scheduledForm">
+                    {% csrf_token %}
+                    
+                    <!-- Tabelle auswählen -->
+                    <div class="mb-3">
+                        <label class="form-label">Zieltabelle <span class="text-danger">*</span></label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="target_table" 
+                                       id="table_sigi" value="sigi" 
+                                       {% if not is_edit or scheduled.target_table == 'sigi' %}checked{% endif %}>
+                                <label class="form-check-label" for="table_sigi">Sigi</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="target_table" 
+                                       id="table_robert" value="robert"
+                                       {% if is_edit and scheduled.target_table == 'robert' %}checked{% endif %}>
+                                <label class="form-check-label" for="table_robert">Robert</label>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            In welche Tabelle sollen die Transaktionen erstellt werden?
+                        </small>
+                    </div>
+                    
+                    <!-- Account -->
+                    <div class="mb-3">
+                        <label for="account" class="form-label">
+                            Konto <span class="text-danger">*</span>
+                        </label>
+                        <select name="account" id="account" class="form-select" required>
+                            <option value="">Bitte wählen...</option>
+                            {% for acc in accounts %}
+                            <option value="{{ acc.id }}" 
+                                    {% if is_edit and scheduled.account.id == acc.id %}selected{% endif %}>
+                                {{ acc.account }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Flag -->
+                    <div class="mb-3">
+                        <label for="flag" class="form-label">Flag</label>
+                        <select name="flag" id="flag" class="form-select">
+                            <option value="">Keine Flag</option>
+                            {% for f in flags %}
+                            <option value="{{ f.id }}" 
+                                    {% if is_edit and scheduled.flag and scheduled.flag.id == f.id %}selected{% endif %}>
+                                {{ f.flag }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Payee -->
+                    <div class="mb-3">
+                        <label for="payee" class="form-label">
+                            Zahlungsempfänger <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="payee" id="payee" class="form-control" 
+                               list="payee-list" autocomplete="off" required
+                               value="{% if is_edit %}{{ scheduled.payee }}{% endif %}">
+                        <datalist id="payee-list">
+                            {% for p in payees %}
+                                <option value="{{ p.payee }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    
+                    <!-- Category Group -->
+                    <div class="mb-3">
+                        <label for="category_group" class="form-label">
+                            Kategoriegruppe <span class="text-danger">*</span>
+                        </label>
+                        <select name="category_group" id="category_group" 
+                                class="form-select" onchange="updateCategories()" required>
+                            <option value="">Bitte wählen...</option>
+                            {% for cg in category_groups %}
+                            <option value="{{ cg.id }}"
+                                    {% if is_edit and scheduled.category.categorygroup.id == cg.id %}selected{% endif %}>
+                                {{ cg.category_group }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label for="category" class="form-label">
+                            Kategorie <span class="text-danger">*</span>
+                        </label>
+                        <select name="category" id="category" class="form-select" required>
+                            <option value="">Erst Kategoriegruppe wählen...</option>
+                            {% if is_edit %}
+                            <option value="{{ scheduled.category.id }}" selected>
+                                {{ scheduled.category }}
+                            </option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <!-- Memo -->
+                    <div class="mb-3">
+                        <label for="memo" class="form-label">Notiz</label>
+                        <textarea name="memo" id="memo" class="form-control" rows="2">{% if is_edit %}{{ scheduled.memo }}{% endif %}</textarea>
+                    </div>
+                    
+                    <!-- Betrag -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">
+                            Betrag (€) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">€</span>
+                            <input type="number" name="amount" id="amount" 
+                                   class="form-control" step="0.01" required
+                                   value="{% if is_edit %}{{ scheduled.outflow|default:scheduled.inflow }}{% endif %}">
+                        </div>
+                    </div>
+                    
+                    <!-- Typ -->
+                    <div class="mb-3">
+                        <label class="form-label">Typ <span class="text-danger">*</span></label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="transaction_type" 
+                                       id="type_outflow" value="outflow"
+                                       {% if not is_edit or scheduled.outflow %}checked{% endif %}>
+                                <label class="form-check-label" for="type_outflow">Ausgabe</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="transaction_type" 
+                                       id="type_inflow" value="inflow"
+                                       {% if is_edit and scheduled.inflow %}checked{% endif %}>
+                                <label class="form-check-label" for="type_inflow">Einnahme</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Frequenz -->
+                    <div class="mb-3">
+                        <label for="frequency" class="form-label">
+                            Frequenz <span class="text-danger">*</span>
+                        </label>
+                        <select name="frequency" id="frequency" class="form-select" required>
+                            <option value="monthly" 
+                                    {% if is_edit and scheduled.frequency == 'monthly' %}selected{% endif %}>
+                                Monatlich
+                            </option>
+                            <option value="quarterly"
+                                    {% if is_edit and scheduled.frequency == 'quarterly' %}selected{% endif %}>
+                                Vierteljährlich
+                            </option>
+                            <option value="yearly"
+                                    {% if is_edit and scheduled.frequency == 'yearly' %}selected{% endif %}>
+                                Jährlich
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <!-- Start Datum -->
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">
+                            Startdatum <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="start_date" id="start_date" 
+                               class="form-control" required
+                               value="{% if is_edit %}{{ scheduled.start_date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}">
+                        <small class="form-text text-muted">
+                            Datum der ersten Transaktion
+                        </small>
+                    </div>
+                    
+                    <!-- Next Execution (nur bei Edit) -->
+                    {% if is_edit %}
+                    <div class="mb-3">
+                        <label for="next_execution_date" class="form-label">
+                            Nächste Ausführung <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="next_execution_date" id="next_execution_date" 
+                               class="form-control" required
+                               value="{{ scheduled.next_execution_date|date:'Y-m-d' }}">
+                        <small class="form-text text-muted">
+                            Kannst du manuell ändern falls nötig
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- End Datum -->
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">
+                            Enddatum (Optional)
+                        </label>
+                        <input type="date" name="end_date" id="end_date" 
+                               class="form-control"
+                               value="{% if is_edit and scheduled.end_date %}{{ scheduled.end_date|date:'Y-m-d' }}{% endif %}">
+                        <small class="form-text text-muted">
+                            Leer lassen für unbegrenzt wiederkehrende Transaktionen
+                        </small>
+                    </div>
+                    
+                    <!-- Submit -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> 
+                            {% if is_edit %}Aktualisieren{% else %}Erstellen{% endif %}
+                        </button>
+                        <a href="{% url 'finance:scheduled_transactions' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Abbrechen
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Kategorien filtern
+const allCategories = [
+    {% for cat in categories %}
+    {
+        id: {{ cat.id }},
+        name: "{{ cat.category|escapejs }}",
+        categorygroup_id: {{ cat.categorygroup.id|default:"null" }}
+    },
+    {% endfor %}
+];
+
+function updateCategories() {
+    const categoryGroupSelect = document.getElementById('category_group');
+    const categorySelect = document.getElementById('category');
+    
+    const selectedGroupId = parseInt(categoryGroupSelect.value);
+    
+    // Aktuell ausgewählte Category merken
+    const currentCategoryId = parseInt(categorySelect.value);
+    
+    // Leere Category Select
+    categorySelect.innerHTML = '<option value="">Bitte wählen...</option>';
+    
+    // Füge nur passende Kategorien hinzu
+    const filteredCategories = allCategories.filter(cat => 
+        cat.categorygroup_id === selectedGroupId
+    );
+    
+    filteredCategories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        
+        if (cat.id === currentCategoryId) {
+            option.selected = true;
+        }
+        
+        categorySelect.appendChild(option);
+    });
+}
+
+// Initial laden wenn CategoryGroup bereits ausgewählt ist
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryGroupSelect = document.getElementById('category_group');
+    if (categoryGroupSelect.value) {
+        updateCategories();
+    }
+});
+</script>
+{% endblock %}</title>
+</head>
+<body>
+
+</body>
+</html>
