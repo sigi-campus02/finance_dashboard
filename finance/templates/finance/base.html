@@ -109,29 +109,35 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:dashboard' %}">
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
+                    {% endif %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-list-ul"></i> Transaktionen
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
+                            {% if user.username != 'robert' %}
                             <li><a class="dropdown-item" href="{% url 'finance:transactions' %}">
                                 <i class="bi bi-list"></i> Alle Transaktionen
                             </a></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{% url 'finance:household_transactions' %}">
                                 <i class="bi bi-house-door"></i> Transaktionen Haushalt
                             </a></li>
                         </ul>
                     </li>
+                    {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:asset_overview' %}">
                             <i class="bi bi-wallet2"></i> Vermögen
                         </a>
                     </li>
+                    {% endif %}
                     {% if user.is_authenticated %}
                     <li class="nav-item">
                         <form method="post" action="{% url 'logout' %}" class="d-inline">
@@ -154,22 +160,32 @@
             <nav class="col-md-2 d-none d-md-block sidebar">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
+                        {% if user.username != 'robert' %}
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
                                href="{% url 'finance:dashboard' %}">
                                 <i class="bi bi-speedometer2"></i>
                                 Übersicht
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}" 
+                            <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
                                href="{% url 'finance:transactions' %}">
                                 <i class="bi bi-list-ul"></i>
-                                Transaktionen
+                                Alle Transaktionen
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}" 
+                            <a class="nav-link {% if request.resolver_match.url_name == 'household_transactions' %}active{% endif %}"
+                               href="{% url 'finance:household_transactions' %}">
+                                <i class="bi bi-house-door"></i>
+                                Transaktionen Haushalt
+                            </a>
+                        </li>
+                        {% if user.username != 'robert' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
                                href="{% url 'finance:asset_overview' %}">
                                 <i class="bi bi-wallet2"></i>
                                 Vermögen
@@ -187,6 +203,7 @@
                                 Einstellungen
                             </a>
                         </li>
+                        {% endif %}
                     </ul>
                 </div>
             </nav>

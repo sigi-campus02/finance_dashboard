@@ -3,8 +3,72 @@
 
 {% block title %}Transaktionen - Finance{% endblock %}
 
+{% block extra_css %}
+<style>
+    .memo-cell {
+        max-width: 300px;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1 class="h2 mb-4">Transaktionen</h1>
+
+<!-- Statistik Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card transactions">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Anzahl Transaktionen</h6>
+                <h4 class="card-title mb-0">{{ transaction_count }}</h4>
+                <small class="text-muted">
+                    {% if excluded_count > 0 %}
+                        Inkl. {{ transfer_count }} Transfer(s) & {{ kursschwankung_count }} Kursschwankung(en)
+                    {% else %}
+                        Gefilterte Transaktionen
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card income">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Gesamteinnahmen</h6>
+                <h4 class="card-title mb-0">€ {{ total_inflow|floatformat:2 }}</h4>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> Nur "Inflow - Ready to Assign"
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card expense">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Gesamtausgaben (Netto)</h6>
+                <h4 class="card-title mb-0">€ {{ total_outflow|floatformat:2 }}</h4>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> Outflow - Inflow (exkl. Ready to Assign)
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card balance">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Saldo</h6>
+                <h4 class="card-title mb-0" style="color: {% if netto >= 0 %}#28a745{% else %}#dc3545{% endif %}">
+                    € {{ netto|floatformat:2 }}
+                </h4>
+                <small class="text-muted">
+                    Einnahmen - Ausgaben
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Filter -->
 <div class="card mb-4">
@@ -37,7 +101,7 @@
                     <option value="12" {% if selected_month == "12" %}selected{% endif %}>Dezember</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Konto</label>
                 <select name="account" class="form-select" onchange="document.getElementById('filterForm').submit()">
                     <option value="">Alle</option>
@@ -48,7 +112,18 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">Kategorie</label>
+                <select name="category" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">Alle</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category and cat.id == selected_category|add:"0" %}selected{% endif %}>
+                        {{ cat.category }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Suche</label>
                 <input type="text" name="search" class="form-control" placeholder="Payee oder Memo" value="{{ search_query|default:'' }}">
             </div>
@@ -79,7 +154,7 @@
                 </thead>
                 <tbody>
                     {% for trans in transactions %}
-                    <tr>
+                    <tr {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}class="table-secondary" style="opacity: 0.6;"{% endif %}>
                         <td>{{ trans.date|date:"d.m.Y" }}</td>
                         <td>
                             {% if trans.account %}
@@ -89,12 +164,23 @@
                             -
                             {% endif %}
                         </td>
-                        <td>{{ trans.payee|default:"-" }}</td>
+                        <td>
+                            {{ trans.payee|default:"-" }}
+                            {% if trans.payee.payee_type == 'transfer' %}
+                                <span class="badge bg-secondary" title="Transfer zwischen Konten - nicht in Statistiken">
+                                    <i class="bi bi-arrow-left-right"></i> Transfer
+                                </span>
+                            {% elif trans.payee.payee_type == 'kursschwankung' %}
+                                <span class="badge bg-info" title="Kursschwankung bei Investments - nicht in Statistiken">
+                                    <i class="bi bi-graph-up-arrow"></i> Kursschwankung
+                                </span>
+                            {% endif %}
+                        </td>
                         <td>
                             <small class="text-muted">{{ trans.category.categorygroup|default:"-" }}</small><br>
                             {{ trans.category|default:"-" }}
                         </td>
-                        <td><small>{{ trans.memo|default:"-"|truncatewords:5 }}</small></td>
+                        <td class="memo-cell"><small>{{ trans.memo|default:"-" }}</small></td>
                         <td class="text-end text-danger">
                             {% if trans.outflow %}€ {{ trans.outflow|floatformat:2 }}{% else %}-{% endif %}
                         </td>
@@ -108,8 +194,47 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot class="table-light">
+                    <tr class="fw-bold">
+                        <td colspan="5" class="text-end">Summe (gefiltert):</td>
+                        <td class="text-end text-danger">€ {{ total_outflow|floatformat:2 }}</td>
+                        <td class="text-end text-success">€ {{ total_inflow|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="fw-bold">
+                        <td colspan="5" class="text-end">Saldo:</td>
+                        <td colspan="2" class="text-end" style="color: {% if netto >= 0 %}#28a745{% else %}#dc3545{% endif %}">
+                            € {{ netto|floatformat:2 }}
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
 </div>
+
+{% if transaction_count > 100 %}
+<div class="alert alert-info mt-3" role="alert">
+    <i class="bi bi-info-circle"></i>
+    <strong>Hinweis:</strong>
+    Es werden die ersten 100 Transaktionen angezeigt. Die Statistiken basieren auf allen {{ transaction_count }} gefilterten Transaktionen.
+    <br>
+    <strong>Statistik-Regeln:</strong>
+    <ul class="mb-0 mt-2">
+        <li><strong>Einnahmen:</strong> Nur Kategorie "Inflow - Ready to Assign" (ohne Transfers & Kursschwankungen)</li>
+        <li><strong>Ausgaben (Netto):</strong> Outflow - Inflow für alle anderen Kategorien (ohne Transfers, Kursschwankungen & Ready to Assign)</li>
+        <li><strong>Saldo:</strong> Einnahmen - Ausgaben (Netto)</li>
+    </ul>
+</div>
+{% elif excluded_count > 0 %}
+<div class="alert alert-info mt-3" role="alert">
+    <i class="bi bi-info-circle"></i>
+    <strong>Statistik-Regeln:</strong>
+    <ul class="mb-0 mt-2">
+        <li><strong>Einnahmen:</strong> Nur Kategorie "Inflow - Ready to Assign" (ohne Transfers & Kursschwankungen)</li>
+        <li><strong>Ausgaben (Netto):</strong> Outflow - Inflow für alle anderen Kategorien (ohne Transfers, Kursschwankungen & Ready to Assign)</li>
+        <li><strong>Saldo:</strong> Einnahmen - Ausgaben (Netto)</li>
+    </ul>
+</div>
+{% endif %}
+
 {% endblock %}

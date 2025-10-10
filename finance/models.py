@@ -49,6 +49,7 @@ class DimFlag(models.Model):
 class DimPayee(models.Model):
     """Zahlungsempfänger"""
     payee = models.CharField(max_length=500)
+    payee_type = models.CharField(max_length=100, null=True, blank=True)  # transfer, kursschwankung, etc.
 
     class Meta:
         db_table = 'dim_payee'
@@ -56,6 +57,21 @@ class DimPayee(models.Model):
 
     def __str__(self):
         return self.payee
+
+    @property
+    def is_transfer(self):
+        """Prüft ob es sich um einen Transfer handelt"""
+        return self.payee_type == 'transfer'
+
+    @property
+    def is_kursschwankung(self):
+        """Prüft ob es sich um eine Kursschwankung handelt"""
+        return self.payee_type == 'kursschwankung'
+
+    @property
+    def exclude_from_stats(self):
+        """Prüft ob diese Transaktion aus Statistiken ausgeschlossen werden soll"""
+        return self.payee_type in ['transfer', 'kursschwankung']
 
 
 class DimCategoryGroup(models.Model):
@@ -187,6 +203,21 @@ class FactTransactionsSigi(models.Model):
         outflow = self.outflow or 0
         return inflow - outflow
 
+    @property
+    def is_transfer(self):
+        """Prüft ob es sich um einen Transfer handelt"""
+        return self.payee and self.payee.is_transfer
+
+    @property
+    def is_kursschwankung(self):
+        """Prüft ob es sich um eine Kursschwankung handelt"""
+        return self.payee and self.payee.is_kursschwankung
+
+    @property
+    def exclude_from_stats(self):
+        """Prüft ob aus Statistiken ausgeschlossen"""
+        return self.payee and self.payee.exclude_from_stats
+
 
 class FactTransactionsRobert(models.Model):
     """Transaktionen Robert"""
@@ -230,6 +261,21 @@ class FactTransactionsRobert(models.Model):
 
     def __str__(self):
         return f"{self.date} - {self.payee} - {self.outflow or self.inflow}"
+
+    @property
+    def is_transfer(self):
+        """Prüft ob es sich um einen Transfer handelt"""
+        return self.payee and self.payee.is_transfer
+
+    @property
+    def is_kursschwankung(self):
+        """Prüft ob es sich um eine Kursschwankung handelt"""
+        return self.payee and self.payee.is_kursschwankung
+
+    @property
+    def exclude_from_stats(self):
+        """Prüft ob aus Statistiken ausgeschlossen"""
+        return self.payee and self.payee.exclude_from_stats
 
 
 class FactBetriebskosten(models.Model):

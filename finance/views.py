@@ -1,9 +1,10 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db.models import Sum, Count, Q, Value, CharField
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
     DimAccount, DimCategory, DimPayee, DimCategoryGroup
@@ -13,9 +14,18 @@ from decimal import Decimal
 from .utils import get_account_category, calculate_account_balance, CATEGORY_CONFIG
 
 
+def user_is_not_robert(user):
+    """Prüft ob User NICHT robert ist"""
+    return user.username != 'robert'
+
+
 @login_required
 def dashboard(request):
     """Haupt-Dashboard mit Übersicht und KPIs"""
+    # Robert wird zu Transaktionen Haushalt weitergeleitet
+    if request.user.username == 'robert':
+        return redirect('finance:household_transactions')
+
     current_year = datetime.now().year
     transactions = FactTransactionsSigi.objects.filter(date__year=current_year)
 
@@ -59,6 +69,11 @@ def dashboard(request):
 @login_required
 def transactions_list(request):
     """Liste aller Transaktionen mit Filter"""
+    # Robert darf nicht auf alle Transaktionen zugreifen
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
+        return redirect('finance:household_transactions')
+
     transactions = FactTransactionsSigi.objects.select_related(
         'account', 'payee', 'category', 'category__categorygroup', 'flag'
     ).all()
@@ -83,9 +98,45 @@ def transactions_list(request):
             Q(memo__icontains=search)
         )
 
+    # Statistiken berechnen mit allen Ausschlüssen
+    # Ausschlüsse: Transfers, Kursschwankungen, category_id=1
+    transactions_for_stats = transactions.exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    )
+
+    # Einnahmen: Nur category_id = 1 (Inflow - Ready to Assign)
+    total_inflow = transactions.exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).filter(
+        category_id=1
+    ).aggregate(Sum('inflow'))['inflow__sum'] or 0
+
+    # Ausgaben NETTO: Inflow - Outflow (für alle relevanten Transaktionen)
+    # Das sind quasi "Ausgabenkategorien" die manchmal Rückerstattungen haben können
+    stats_aggregate = transactions_for_stats.aggregate(
+        sum_inflow=Sum('inflow'),
+        sum_outflow=Sum('outflow')
+    )
+    category_inflow = stats_aggregate['sum_inflow'] or 0
+    category_outflow = stats_aggregate['sum_outflow'] or 0
+    total_outflow_netto = category_outflow - category_inflow  # Netto-Ausgaben
+
+    # Saldo = Echte Einnahmen - Netto-Ausgaben
+    netto = total_inflow - total_outflow_netto
+
+    # Anzahl ALLER Transaktionen (inkl. Transfers & Kursschwankungen)
+    transaction_count = transactions.count()
+    transfer_count = transactions.filter(payee__payee_type='transfer').count()
+    kursschwankung_count = transactions.filter(payee__payee_type='kursschwankung').count()
+    excluded_count = transfer_count + kursschwankung_count
+
     accounts = DimAccount.objects.all()
     categories = DimCategory.objects.select_related('categorygroup').all()
     years = range(datetime.now().year, 2019, -1)
+
+    # Limitierung für Anzeige (ALLE Transaktionen inkl. Transfers)
     transactions = transactions[:100]
 
     context = {
@@ -98,6 +149,13 @@ def transactions_list(request):
         'selected_account': account_id,
         'selected_category': category_id,
         'search_query': search,
+        'total_inflow': total_inflow,
+        'total_outflow': total_outflow_netto,
+        'transaction_count': transaction_count,
+        'transfer_count': transfer_count,
+        'kursschwankung_count': kursschwankung_count,
+        'excluded_count': excluded_count,
+        'netto': netto,
     }
 
     return render(request, 'finance/transactions.html', context)
@@ -110,6 +168,10 @@ def household_transactions(request):
     - Alle Transaktionen von Robert
     - Transaktionen von Sigi mit flag_id = 5 (Relevant für Haushaltsbudget)
     """
+    # Basis-Querysets (OHNE Filter für die Dropdown-Optionen)
+    sigi_base = FactTransactionsSigi.objects.filter(flag_id=5)
+    robert_base = FactTransactionsRobert.objects.all()
+
     # Sigi Transaktionen - nur mit flag_id = 5
     sigi_transactions = FactTransactionsSigi.objects.filter(
         flag_id=5  # Relevant für Haushaltsbudget
@@ -156,49 +218,116 @@ def household_transactions(request):
             Q(memo__icontains=search)
         )
 
+    # Statistiken berechnen mit allen Ausschlüssen
+    # Ausschlüsse: Transfers, Kursschwankungen, category_id=1
+    sigi_for_stats = sigi_transactions.exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    )
+    robert_for_stats = robert_transactions.exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    )
+
+    # Ausgaben NETTO für Sigi: Outflow - Inflow
+    sigi_stats = sigi_for_stats.aggregate(
+        sum_inflow=Sum('inflow'),
+        sum_outflow=Sum('outflow')
+    )
+    sigi_inflow = sigi_stats['sum_inflow'] or 0
+    sigi_outflow_gross = sigi_stats['sum_outflow'] or 0
+    sigi_outflow = sigi_outflow_gross - sigi_inflow  # Netto
+
+    # Ausgaben NETTO für Robert: Outflow - Inflow
+    robert_stats = robert_for_stats.aggregate(
+        sum_inflow=Sum('inflow'),
+        sum_outflow=Sum('outflow')
+    )
+    robert_inflow = robert_stats['sum_inflow'] or 0
+    robert_outflow_gross = robert_stats['sum_outflow'] or 0
+    robert_outflow = robert_outflow_gross - robert_inflow  # Netto
+
+    # Gesamt-Ausgaben NETTO
+    total_outflow = sigi_outflow + robert_outflow
+
+    # Listen für Anzeige (ALLE Transaktionen inkl. Transfers)
+    sigi_list_full = list(sigi_transactions)
+    robert_list_full = list(robert_transactions)
+
     # Nach Person filtern
     if person_filter == 'sigi':
-        transactions = list(sigi_transactions)
+        transactions_full = sigi_list_full
     elif person_filter == 'robert':
-        transactions = list(robert_transactions)
+        transactions_full = robert_list_full
     else:
         # Beide kombinieren
-        transactions = list(sigi_transactions) + list(robert_transactions)
+        transactions_full = sigi_list_full + robert_list_full
 
     # Nach Datum sortieren (neueste zuerst)
-    transactions.sort(key=lambda x: x.date, reverse=True)
+    transactions_full.sort(key=lambda x: x.date, reverse=True)
 
-    # Für Filter-Dropdowns
-    accounts = DimAccount.objects.all()
-    categories = DimCategory.objects.select_related('categorygroup').all()
-    years = range(datetime.now().year, 2019, -1)
+    # Prozentanteile (basierend auf Ausgaben ohne Transfers)
+    robert_percentage = (robert_outflow / total_outflow * 100) if total_outflow > 0 else 0
+    sigi_percentage = (sigi_outflow / total_outflow * 100) if total_outflow > 0 else 0
 
-    # Statistiken berechnen
-    total_inflow = sum(t.inflow or 0 for t in transactions)
-    total_outflow = sum(t.outflow or 0 for t in transactions)
-    netto = total_inflow - total_outflow
+    # Anzahl Transaktionen (inkl. Transfers & Kursschwankungen)
+    transaction_count = len(transactions_full)
 
-    # Sparquote berechnen
-    savings_rate = 0
-    if total_inflow > 0:
-        savings_rate = (netto / total_inflow) * 100
+    # Transfer- und Kursschwankung-Anzahl
+    transfer_count = sum(1 for t in transactions_full if t.payee and t.payee.payee_type == 'transfer')
+    kursschwankung_count = sum(1 for t in transactions_full if t.payee and t.payee.payee_type == 'kursschwankung')
+    excluded_count = transfer_count + kursschwankung_count
+
+    # Limitieren für Anzeige
+    transactions = transactions_full[:100]
+
+    # Dynamische Filter-Optionen (nur Werte die tatsächlich vorkommen)
+    # Accounts: Union von Sigi und Robert Account IDs
+    sigi_account_ids = sigi_base.values_list('account_id', flat=True).distinct()
+    robert_account_ids = robert_base.values_list('account_id', flat=True).distinct()
+    available_account_ids = set(sigi_account_ids) | set(robert_account_ids)
+    accounts = DimAccount.objects.filter(id__in=available_account_ids).order_by('account')
+
+    # Categories: Union von Sigi und Robert Category IDs
+    sigi_category_ids = sigi_base.values_list('category_id', flat=True).distinct()
+    robert_category_ids = robert_base.values_list('category_id', flat=True).distinct()
+    available_category_ids = set(sigi_category_ids) | set(robert_category_ids)
+    categories = DimCategory.objects.filter(
+        id__in=available_category_ids
+    ).select_related('categorygroup').order_by('category')
+
+    # Jahre: Union von Sigi und Robert Jahren
+    from django.db.models import functions
+    sigi_years = sigi_base.annotate(
+        year=functions.ExtractYear('date')
+    ).values_list('year', flat=True).distinct()
+    robert_years = robert_base.annotate(
+        year=functions.ExtractYear('date')
+    ).values_list('year', flat=True).distinct()
+    available_years = sorted(set(sigi_years) | set(robert_years), reverse=True)
 
     context = {
         'transactions': transactions,
         'accounts': accounts,
         'categories': categories,
-        'years': years,
+        'years': available_years,
         'selected_year': year,
         'selected_month': month,
         'selected_account': account_id,
         'selected_category': category_id,
         'selected_person': person_filter,
         'search_query': search,
-        'total_inflow': total_inflow,
         'total_outflow': total_outflow,
-        'netto': netto,
-        'transaction_count': len(transactions),
-        'savings_rate': savings_rate,  # NEU
+        'robert_outflow': robert_outflow,
+        'sigi_outflow': sigi_outflow,
+        'robert_percentage': robert_percentage,
+        'sigi_percentage': sigi_percentage,
+        'transaction_count': transaction_count,
+        'transfer_count': transfer_count,
+        'kursschwankung_count': kursschwankung_count,
+        'excluded_count': excluded_count,
     }
 
     return render(request, 'finance/household_transactions.html', context)
@@ -207,6 +336,10 @@ def household_transactions(request):
 @login_required
 def api_monthly_spending(request):
     """API: Monatliche Ausgaben für Chart"""
+    # Robert darf nicht auf API zugreifen
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
     year = request.GET.get('year', datetime.now().year)
 
     monthly_data = FactTransactionsSigi.objects.filter(
@@ -251,6 +384,10 @@ def api_monthly_spending(request):
 @login_required
 def api_category_breakdown(request):
     """API: Ausgaben nach Kategorie für Pie Chart"""
+    # Robert darf nicht auf API zugreifen
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
     year = request.GET.get('year', datetime.now().year)
 
     category_data = FactTransactionsSigi.objects.filter(
@@ -296,6 +433,10 @@ def api_category_breakdown(request):
 @login_required
 def api_top_payees(request):
     """API: Top Zahlungsempfänger"""
+    # Robert darf nicht auf API zugreifen
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
     year = request.GET.get('year', datetime.now().year)
 
     payee_data = FactTransactionsSigi.objects.filter(
@@ -333,6 +474,11 @@ def asset_overview(request):
     """
     Vermögensübersicht berechnet aus fact_transactions_sigi
     """
+    # Robert darf nicht auf Vermögensübersicht zugreifen
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
+        return redirect('finance:household_transactions')
+
     # Datum-Parameter
     selected_date = request.GET.get('date')
     if selected_date:
