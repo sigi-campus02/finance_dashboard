@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'axes', # ← Für Brute-Force Schutz
     'finance',  # ← Unsere App
 ]
 
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',  # ← Für Brute-Force Schutz
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -123,19 +125,35 @@ else:
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+# ===== AXES CONFIGURATION (Rate Limiting) =====
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',  # ← NEU: Axes Backend
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# Axes Settings
+AXES_FAILURE_LIMIT = 5  # Nach 5 fehlgeschlagenen Login-Versuchen sperren
+AXES_COOLOFF_TIME = 1  # 1 Stunde Sperre (in Stunden)
+AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True  # Sperre nur für spezifische User+IP Kombination
+AXES_RESET_ON_SUCCESS = True  # Reset Counter nach erfolgreichem Login
+AXES_LOCKOUT_TEMPLATE = None  # Nutzt Default-Fehlerseite
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]  # Tracking nach Username & IP
+AXES_IPWARE_PROXY_COUNT = 1  # Für Render (hinter Proxy)
+AXES_IPWARE_META_PRECEDENCE_ORDER = [
+    'HTTP_X_FORWARDED_FOR',  # Für Render/nginx
+    'REMOTE_ADDR',
+]
+
+# Optional: Verbose Logging für Axes (nur bei DEBUG=True)
+if DEBUG:
+    AXES_VERBOSE = True
+# ===== END AXES CONFIGURATION =====
 
 
 # Internationalization

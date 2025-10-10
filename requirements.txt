@@ -7,3 +7,4 @@ gunicorn
 whitenoise
 dj-database-url
 environ~=1.0
+django-axes

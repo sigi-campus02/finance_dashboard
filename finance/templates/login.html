@@ -58,7 +58,21 @@
                     {% if form.errors %}
                     <div class="alert alert-danger" role="alert">
                         <i class="bi bi-exclamation-triangle"></i>
-                        Ungültige Anmeldedaten. Bitte versuche es erneut.
+                        {% if form.non_field_errors %}
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        {% else %}
+                            Ungültige Anmeldedaten. Bitte versuche es erneut.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if request.axes_locked_out %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-shield-exclamation"></i>
+                        <strong>Account gesperrt!</strong><br>
+                        Zu viele fehlgeschlagene Login-Versuche. Bitte versuche es in 1 Stunde erneut.
                     </div>
                     {% endif %}
                     
