@@ -3,6 +3,106 @@
 
 {% block title %}Scheduled Transactions - Finance{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Mobile Card Layout */
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none;
+        }
+
+        .mobile-cards {
+            display: block;
+        }
+
+        .transaction-card {
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+            transition: transform 0.2s;
+        }
+
+        .transaction-card:active {
+            transform: scale(0.98);
+        }
+
+        .transaction-card.active {
+            border-left-color: #28a745;
+        }
+
+        .transaction-card.inactive {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+
+        .transaction-card.overdue {
+            border-left-color: #dc3545;
+        }
+
+        .card-header-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 20%);
+            color: white;
+            padding: 0.75rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+
+        .info-value {
+            text-align: right;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            padding-top: 0.75rem;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+        }
+    }
+
+    /* Desktop Table Layout */
+    @media (min-width: 769px) {
+        .mobile-cards {
+            display: none;
+        }
+
+        .desktop-table {
+            display: block;
+        }
+    }
+
+    /* Gemeinsame Styles */
+    .amount-outflow {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .amount-inflow {
+        color: #28a745;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
     <h1 class="h2">
@@ -10,7 +110,7 @@
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{% url 'finance:scheduled_transaction_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Neue Scheduled Transaction
+            <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Neue Scheduled Transaction</span><span class="d-md-none">Neu</span>
         </a>
     </div>
 </div>
@@ -46,146 +146,281 @@
     </div>
 </div>
 
-<!-- Tabelle -->
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Payee</th>
-                        <th>Kategorie</th>
-                        <th>Betrag</th>
-                        <th>Frequenz</th>
-                        <th>Nächste Ausführung</th>
-                        <th>Enddatum</th>
-                        <th>Tabelle</th>
-                        <th class="text-center">Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for scheduled in scheduled_transactions %}
-                    <tr class="{% if not scheduled.is_active %}table-secondary{% elif scheduled.is_overdue %}table-danger{% endif %}">
-                        <td>
-                            {% if scheduled.is_active %}
-                                <span class="badge bg-success">
-                                    <i class="bi bi-check-circle"></i> Aktiv
-                                </span>
-                            {% else %}
-                                <span class="badge bg-secondary">
-                                    <i class="bi bi-pause-circle"></i> Inaktiv
-                                </span>
-                            {% endif %}
-                            {% if scheduled.is_overdue %}
-                                <br><small class="text-danger">
-                                    <i class="bi bi-exclamation-triangle"></i> Überfällig
-                                </small>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <strong>{{ scheduled.payee }}</strong>
-                            {% if scheduled.memo %}
-                                <br><small class="text-muted">{{ scheduled.memo|truncatewords:5 }}</small>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <small class="text-muted">{{ scheduled.category.categorygroup|default:"-" }}</small><br>
-                            {{ scheduled.category }}
-                        </td>
-                        <td>
-                            {% if scheduled.outflow %}
-                                <span class="text-danger fw-bold">- €{{ scheduled.outflow|floatformat:2 }}</span>
-                            {% else %}
-                                <span class="text-success fw-bold">+ €{{ scheduled.inflow|floatformat:2 }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge bg-primary">
-                                {{ scheduled.get_frequency_display }}
-                            </span>
-                        </td>
-                        <td>
-                            <strong>{{ scheduled.next_execution_date|date:"d.m.Y" }}</strong>
-                            <br><small class="text-muted">
-                                {% if scheduled.days_until_next < 0 %}
-                                    <span class="text-danger">{{ scheduled.days_until_next|abs }} Tage überfällig</span>
-                                {% elif scheduled.days_until_next == 0 %}
-                                    <span class="text-warning">Heute</span>
-                                {% else %}
-                                    In {{ scheduled.days_until_next }} Tag{% if scheduled.days_until_next != 1 %}en{% endif %}
-                                {% endif %}
-                            </small>
-                        </td>
-                        <td>
-                            {% if scheduled.end_date %}
-                                {{ scheduled.end_date|date:"d.m.Y" }}
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if scheduled.target_table == 'robert' %}
-                                <span class="badge bg-success">Robert</span>
-                            {% else %}
-                                <span class="badge bg-primary">Sigi</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <!-- Execute Now -->
+<!-- Mobile Card Layout -->
+<div class="mobile-cards">
+    {% for scheduled in scheduled_transactions %}
+    <div class="card transaction-card {% if scheduled.is_active %}{% if scheduled.is_overdue %}overdue{% else %}active{% endif %}{% else %}inactive{% endif %}">
+        <div class="card-header-custom">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ scheduled.payee }}</strong>
+                    {% if scheduled.is_active %}
+                        <span class="badge bg-light text-dark ms-2">
+                            <i class="bi bi-check-circle"></i> Aktiv
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary ms-2">
+                            <i class="bi bi-pause-circle"></i> Inaktiv
+                        </span>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if scheduled.target_table == 'robert' %}
+                        <span class="badge bg-success">Robert</span>
+                    {% else %}
+                        <span class="badge bg-primary">Sigi</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="info-row">
+                <span class="info-label">Betrag</span>
+                <span class="info-value">
+                    {% if scheduled.outflow %}
+                        <span class="amount-outflow">- €{{ scheduled.outflow|floatformat:2 }}</span>
+                    {% else %}
+                        <span class="amount-inflow">+ €{{ scheduled.inflow|floatformat:2 }}</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">Kategorie</span>
+                <span class="info-value">
+                    <small class="text-muted d-block">{{ scheduled.category.categorygroup|default:"-" }}</small>
+                    {{ scheduled.category }}
+                </span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">Frequenz</span>
+                <span class="info-value">
+                    <span class="badge bg-primary">{{ scheduled.get_frequency_display }}</span>
+                </span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">Nächste Ausführung</span>
+                <span class="info-value">
+                    <strong>{{ scheduled.next_execution_date|date:"d.m.Y" }}</strong>
+                    <br><small class="{% if scheduled.days_until_next < 0 %}text-danger{% elif scheduled.days_until_next == 0 %}text-warning{% else %}text-muted{% endif %}">
+                        {% if scheduled.days_until_next < 0 %}
+                            {{ scheduled.days_until_next|abs }} Tage überfällig
+                        {% elif scheduled.days_until_next == 0 %}
+                            Heute
+                        {% else %}
+                            In {{ scheduled.days_until_next }} Tag{% if scheduled.days_until_next != 1 %}en{% endif %}
+                        {% endif %}
+                    </small>
+                </span>
+            </div>
+
+            {% if scheduled.memo %}
+            <div class="info-row">
+                <span class="info-label">Notiz</span>
+                <span class="info-value">
+                    <small>{{ scheduled.memo|truncatewords:10 }}</small>
+                </span>
+            </div>
+            {% endif %}
+
+            <div class="action-buttons">
+                <!-- Execute Now -->
+                {% if scheduled.is_active %}
+                <form method="post" action="{% url 'finance:scheduled_transaction_execute' scheduled.pk %}" class="d-inline flex-fill">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-success w-100" title="Jetzt ausführen">
+                        <i class="bi bi-play-circle"></i>
+                    </button>
+                </form>
+                {% endif %}
+
+                <!-- Edit -->
+                <a href="{% url 'finance:scheduled_transaction_edit' scheduled.pk %}"
+                   class="btn btn-sm btn-primary flex-fill" title="Bearbeiten">
+                    <i class="bi bi-pencil"></i>
+                </a>
+
+                <!-- Toggle Active -->
+                <form method="post" action="{% url 'finance:scheduled_transaction_toggle' scheduled.pk %}" class="d-inline flex-fill">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn btn-sm btn-{% if scheduled.is_active %}warning{% else %}success{% endif %} w-100"
+                            title="{% if scheduled.is_active %}Deaktivieren{% else %}Aktivieren{% endif %}">
+                        <i class="bi bi-{% if scheduled.is_active %}pause{% else %}play{% endif %}-circle"></i>
+                    </button>
+                </form>
+
+                <!-- Delete -->
+                <button type="button"
+                        class="btn btn-sm btn-danger flex-fill"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal"
+                        data-scheduled-id="{{ scheduled.pk }}"
+                        data-scheduled-payee="{{ scheduled.payee }}"
+                        data-scheduled-amount="€{{ scheduled.outflow|default:scheduled.inflow|floatformat:2 }}"
+                        title="Löschen">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-calendar-x" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-3">Keine Scheduled Transactions vorhanden</p>
+            <a href="{% url 'finance:scheduled_transaction_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Erste erstellen
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Desktop Table Layout -->
+<div class="desktop-table">
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Payee</th>
+                            <th>Kategorie</th>
+                            <th>Betrag</th>
+                            <th>Frequenz</th>
+                            <th>Nächste Ausführung</th>
+                            <th>Enddatum</th>
+                            <th>Tabelle</th>
+                            <th class="text-center">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scheduled in scheduled_transactions %}
+                        <tr class="{% if not scheduled.is_active %}table-secondary{% elif scheduled.is_overdue %}table-danger{% endif %}">
+                            <td>
                                 {% if scheduled.is_active %}
-                                <form method="post" action="{% url 'finance:scheduled_transaction_execute' scheduled.pk %}" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Jetzt ausführen">
-                                        <i class="bi bi-play-circle"></i>
-                                    </button>
-                                </form>
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Aktiv
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-pause-circle"></i> Inaktiv
+                                    </span>
                                 {% endif %}
-                                
-                                <!-- Edit -->
-                                <a href="{% url 'finance:scheduled_transaction_edit' scheduled.pk %}" 
-                                   class="btn btn-sm btn-outline-primary" title="Bearbeiten">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                
-                                <!-- Toggle Active -->
-                                <form method="post" action="{% url 'finance:scheduled_transaction_toggle' scheduled.pk %}" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" 
-                                            class="btn btn-sm btn-outline-{% if scheduled.is_active %}warning{% else %}success{% endif %}" 
-                                            title="{% if scheduled.is_active %}Deaktivieren{% else %}Aktivieren{% endif %}">
-                                        <i class="bi bi-{% if scheduled.is_active %}pause{% else %}play{% endif %}-circle"></i>
+                                {% if scheduled.is_overdue %}
+                                    <br><small class="text-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Überfällig
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ scheduled.payee }}</strong>
+                                {% if scheduled.memo %}
+                                    <br><small class="text-muted">{{ scheduled.memo|truncatewords:5 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ scheduled.category.categorygroup|default:"-" }}</small><br>
+                                {{ scheduled.category }}
+                            </td>
+                            <td>
+                                {% if scheduled.outflow %}
+                                    <span class="text-danger fw-bold">- €{{ scheduled.outflow|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-success fw-bold">+ €{{ scheduled.inflow|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">
+                                    {{ scheduled.get_frequency_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ scheduled.next_execution_date|date:"d.m.Y" }}</strong>
+                                <br><small class="text-muted">
+                                    {% if scheduled.days_until_next < 0 %}
+                                        <span class="text-danger">{{ scheduled.days_until_next|abs }} Tage überfällig</span>
+                                    {% elif scheduled.days_until_next == 0 %}
+                                        <span class="text-warning">Heute</span>
+                                    {% else %}
+                                        In {{ scheduled.days_until_next }} Tag{% if scheduled.days_until_next != 1 %}en{% endif %}
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                {% if scheduled.end_date %}
+                                    {{ scheduled.end_date|date:"d.m.Y" }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if scheduled.target_table == 'robert' %}
+                                    <span class="badge bg-success">Robert</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Sigi</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <!-- Execute Now -->
+                                    {% if scheduled.is_active %}
+                                    <form method="post" action="{% url 'finance:scheduled_transaction_execute' scheduled.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Jetzt ausführen">
+                                            <i class="bi bi-play-circle"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+
+                                    <!-- Edit -->
+                                    <a href="{% url 'finance:scheduled_transaction_edit' scheduled.pk %}"
+                                       class="btn btn-sm btn-outline-primary" title="Bearbeiten">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+
+                                    <!-- Toggle Active -->
+                                    <form method="post" action="{% url 'finance:scheduled_transaction_toggle' scheduled.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-{% if scheduled.is_active %}warning{% else %}success{% endif %}"
+                                                title="{% if scheduled.is_active %}Deaktivieren{% else %}Aktivieren{% endif %}">
+                                            <i class="bi bi-{% if scheduled.is_active %}pause{% else %}play{% endif %}-circle"></i>
+                                        </button>
+                                    </form>
+
+                                    <!-- Delete -->
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteModal"
+                                            data-scheduled-id="{{ scheduled.pk }}"
+                                            data-scheduled-payee="{{ scheduled.payee }}"
+                                            data-scheduled-amount="€{{ scheduled.outflow|default:scheduled.inflow|floatformat:2 }}"
+                                            title="Löschen">
+                                        <i class="bi bi-trash"></i>
                                     </button>
-                                </form>
-                                
-                                <!-- Delete -->
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-danger" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#deleteModal"
-                                        data-scheduled-id="{{ scheduled.pk }}"
-                                        data-scheduled-payee="{{ scheduled.payee }}"
-                                        data-scheduled-amount="€{{ scheduled.outflow|default:scheduled.inflow|floatformat:2 }}"
-                                        title="Löschen">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" class="text-center py-5">
-                            <i class="bi bi-calendar-x" style="font-size: 3rem; color: #ccc;"></i>
-                            <p class="text-muted mt-3">Keine Scheduled Transactions vorhanden</p>
-                            <a href="{% url 'finance:scheduled_transaction_create' %}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Erste erstellen
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <i class="bi bi-calendar-x" style="font-size: 3rem; color: #ccc;"></i>
+                                <p class="text-muted mt-3">Keine Scheduled Transactions vorhanden</p>
+                                <a href="{% url 'finance:scheduled_transaction_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> Erste erstellen
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
