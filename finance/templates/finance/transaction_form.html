@@ -1,0 +1,230 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Transaktion hinzufügen - Finance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
+    </h1>
+</div>
+
+<!-- Success/Error Messages -->
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {% if message.tags == 'success' %}
+            <i class="bi bi-check-circle"></i>
+        {% else %}
+            <i class="bi bi-exclamation-triangle"></i>
+        {% endif %}
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+{% endif %}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    {% if is_robert %}
+                        Neue Ausgabe erfassen
+                    {% else %}
+                        Neue Transaktion erfassen
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="transactionForm">
+                    {% csrf_token %}
+                    
+                    <!-- Account (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
+                    <div class="mb-3">
+                        <label for="{{ form.account.id_for_label }}" class="form-label">
+                            {{ form.account.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.account }}
+                        {% if form.account.errors %}
+                            <div class="text-danger">{{ form.account.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        {{ form.account }}
+                    {% endif %}
+                    
+                    <!-- Flag (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
+                    <div class="mb-3">
+                        <label for="{{ form.flag.id_for_label }}" class="form-label">
+                            {{ form.flag.label }}
+                        </label>
+                        {{ form.flag }}
+                        {% if form.flag.errors %}
+                            <div class="text-danger">{{ form.flag.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        {{ form.flag }}
+                    {% endif %}
+                    
+                    <!-- Datum -->
+                    <div class="mb-3">
+                        <label for="{{ form.date.id_for_label }}" class="form-label">
+                            {{ form.date.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                            <div class="text-danger">{{ form.date.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Payee mit Autocomplete -->
+                    <div class="mb-3">
+                        <label for="{{ form.payee.id_for_label }}" class="form-label">
+                            {{ form.payee.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.payee }}
+                        <datalist id="payee-list">
+                            {% for payee in payees %}
+                                <option value="{{ payee.payee }}">
+                            {% endfor %}
+                        </datalist>
+                        <small class="form-text text-muted">
+                            Beginne zu tippen für Vorschläge. Neuer Name wird automatisch angelegt.
+                        </small>
+                        {% if form.payee.errors %}
+                            <div class="text-danger">{{ form.payee.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Category Group -->
+                    <div class="mb-3">
+                        <label for="{{ form.category_group.id_for_label }}" class="form-label">
+                            {{ form.category_group.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.category_group }}
+                        {% if form.category_group.errors %}
+                            <div class="text-danger">{{ form.category_group.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Category (dynamisch gefiltert) -->
+                    <div class="mb-3">
+                        <label for="{{ form.category.id_for_label }}" class="form-label">
+                            {{ form.category.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                            <div class="text-danger">{{ form.category.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Memo -->
+                    <div class="mb-3">
+                        <label for="{{ form.memo.id_for_label }}" class="form-label">
+                            {{ form.memo.label }}
+                        </label>
+                        {{ form.memo }}
+                        {% if form.memo.errors %}
+                            <div class="text-danger">{{ form.memo.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Betrag -->
+                    <div class="mb-3">
+                        <label for="{{ form.amount.id_for_label }}" class="form-label">
+                            {{ form.amount.label }} <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">€</span>
+                            {{ form.amount }}
+                        </div>
+                        {% if form.amount.errors %}
+                            <div class="text-danger">{{ form.amount.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Typ: Ausgabe/Einnahme (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
+                    <div class="mb-3">
+                        <label class="form-label">
+                            {{ form.transaction_type.label }} <span class="text-danger">*</span>
+                        </label>
+                        <div>
+                            {% for radio in form.transaction_type %}
+                                <div class="form-check form-check-inline">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.transaction_type.errors %}
+                            <div class="text-danger">{{ form.transaction_type.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        {{ form.transaction_type }}
+                    {% endif %}
+                    
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Speichern
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Kategorien nach CategoryGroup filtern
+const allCategories = [
+    {% for cat in categories %}
+    {
+        id: {{ cat.id }},
+        name: "{{ cat.category|escapejs }}",
+        categorygroup_id: {{ cat.categorygroup.id|default:"null" }}
+    },
+    {% endfor %}
+];
+
+function updateCategories() {
+    const categoryGroupSelect = document.getElementById('{{ form.category_group.id_for_label }}');
+    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+    
+    const selectedGroupId = parseInt(categoryGroupSelect.value);
+    
+    // Leere Category Select
+    categorySelect.innerHTML = '<option value="">---------</option>';
+    
+    // Füge nur passende Kategorien hinzu
+    const filteredCategories = allCategories.filter(cat => 
+        cat.categorygroup_id === selectedGroupId
+    );
+    
+    filteredCategories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        categorySelect.appendChild(option);
+    });
+}
+
+// Initial laden wenn CategoryGroup bereits ausgewählt ist
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryGroupSelect = document.getElementById('{{ form.category_group.id_for_label }}');
+    if (categoryGroupSelect.value) {
+        updateCategories();
+    }
+});
+</script>
+{% endblock %}

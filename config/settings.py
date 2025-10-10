@@ -140,7 +140,6 @@ AUTHENTICATION_BACKENDS = [
 # Axes Settings
 AXES_FAILURE_LIMIT = 5  # Nach 5 fehlgeschlagenen Login-Versuchen sperren
 AXES_COOLOFF_TIME = 1  # 1 Stunde Sperre (in Stunden)
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True  # Sperre nur für spezifische User+IP Kombination
 AXES_RESET_ON_SUCCESS = True  # Reset Counter nach erfolgreichem Login
 AXES_LOCKOUT_TEMPLATE = None  # Nutzt Default-Fehlerseite
 AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]  # Tracking nach Username & IP

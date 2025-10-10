@@ -7,7 +7,10 @@ urlpatterns = [
     # Haupt-Seiten
     path('', views.dashboard, name='dashboard'),
     path('transactions/', views.transactions_list, name='transactions'),
-    path('transactions/household/', views.household_transactions, name='household_transactions'),  # NEU
+    path('transactions/household/', views.household_transactions, name='household_transactions'),
+    path('transactions/add/', views.add_transaction, name='add_transaction'),
+    path('transactions/delete/<int:pk>/', views.delete_transaction, name='delete_transaction'),  # NEU
+    path('transactions/undo/', views.undo_delete, name='undo_delete'),  # NEU
     path('assets/', views.asset_overview, name='asset_overview'),
 
     # API Endpoints für Charts

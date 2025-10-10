@@ -10,6 +10,14 @@
         word-wrap: break-word;
         white-space: normal;
     }
+    .action-icon {
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: all 0.2s;
+    }
+    .action-icon:hover {
+        transform: scale(1.2);
+    }
 </style>
 {% endblock %}
 
@@ -150,6 +158,7 @@
                         <th>Memo</th>
                         <th class="text-end">Ausgaben</th>
                         <th class="text-end">Einnahmen</th>
+                        <th class="text-center">Aktionen</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -187,10 +196,21 @@
                         <td class="text-end text-success">
                             {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
                         </td>
+                        <td class="text-center">
+                            <i class="bi bi-trash text-danger action-icon" 
+                               data-bs-toggle="modal" 
+                               data-bs-target="#deleteModal"
+                               data-transaction-id="{{ trans.id }}"
+                               data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                               data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                               data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                               data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                               title="Löschen"></i>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center">Keine Transaktionen gefunden</td>
+                        <td colspan="8" class="text-center">Keine Transaktionen gefunden</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -199,12 +219,14 @@
                         <td colspan="5" class="text-end">Summe (gefiltert):</td>
                         <td class="text-end text-danger">€ {{ total_outflow|floatformat:2 }}</td>
                         <td class="text-end text-success">€ {{ total_inflow|floatformat:2 }}</td>
+                        <td></td>
                     </tr>
                     <tr class="fw-bold">
                         <td colspan="5" class="text-end">Saldo:</td>
                         <td colspan="2" class="text-end" style="color: {% if netto >= 0 %}#28a745{% else %}#dc3545{% endif %}">
                             € {{ netto|floatformat:2 }}
                         </td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -237,4 +259,77 @@
 </div>
 {% endif %}
 
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Transaktion löschen
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Möchten Sie diese Transaktion wirklich löschen?</p>
+                <div class="card">
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Datum:</dt>
+                            <dd class="col-sm-8" id="modal-date">-</dd>
+                            
+                            <dt class="col-sm-4">Payee:</dt>
+                            <dd class="col-sm-8" id="modal-payee">-</dd>
+                            
+                            <dt class="col-sm-4">Kategorie:</dt>
+                            <dd class="col-sm-8" id="modal-category">-</dd>
+                            
+                            <dt class="col-sm-4">Betrag:</dt>
+                            <dd class="col-sm-8 fw-bold" id="modal-amount">-</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-info-circle"></i> Sie haben 30 Sekunden Zeit, um die Löschung rückgängig zu machen.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Abbrechen
+                </button>
+                <form method="post" action="" id="deleteForm" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Ja, löschen
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Modal mit Transaktionsdaten befüllen
+document.addEventListener('DOMContentLoaded', function() {
+    var deleteModal = document.getElementById('deleteModal');
+    deleteModal.addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        
+        var transactionId = button.getAttribute('data-transaction-id');
+        var date = button.getAttribute('data-transaction-date');
+        var payee = button.getAttribute('data-transaction-payee');
+        var amount = button.getAttribute('data-transaction-amount');
+        var category = button.getAttribute('data-transaction-category');
+        
+        document.getElementById('modal-date').textContent = date;
+        document.getElementById('modal-payee').textContent = payee;
+        document.getElementById('modal-amount').textContent = amount;
+        document.getElementById('modal-category').textContent = category;
+        
+        document.getElementById('deleteForm').action = '/transactions/delete/' + transactionId + '/';
+    });
+});
+</script>
 {% endblock %}
