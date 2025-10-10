@@ -97,6 +97,12 @@
                             <i class="bi bi-wallet2"></i> Vermögen
                         </a>
                     </li>
+                    <!-- NEU: Logout Button -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'logout' %}">
+                            <i class="bi bi-box-arrow-right"></i> Logout ({{ user.username }})
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

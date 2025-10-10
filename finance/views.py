@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.db.models import Sum, Count, Q
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta
+from django.contrib.auth.decorators import login_required  # ← NEU!
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
     DimAccount, DimCategory, DimPayee, DimCategoryGroup
@@ -11,7 +12,7 @@ from collections import defaultdict
 from decimal import Decimal
 from .utils import get_account_category, calculate_account_balance, CATEGORY_CONFIG
 
-
+@login_required  # ← NEU!
 def dashboard(request):
     """Haupt-Dashboard mit Übersicht und KPIs"""
     current_year = datetime.now().year
@@ -53,7 +54,7 @@ def dashboard(request):
 
     return render(request, 'finance/dashboard.html', context)
 
-
+@login_required  # ← NEU!
 def transactions_list(request):
     """Liste aller Transaktionen mit Filter"""
     transactions = FactTransactionsSigi.objects.select_related(
@@ -99,7 +100,7 @@ def transactions_list(request):
 
     return render(request, 'finance/transactions.html', context)
 
-
+@login_required  # ← NEU!
 def api_monthly_spending(request):
     """API: Monatliche Ausgaben für Chart"""
     year = request.GET.get('year', datetime.now().year)
@@ -142,7 +143,7 @@ def api_monthly_spending(request):
         ]
     })
 
-
+@login_required  # ← NEU!
 def api_category_breakdown(request):
     """API: Ausgaben nach Kategorie für Pie Chart"""
     year = request.GET.get('year', datetime.now().year)
@@ -186,7 +187,7 @@ def api_category_breakdown(request):
         }]
     })
 
-
+@login_required  # ← NEU!
 def api_top_payees(request):
     """API: Top Zahlungsempfänger"""
     year = request.GET.get('year', datetime.now().year)
@@ -220,7 +221,7 @@ def api_top_payees(request):
         }]
     })
 
-
+@login_required  # ← NEU!
 def asset_overview(request):
     """
     Vermögensübersicht berechnet aus fact_transactions_sigi
