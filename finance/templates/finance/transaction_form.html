@@ -37,6 +37,12 @@
                 </h5>
             </div>
             <div class="card-body">
+                <!-- Suggestion Info Box -->
+                <div id="suggestionInfo" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-lightbulb"></i> 
+                    <span id="suggestionText"></span>
+                </div>
+                
                 <form method="post" id="transactionForm">
                     {% csrf_token %}
                     
@@ -85,6 +91,9 @@
                     <div class="mb-3">
                         <label for="{{ form.payee.id_for_label }}" class="form-label">
                             {{ form.payee.label }} <span class="text-danger">*</span>
+                            <span id="payeeLoader" class="spinner-border spinner-border-sm ms-2" role="status" style="display: none;">
+                                <span class="visually-hidden">Lädt...</span>
+                            </span>
                         </label>
                         {{ form.payee }}
                         <datalist id="payee-list">
@@ -93,7 +102,7 @@
                             {% endfor %}
                         </datalist>
                         <small class="form-text text-muted">
-                            Beginne zu tippen für Vorschläge. Neuer Name wird automatisch angelegt.
+                            Beginne zu tippen für Vorschläge. Kategorie wird automatisch vorgeschlagen basierend auf bisherigen Transaktionen.
                         </small>
                         {% if form.payee.errors %}
                             <div class="text-danger">{{ form.payee.errors }}</div>
@@ -203,6 +212,9 @@ function updateCategories() {
     
     const selectedGroupId = parseInt(categoryGroupSelect.value);
     
+    // Aktuell ausgewählte Category merken
+    const currentCategoryId = parseInt(categorySelect.value);
+    
     // Leere Category Select
     categorySelect.innerHTML = '<option value="">---------</option>';
     
@@ -215,15 +227,98 @@ function updateCategories() {
         const option = document.createElement('option');
         option.value = cat.id;
         option.textContent = cat.name;
+        
+        // Wähle vorherige Auswahl wieder aus, falls sie passt
+        if (cat.id === currentCategoryId) {
+            option.selected = true;
+        }
+        
         categorySelect.appendChild(option);
     });
 }
+
+// Payee Suggestions - Smart Category Selection
+let suggestionTimeout;
+const payeeInput = document.getElementById('{{ form.payee.id_for_label }}');
+const categoryGroupSelect = document.getElementById('{{ form.category_group.id_for_label }}');
+const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+const suggestionInfo = document.getElementById('suggestionInfo');
+const suggestionText = document.getElementById('suggestionText');
+const payeeLoader = document.getElementById('payeeLoader');
+
+payeeInput.addEventListener('input', function() {
+    // Debounce - warte 500ms nach letzter Eingabe
+    clearTimeout(suggestionTimeout);
+    
+    const payeeName = this.value.trim();
+    
+    if (payeeName.length < 2) {
+        suggestionInfo.style.display = 'none';
+        return;
+    }
+    
+    // Zeige Loader
+    payeeLoader.style.display = 'inline-block';
+    
+    suggestionTimeout = setTimeout(function() {
+        // API Call
+        fetch(`/api/payee-suggestions/?payee=${encodeURIComponent(payeeName)}`)
+            .then(response => response.json())
+            .then(data => {
+                payeeLoader.style.display = 'none';
+                
+                if (data.found) {
+                    // Setze CategoryGroup
+                    categoryGroupSelect.value = data.categorygroup_id;
+                    
+                    // Update Categories basierend auf Group
+                    updateCategories();
+                    
+                    // Setze Category
+                    categorySelect.value = data.category_id;
+                    
+                    // Zeige Info
+                    suggestionText.innerHTML = `
+                        <strong>Vorschlag:</strong> ${data.categorygroup_name} → ${data.category_name} 
+                        <small class="text-muted">(basierend auf ${data.usage_count} frühere${data.usage_count > 1 ? 'n' : ''} Transaktion${data.usage_count > 1 ? 'en' : ''})</small>
+                    `;
+                    suggestionInfo.style.display = 'block';
+                    
+                    // Auto-hide nach 10 Sekunden
+                    setTimeout(() => {
+                        suggestionInfo.style.display = 'none';
+                    }, 10000);
+                } else {
+                    suggestionInfo.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Vorschläge:', error);
+                payeeLoader.style.display = 'none';
+                suggestionInfo.style.display = 'none';
+            });
+    }, 500); // 500ms Debounce
+});
 
 // Initial laden wenn CategoryGroup bereits ausgewählt ist
 document.addEventListener('DOMContentLoaded', function() {
     const categoryGroupSelect = document.getElementById('{{ form.category_group.id_for_label }}');
     if (categoryGroupSelect.value) {
         updateCategories();
+    }
+});
+
+// Fokus auf Amount-Feld nach Kategorie-Auswahl
+categorySelect.addEventListener('change', function() {
+    if (this.value) {
+        // Prüfe ob Memo leer ist
+        const memoField = document.getElementById('{{ form.memo.id_for_label }}');
+        const amountField = document.getElementById('{{ form.amount.id_for_label }}');
+        
+        if (!memoField.value && !amountField.value) {
+            // Spring direkt zum Amount, überspringe Memo
+            amountField.focus();
+        }
     }
 });
 </script>

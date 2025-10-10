@@ -613,16 +613,18 @@ def delete_transaction(request, pk):
     if request.method != 'POST':
         return redirect('finance:transactions')
 
-    # Hole die Transaktion
+    # Hole die Transaktion - unterscheide zwischen Robert und Sigi
     transaction = None
     is_robert_transaction = False
 
+    # Versuche erst in Robert's Tabelle zu finden
     try:
         transaction = FactTransactionsRobert.objects.get(pk=pk)
         is_robert_transaction = True
     except FactTransactionsRobert.DoesNotExist:
         pass
 
+    # Falls nicht gefunden, suche in Sigi's Tabelle
     if not transaction:
         try:
             transaction = FactTransactionsSigi.objects.get(pk=pk)
@@ -632,11 +634,17 @@ def delete_transaction(request, pk):
             return redirect(request.META.get('HTTP_REFERER', 'finance:transactions'))
 
     # Berechtigungsprüfung
+    # Fall 1: Robert versucht Sigi-Transaktion zu löschen
     if request.user.username == 'robert' and not is_robert_transaction:
         messages.error(request, 'Du darfst nur deine eigenen Transaktionen löschen.')
         return redirect(request.META.get('HTTP_REFERER', 'finance:household_transactions'))
 
-    # Speichere für Undo
+    # Fall 2: Nicht-Robert User versucht Robert-Transaktion zu löschen
+    if request.user.username != 'robert' and is_robert_transaction:
+        messages.error(request, 'Du darfst Roberts Transaktionen nicht löschen.')
+        return redirect(request.META.get('HTTP_REFERER', 'finance:transactions'))
+
+    # Speichere Transaktionsdaten für Undo in Session
     undo_data = {
         'table': 'robert' if is_robert_transaction else 'sigi',
         'account_id': transaction.account_id,
@@ -651,17 +659,21 @@ def delete_transaction(request, pk):
         'amount': str(transaction.outflow or transaction.inflow or 0),
     }
 
+    # Speichere in Session für Undo
     request.session['undo_transaction'] = undo_data
     request.session['undo_expires'] = (datetime.now() + timedelta(seconds=30)).isoformat()
 
+    # Lösche die Transaktion
     transaction.delete()
 
+    # Success Message mit Undo-Hinweis
     messages.success(
         request,
         f'Transaktion gelöscht: {undo_data["payee_name"]} - €{undo_data["amount"]}',
-        extra_tags='deletable'
+        extra_tags='deletable'  # Marker für Toast mit Undo-Button
     )
 
+    # Redirect zurück zur vorherigen Seite
     return redirect(request.META.get('HTTP_REFERER', 'finance:transactions'))
 
 
@@ -720,3 +732,81 @@ def undo_delete(request):
         messages.error(request, f'Fehler beim Wiederherstellen: {str(e)}')
 
     return redirect(request.META.get('HTTP_REFERER', 'finance:transactions'))
+
+
+@login_required
+def api_get_payee_suggestions(request):
+    """
+    API: Gibt Kategorie-Vorschläge basierend auf historischen Transaktionen zurück
+    """
+    payee_name = request.GET.get('payee', '').strip()
+
+    if not payee_name:
+        return JsonResponse({'error': 'Kein Payee angegeben'}, status=400)
+
+    try:
+        # Finde den Payee
+        payee = DimPayee.objects.filter(payee__iexact=payee_name).first()
+
+        if not payee:
+            return JsonResponse({
+                'found': False,
+                'message': 'Payee noch nicht in Datenbank'
+            })
+
+        # Suche in beiden Tabellen nach den letzten Transaktionen mit diesem Payee
+        # und finde die am häufigsten verwendete Kategorie
+
+        # Sigi Transaktionen
+        sigi_categories = FactTransactionsSigi.objects.filter(
+            payee=payee
+        ).exclude(
+            category__isnull=True
+        ).values(
+            'category_id',
+            'category__category',
+            'category__categorygroup_id',
+            'category__categorygroup__category_group'
+        ).annotate(
+            count=Count('id')
+        ).order_by('-count')[:1]
+
+        # Robert Transaktionen
+        robert_categories = FactTransactionsRobert.objects.filter(
+            payee=payee
+        ).exclude(
+            category__isnull=True
+        ).values(
+            'category_id',
+            'category__category',
+            'category__categorygroup_id',
+            'category__categorygroup__category_group'
+        ).annotate(
+            count=Count('id')
+        ).order_by('-count')[:1]
+
+        # Kombiniere und finde die häufigste
+        all_suggestions = list(sigi_categories) + list(robert_categories)
+
+        if not all_suggestions:
+            return JsonResponse({
+                'found': False,
+                'message': 'Keine historischen Transaktionen gefunden'
+            })
+
+        # Sortiere nach count und nimm die häufigste
+        best_suggestion = max(all_suggestions, key=lambda x: x['count'])
+
+        return JsonResponse({
+            'found': True,
+            'category_id': best_suggestion['category_id'],
+            'category_name': best_suggestion['category__category'],
+            'categorygroup_id': best_suggestion['category__categorygroup_id'],
+            'categorygroup_name': best_suggestion['category__categorygroup__category_group'],
+            'usage_count': best_suggestion['count']
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'error': f'Fehler: {str(e)}'
+        }, status=500)
