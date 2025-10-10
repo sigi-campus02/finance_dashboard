@@ -1,0 +1,444 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Rechnung scannen - Finance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 3px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 60px 20px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+        background: #f8f9fa;
+    }
+    .upload-area:hover, .upload-area.dragover {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+    }
+    .upload-area i {
+        font-size: 4rem;
+        color: #6c757d;
+        margin-bottom: 20px;
+    }
+    .preview-image {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .analyzing-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .ai-filled {
+        background: linear-gradient(to right, #fff8dc 0%, #ffffff 100%);
+        border-left: 3px solid #ffc107;
+    }
+    .ai-filled:focus {
+        background: #ffffff;
+        border-left: 3px solid #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-camera"></i> Rechnung scannen
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'finance:add_transaction' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-keyboard"></i> Manuelle Eingabe
+        </a>
+    </div>
+</div>
+
+<!-- Info Alert -->
+<div class="alert alert-info" role="alert">
+    <i class="bi bi-lightbulb"></i>
+    <strong>So funktioniert's:</strong> Lade ein Foto deiner Rechnung hoch. 
+    Die KI analysiert automatisch Datum, Betrag, Geschäft und schlägt eine passende Kategorie vor.
+    {% if not is_robert %}<br>
+    <i class="bi bi-hand-index"></i> <strong>Konto und Flag</strong> musst du manuell auswählen.
+    {% endif %}
+    <br>
+    <i class="bi bi-pencil"></i> Alle erkannten Daten (gelb markiert) kannst du vor dem Speichern anpassen.
+</div>
+
+<div class="row">
+    <!-- Upload Bereich -->
+    <div class="col-md-6" id="uploadSection">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-upload"></i> Rechnung hochladen
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Upload Area -->
+                <div class="upload-area" id="uploadArea">
+                    <i class="bi bi-cloud-upload"></i>
+                    <h5>Bild hier ablegen</h5>
+                    <p class="text-muted">oder klicken zum Auswählen</p>
+                    <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
+                    <button type="button" class="btn btn-primary mt-2" onclick="document.getElementById('receiptInput').click()">
+                        <i class="bi bi-camera"></i> Foto aufnehmen / hochladen
+                    </button>
+                </div>
+                
+                <!-- Preview -->
+                <div id="previewSection" style="display: none;" class="mt-3">
+                    <h6>Vorschau:</h6>
+                    <img id="previewImage" class="preview-image" alt="Rechnung">
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-primary" id="analyzeBtn">
+                            <i class="bi bi-stars"></i> Mit KI analysieren
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetUpload()">
+                            <i class="bi bi-x-circle"></i> Neu hochladen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ergebnis Bereich -->
+    <div class="col-md-6" id="resultSection" style="display: none;">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-check-circle"></i> Erkannte Daten
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="transactionForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm_transaction" value="1">
+                    
+                    <!-- Account (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
+                    <div class="mb-3">
+                        <label class="form-label">Konto <span class="text-danger">*</span></label>
+                        <select name="account" id="result_account" class="form-select" required>
+                            <option value="">Bitte wählen...</option>
+                            {% for acc in accounts %}
+                            <option value="{{ acc.id }}">{{ acc.account }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% else %}
+                    <input type="hidden" name="account" value="18">
+                    {% endif %}
+                    
+                    <!-- Flag (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
+                    <div class="mb-3">
+                        <label class="form-label">Flag</label>
+                        <select name="flag" id="result_flag" class="form-select">
+                            <option value="">Keine Flag</option>
+                            {% for f in flags %}
+                            <option value="{{ f.id }}">{{ f.flag }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Datum -->
+                    <div class="mb-3">
+                        <label class="form-label">Datum <span class="text-danger">*</span></label>
+                        <input type="date" name="date" id="result_date" class="form-control" required>
+                    </div>
+                    
+                    <!-- Payee -->
+                    <div class="mb-3">
+                        <label class="form-label">Geschäft / Zahlungsempfänger <span class="text-danger">*</span></label>
+                        <input type="text" name="payee" id="result_payee" class="form-control" 
+                               list="payee-list" autocomplete="off" required>
+                        <datalist id="payee-list">
+                            {% for p in payees %}
+                                <option value="{{ p.payee }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    
+                    <!-- Kategorie-Gruppe -->
+                    <div class="mb-3">
+                        <label class="form-label">Kategoriegruppe <span class="text-danger">*</span></label>
+                        <select name="category_group" id="result_category_group" 
+                                class="form-select" onchange="updateCategories()" required>
+                            <option value="">Bitte wählen...</option>
+                            {% for cg in category_groups %}
+                            <option value="{{ cg.id }}">{{ cg.category_group }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Kategorie -->
+                    <div class="mb-3">
+                        <label class="form-label">Kategorie <span class="text-danger">*</span></label>
+                        <select name="category" id="result_category" class="form-select" required>
+                            <option value="">Erst Kategoriegruppe wählen...</option>
+                        </select>
+                        <small class="form-text text-muted" id="ai_suggestion"></small>
+                    </div>
+                    
+                    <!-- Memo -->
+                    <div class="mb-3">
+                        <label class="form-label">Notiz</label>
+                        <textarea name="memo" id="result_memo" class="form-control" rows="2"></textarea>
+                    </div>
+                    
+                    <!-- Betrag -->
+                    <div class="mb-3">
+                        <label class="form-label">Betrag <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">€</span>
+                            <input type="number" name="amount" id="result_amount" 
+                                   class="form-control" step="0.01" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Typ (nur für Nicht-Robert) -->
+                    {% if not is_robert %}
+                    <div class="mb-3">
+                        <label class="form-label">Typ <span class="text-danger">*</span></label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="transaction_type" 
+                                       id="type_outflow" value="outflow" checked>
+                                <label class="form-check-label" for="type_outflow">Ausgabe</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="transaction_type" 
+                                       id="type_inflow" value="inflow">
+                                <label class="form-check-label" for="type_inflow">Einnahme</label>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <input type="hidden" name="transaction_type" value="outflow">
+                    {% endif %}
+                    
+                    <!-- Submit -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Transaktion speichern
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetAll()">
+                            <i class="bi bi-arrow-left"></i> Zurück
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analyzing Overlay -->
+<div id="analyzingOverlay" class="analyzing-overlay" style="display: none;">
+    <div class="text-center text-white">
+        <div class="spinner-border" role="status" style="width: 4rem; height: 4rem;">
+            <span class="visually-hidden">Analysiere...</span>
+        </div>
+        <h3 class="mt-3">
+            <i class="bi bi-stars"></i> KI analysiert Rechnung...
+        </h3>
+        <p>Dies kann einige Sekunden dauern</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Kategorien (vom Backend)
+const allCategories = [
+    {% for cat in categories %}
+    {
+        id: {{ cat.id }},
+        name: "{{ cat.category|escapejs }}",
+        categorygroup_id: {{ cat.categorygroup.id|default:"null" }}
+    },
+    {% endfor %}
+];
+
+let currentImageFile = null;
+
+// File Input Handler
+document.getElementById('receiptInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        handleImageFile(file);
+    }
+});
+
+// Drag & Drop
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('click', () => {
+    document.getElementById('receiptInput').click();
+});
+
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        handleImageFile(file);
+    }
+});
+
+function handleImageFile(file) {
+    currentImageFile = file;
+    
+    // Preview anzeigen
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('previewImage').src = e.target.result;
+        document.getElementById('uploadArea').style.display = 'none';
+        document.getElementById('previewSection').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+// Analyse starten
+document.getElementById('analyzeBtn').addEventListener('click', async function() {
+    if (!currentImageFile) return;
+    
+    // Overlay anzeigen
+    document.getElementById('analyzingOverlay').style.display = 'flex';
+    
+    // FormData erstellen
+    const formData = new FormData();
+    formData.append('receipt_image', currentImageFile);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    try {
+        const response = await fetch('/api/analyze-receipt/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+        
+        const result = await response.json();
+        
+        // Overlay ausblenden
+        document.getElementById('analyzingOverlay').style.display = 'none';
+        
+        if (result.success) {
+            // Felder ausfüllen und als KI-gefüllt markieren
+            const aiFields = ['result_date', 'result_payee', 'result_amount', 'result_memo'];
+            
+            document.getElementById('result_date').value = result.data.date;
+            document.getElementById('result_payee').value = result.data.payee;
+            document.getElementById('result_amount').value = result.data.amount;
+            document.getElementById('result_memo').value = result.data.memo;
+            
+            // Markiere KI-gefüllte Felder visuell
+            aiFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && field.value) {
+                    field.classList.add('ai-filled');
+                }
+            });
+            
+            {% if not is_robert %}
+            // Account und Flag müssen manuell gewählt werden
+            // Aber setze Hinweis
+            const accountSelect = document.getElementById('result_account');
+            accountSelect.focus(); // Fokussiere Account-Feld
+            {% endif %}
+            
+            // Kategorie setzen und markieren
+            if (result.data.categorygroup_id) {
+                document.getElementById('result_category_group').value = result.data.categorygroup_id;
+                document.getElementById('result_category_group').classList.add('ai-filled');
+                
+                updateCategories();
+                
+                document.getElementById('result_category').value = result.data.category_id;
+                document.getElementById('result_category').classList.add('ai-filled');
+                
+                document.getElementById('ai_suggestion').innerHTML = 
+                    `<i class="bi bi-stars text-warning"></i> KI-Vorschlag: ${result.data.category_suggestion_text}`;
+            }
+            
+            // Sections umschalten
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('resultSection').style.display = 'block';
+            
+        } else {
+            alert('Fehler bei der Analyse: ' + result.error);
+        }
+        
+    } catch (error) {
+        document.getElementById('analyzingOverlay').style.display = 'none';
+        alert('Fehler bei der Kommunikation mit dem Server: ' + error);
+    }
+});
+
+function updateCategories() {
+    const groupSelect = document.getElementById('result_category_group');
+    const catSelect = document.getElementById('result_category');
+    const selectedGroupId = parseInt(groupSelect.value);
+    const currentCatId = parseInt(catSelect.value);
+    
+    catSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+    
+    allCategories
+        .filter(cat => cat.categorygroup_id === selectedGroupId)
+        .forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            if (cat.id === currentCatId) option.selected = true;
+            catSelect.appendChild(option);
+        });
+}
+
+function resetUpload() {
+    currentImageFile = null;
+    document.getElementById('uploadArea').style.display = 'block';
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('receiptInput').value = '';
+}
+
+function resetAll() {
+    resetUpload();
+    
+    // Entferne AI-filled Klassen
+    document.querySelectorAll('.ai-filled').forEach(el => {
+        el.classList.remove('ai-filled');
+    });
+    
+    // Reset Form
+    document.getElementById('transactionForm').reset();
+    
+    // Sections umschalten
+    document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('resultSection').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -19,8 +19,10 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.conf import settings
-from datetime import date
 import logging
+
+from .receipt_analyzer import ReceiptAnalyzer
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -1135,3 +1137,93 @@ Details:
     logger.info(f'Cron job completed: {executed_count} executed, {failed_count} failed')
 
     return HttpResponse(response_text, content_type='text/plain')
+
+
+@login_required
+@require_POST
+def analyze_receipt_image(request):
+    """
+    API Endpoint: Analysiert hochgeladenes Rechnungsbild
+    """
+    if 'receipt_image' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': 'Kein Bild hochgeladen'
+        })
+
+    try:
+        image_file = request.FILES['receipt_image']
+        image_bytes = image_file.read()
+
+        # Größenlimit prüfen (z.B. 10MB)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            return JsonResponse({
+                'success': False,
+                'error': 'Bild zu groß (max. 10MB)'
+            })
+
+        # Analysiere mit KI
+        analyzer = ReceiptAnalyzer()
+        result = analyzer.analyze_receipt(image_bytes)
+
+        if not result['success']:
+            return JsonResponse(result)
+
+        # Finde passende Kategorie
+        all_categories = DimCategory.objects.select_related('categorygroup').all()
+        suggested_category = analyzer.suggest_category(
+            result['category_suggestion'],
+            all_categories
+        )
+
+        # Formatiere Antwort
+        response = {
+            'success': True,
+            'data': {
+                'date': result['date'].strftime('%Y-%m-%d'),
+                'payee': result['payee'],
+                'amount': str(result['amount']),
+                'memo': result['memo'],
+                'category_id': suggested_category.id if suggested_category else None,
+                'category_name': suggested_category.category if suggested_category else None,
+                'categorygroup_id': suggested_category.categorygroup.id if suggested_category else None,
+                'categorygroup_name': suggested_category.categorygroup.category_group if suggested_category else None,
+                'category_suggestion_text': result['category_suggestion'],
+                'currency': result.get('currency', 'EUR')
+            }
+        }
+
+        return JsonResponse(response)
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Fehler bei der Verarbeitung: {str(e)}'
+        })
+
+
+@login_required
+def analyze_receipt_page(request):
+    """
+    Separate Seite für Receipt Upload und Analyse
+    """
+    if request.method == 'POST' and 'confirm_transaction' in request.POST:
+        # User hat analysierte Daten bestätigt und möchte speichern
+        form = TransactionForm(request.POST, user=request.user)
+        if form.is_valid():
+            transaction = form.save()
+            messages.success(request, 'Transaktion erfolgreich gespeichert!')
+            return redirect('finance:add_transaction')
+        else:
+            messages.error(request, 'Fehler beim Speichern der Transaktion')
+
+    context = {
+        'accounts': DimAccount.objects.all().order_by('account'),
+        'flags': DimFlag.objects.all(),
+        'payees': DimPayee.objects.all().order_by('payee'),
+        'category_groups': DimCategoryGroup.objects.all().order_by('category_group'),
+        'categories': DimCategory.objects.select_related('categorygroup').all(),
+        'is_robert': request.user.username == 'robert',
+    }
+
+    return render(request, 'finance/receipt_upload.html', context)

@@ -247,3 +247,11 @@ LOGGING = {
 CRON_SECRET_TOKEN = os.environ.get('CRON_SECRET_TOKEN')
 if not CRON_SECRET_TOKEN and not DEBUG:
     raise ValueError("CRON_SECRET_TOKEN muss als Environment Variable gesetzt sein!")
+
+
+# Media Files (für Uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# File Upload Settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB

@@ -32,4 +32,7 @@ urlpatterns = [
     # API Endpoint für Cron-Job
     path('api/cron/process-scheduled/', views.process_scheduled_transactions, name='process_scheduled'),
 
+    # Receipt Scanner
+    path('receipt-upload/', views.analyze_receipt_page, name='receipt_upload'),
+    path('api/analyze-receipt/', views.analyze_receipt_image, name='api_analyze_receipt'),
 ]

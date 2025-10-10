@@ -8,3 +8,5 @@ whitenoise
 dj-database-url
 environ~=1.0
 django-axes
+openai>=1.0.0
+Pillow>=10.0.0
