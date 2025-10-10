@@ -114,10 +114,18 @@
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:transactions' %}">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-list-ul"></i> Transaktionen
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
+                            <li><a class="dropdown-item" href="{% url 'finance:transactions' %}">
+                                <i class="bi bi-list"></i> Alle Transaktionen
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'finance:household_transactions' %}">
+                                <i class="bi bi-house-door"></i> Transaktionen Haushalt
+                            </a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:asset_overview' %}">

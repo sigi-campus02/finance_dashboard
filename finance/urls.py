@@ -7,7 +7,8 @@ urlpatterns = [
     # Haupt-Seiten
     path('', views.dashboard, name='dashboard'),
     path('transactions/', views.transactions_list, name='transactions'),
-    path('assets/', views.asset_overview, name='asset_overview'),  # NEU
+    path('transactions/household/', views.household_transactions, name='household_transactions'),  # NEU
+    path('assets/', views.asset_overview, name='asset_overview'),
 
     # API Endpoints für Charts
     path('api/monthly-spending/', views.api_monthly_spending, name='api_monthly_spending'),

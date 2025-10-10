@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Value, CharField
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta
-from django.contrib.auth.decorators import login_required  # ← NEU!
+from django.contrib.auth.decorators import login_required
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
     DimAccount, DimCategory, DimPayee, DimCategoryGroup
@@ -12,7 +12,8 @@ from collections import defaultdict
 from decimal import Decimal
 from .utils import get_account_category, calculate_account_balance, CATEGORY_CONFIG
 
-@login_required  # ← NEU!
+
+@login_required
 def dashboard(request):
     """Haupt-Dashboard mit Übersicht und KPIs"""
     current_year = datetime.now().year
@@ -54,27 +55,28 @@ def dashboard(request):
 
     return render(request, 'finance/dashboard.html', context)
 
-@login_required  # ← NEU!
+
+@login_required
 def transactions_list(request):
     """Liste aller Transaktionen mit Filter"""
     transactions = FactTransactionsSigi.objects.select_related(
         'account', 'payee', 'category', 'category__categorygroup', 'flag'
     ).all()
 
-    year = request.GET.get('year')
-    month = request.GET.get('month')
-    account_id = request.GET.get('account')
-    category_id = request.GET.get('category')
-    search = request.GET.get('search')
+    year = request.GET.get('year', '')
+    month = request.GET.get('month', '')
+    account_id = request.GET.get('account', '')
+    category_id = request.GET.get('category', '')
+    search = request.GET.get('search', '')
 
     if year:
-        transactions = transactions.filter(date__year=year)
+        transactions = transactions.filter(date__year=int(year))
     if month:
-        transactions = transactions.filter(date__month=month)
+        transactions = transactions.filter(date__month=int(month))
     if account_id:
-        transactions = transactions.filter(account_id=account_id)
+        transactions = transactions.filter(account_id=int(account_id))
     if category_id:
-        transactions = transactions.filter(category_id=category_id)
+        transactions = transactions.filter(category_id=int(category_id))
     if search:
         transactions = transactions.filter(
             Q(payee__payee__icontains=search) |
@@ -100,7 +102,109 @@ def transactions_list(request):
 
     return render(request, 'finance/transactions.html', context)
 
-@login_required  # ← NEU!
+
+@login_required
+def household_transactions(request):
+    """
+    Haushalt-Transaktionen:
+    - Alle Transaktionen von Robert
+    - Transaktionen von Sigi mit flag_id = 5 (Relevant für Haushaltsbudget)
+    """
+    # Sigi Transaktionen - nur mit flag_id = 5
+    sigi_transactions = FactTransactionsSigi.objects.filter(
+        flag_id=5  # Relevant für Haushaltsbudget
+    ).select_related(
+        'account', 'payee', 'category', 'category__categorygroup', 'flag'
+    ).annotate(
+        person=Value('Sigi', output_field=CharField())
+    )
+
+    # Robert Transaktionen - alle
+    robert_transactions = FactTransactionsRobert.objects.select_related(
+        'account', 'payee', 'category', 'category__categorygroup', 'flag'
+    ).annotate(
+        person=Value('Robert', output_field=CharField())
+    )
+
+    # Filter anwenden
+    year = request.GET.get('year', '')
+    month = request.GET.get('month', '')
+    account_id = request.GET.get('account', '')
+    category_id = request.GET.get('category', '')
+    person_filter = request.GET.get('person', '')
+    search = request.GET.get('search', '')
+
+    if year:
+        sigi_transactions = sigi_transactions.filter(date__year=int(year))
+        robert_transactions = robert_transactions.filter(date__year=int(year))
+    if month:
+        sigi_transactions = sigi_transactions.filter(date__month=int(month))
+        robert_transactions = robert_transactions.filter(date__month=int(month))
+    if account_id:
+        sigi_transactions = sigi_transactions.filter(account_id=int(account_id))
+        robert_transactions = robert_transactions.filter(account_id=int(account_id))
+    if category_id:
+        sigi_transactions = sigi_transactions.filter(category_id=int(category_id))
+        robert_transactions = robert_transactions.filter(category_id=int(category_id))
+    if search:
+        sigi_transactions = sigi_transactions.filter(
+            Q(payee__payee__icontains=search) |
+            Q(memo__icontains=search)
+        )
+        robert_transactions = robert_transactions.filter(
+            Q(payee__payee__icontains=search) |
+            Q(memo__icontains=search)
+        )
+
+    # Nach Person filtern
+    if person_filter == 'sigi':
+        transactions = list(sigi_transactions)
+    elif person_filter == 'robert':
+        transactions = list(robert_transactions)
+    else:
+        # Beide kombinieren
+        transactions = list(sigi_transactions) + list(robert_transactions)
+
+    # Nach Datum sortieren (neueste zuerst)
+    transactions.sort(key=lambda x: x.date, reverse=True)
+
+    # Für Filter-Dropdowns
+    accounts = DimAccount.objects.all()
+    categories = DimCategory.objects.select_related('categorygroup').all()
+    years = range(datetime.now().year, 2019, -1)
+
+    # Statistiken berechnen
+    total_inflow = sum(t.inflow or 0 for t in transactions)
+    total_outflow = sum(t.outflow or 0 for t in transactions)
+    netto = total_inflow - total_outflow
+
+    # Sparquote berechnen
+    savings_rate = 0
+    if total_inflow > 0:
+        savings_rate = (netto / total_inflow) * 100
+
+    context = {
+        'transactions': transactions,
+        'accounts': accounts,
+        'categories': categories,
+        'years': years,
+        'selected_year': year,
+        'selected_month': month,
+        'selected_account': account_id,
+        'selected_category': category_id,
+        'selected_person': person_filter,
+        'search_query': search,
+        'total_inflow': total_inflow,
+        'total_outflow': total_outflow,
+        'netto': netto,
+        'transaction_count': len(transactions),
+        'savings_rate': savings_rate,  # NEU
+    }
+
+    return render(request, 'finance/household_transactions.html', context)
+
+
+@login_required
 def api_monthly_spending(request):
     """API: Monatliche Ausgaben für Chart"""
     year = request.GET.get('year', datetime.now().year)
@@ -143,7 +247,8 @@ def api_monthly_spending(request):
         ]
     })
 
-@login_required  # ← NEU!
+
+@login_required
 def api_category_breakdown(request):
     """API: Ausgaben nach Kategorie für Pie Chart"""
     year = request.GET.get('year', datetime.now().year)
@@ -187,7 +292,8 @@ def api_category_breakdown(request):
         }]
     })
 
-@login_required  # ← NEU!
+
+@login_required
 def api_top_payees(request):
     """API: Top Zahlungsempfänger"""
     year = request.GET.get('year', datetime.now().year)
@@ -221,7 +327,8 @@ def api_top_payees(request):
         }]
     })
 
-@login_required  # ← NEU!
+
+@login_required
 def asset_overview(request):
     """
     Vermögensübersicht berechnet aus fact_transactions_sigi
