@@ -18,7 +18,28 @@
     .action-icon:hover {
         transform: scale(1.2);
     }
+    
+    .date-cell {
+        cursor: pointer;
+        position: relative;
+    }
+    .date-cell:hover .date-display {
+        background-color: #f8f9fa;
+        padding: 2px 5px;
+        border-radius: 3px;
+    }
+    .date-input {
+        width: 140px;
+    }
+    .date-cell.editing .date-display {
+        display: none !important;
+    }
+    .date-cell.editing .date-input {
+        display: block !important;
+    }
+    
 </style>
+    
 {% endblock %}
 
 {% block content %}
@@ -164,7 +185,13 @@
                 <tbody>
                     {% for trans in transactions %}
                     <tr {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}class="table-secondary" style="opacity: 0.6;"{% endif %}>
-                        <td>{{ trans.date|date:"d.m.Y" }}</td>
+                        <td class="date-cell" data-transaction-id="{{ trans.id }}">
+                            <span class="date-display">{{ trans.date|date:"d.m.Y" }}</span>
+                            <input type="date" 
+                                   class="form-control form-control-sm date-input" 
+                                   value="{{ trans.date|date:'Y-m-d' }}" 
+                                   style="display: none;">
+                        </td>
                         <td>
                             {% if trans.account %}
                             <i class="bi bi-{{ trans.account.account|account_icon }} text-muted"></i>
@@ -331,5 +358,108 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('deleteForm').action = '/transactions/delete/' + transactionId + '/';
     });
 });
+
+// Datum-Inline-Bearbeitung
+document.addEventListener('DOMContentLoaded', function() {
+    // Alle Datumszellen
+    const dateCells = document.querySelectorAll('.date-cell');
+    
+    dateCells.forEach(cell => {
+        const display = cell.querySelector('.date-display');
+        const input = cell.querySelector('.date-input');
+        const transactionId = cell.dataset.transactionId;
+        
+        // Klick auf Datum → Edit-Mode
+        display.addEventListener('click', function() {
+            cell.classList.add('editing');
+            input.focus();
+        });
+        
+        // Datum geändert → Speichern
+        input.addEventListener('change', async function() {
+            const newDate = input.value;
+            
+            try {
+                const response = await fetch(`/transactions/update-date/${transactionId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ date: newDate })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update Display
+                    display.textContent = data.new_date;
+                    cell.classList.remove('editing');
+                    
+                    // Success Toast
+                    showToast('success', data.message);
+                } else {
+                    // Error
+                    showToast('danger', data.error || 'Fehler beim Speichern');
+                    // Reset input
+                    input.value = input.defaultValue;
+                    cell.classList.remove('editing');
+                }
+            } catch (error) {
+                showToast('danger', 'Netzwerkfehler: ' + error.message);
+                input.value = input.defaultValue;
+                cell.classList.remove('editing');
+            }
+        });
+        
+        // Abbrechen bei Blur (wenn nicht geändert)
+        input.addEventListener('blur', function() {
+            setTimeout(() => {
+                cell.classList.remove('editing');
+            }, 200);
+        });
+        
+        // ESC zum Abbrechen
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                input.value = input.defaultValue;
+                cell.classList.remove('editing');
+            }
+        });
+    });
+});
+
+// Toast-Notification Helper
+function showToast(type, message) {
+    const toastContainer = document.querySelector('.toast-container');
+    
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${type} border-0 show" 
+             role="alert" aria-live="assertive" aria-atomic="true"
+             data-bs-autohide="true" data-bs-delay="3000">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                        data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    const toastElement = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Entferne nach dem Ausblenden
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+
+
 </script>
 {% endblock %}

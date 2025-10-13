@@ -11,6 +11,7 @@ urlpatterns = [
     path('transactions/add/', views.add_transaction, name='add_transaction'),
     path('transactions/delete/<int:pk>/', views.delete_transaction, name='delete_transaction'),
     path('transactions/undo/', views.undo_delete, name='undo_delete'),
+    path('transactions/update-date/<int:pk>/', views.update_transaction_date, name='update_transaction_date'),
     path('assets/', views.asset_overview, name='asset_overview'),
 
     # Scheduled Transactions

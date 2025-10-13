@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+import json
 from django.db.models import Sum, Count, Q, Value, CharField
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta, date
@@ -22,7 +23,6 @@ from django.conf import settings
 import logging
 
 from .receipt_analyzer import ReceiptAnalyzer
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -1227,3 +1227,74 @@ def analyze_receipt_page(request):
     }
 
     return render(request, 'finance/receipt_upload.html', context)
+
+
+@login_required
+@require_POST
+def update_transaction_date(request, pk):
+    """Aktualisiert nur das Datum einer Transaktion"""
+
+    try:
+        # Hole Transaktion aus beiden Tabellen
+        transaction = None
+        is_robert_transaction = False
+
+        try:
+            transaction = FactTransactionsRobert.objects.get(pk=pk)
+            is_robert_transaction = True
+        except FactTransactionsRobert.DoesNotExist:
+            pass
+
+        if not transaction:
+            try:
+                transaction = FactTransactionsSigi.objects.get(pk=pk)
+            except FactTransactionsSigi.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Transaktion nicht gefunden'
+                }, status=404)
+
+        # Berechtigungsprüfung
+        if request.user.username == 'robert' and not is_robert_transaction:
+            return JsonResponse({
+                'success': False,
+                'error': 'Keine Berechtigung'
+            }, status=403)
+
+        if request.user.username != 'robert' and is_robert_transaction:
+            return JsonResponse({
+                'success': False,
+                'error': 'Keine Berechtigung'
+            }, status=403)
+
+        # Neues Datum aus Request holen
+        data = json.loads(request.body)
+        new_date_str = data.get('date')
+
+        if not new_date_str:
+            return JsonResponse({
+                'success': False,
+                'error': 'Kein Datum angegeben'
+            }, status=400)
+
+        # Datum parsen
+        from datetime import datetime
+        new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+
+        # Datum aktualisieren
+        old_date = transaction.date
+        transaction.date = new_date
+        transaction.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Datum geändert von {old_date.strftime("%d.%m.%Y")} auf {new_date.strftime("%d.%m.%Y")}',
+            'new_date': new_date.strftime('%d.%m.%Y')
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
