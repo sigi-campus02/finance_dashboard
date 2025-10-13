@@ -145,10 +145,10 @@ def billa_produkt_detail(request, produkt_id):
     # Statistiken
     stats = produkt.artikel.aggregate(
         anzahl_kaeufe=Count('id'),
-        min_preis=Min('gesamtpreis'),
-        max_preis=Max('gesamtpreis'),
-        avg_preis=Avg('gesamtpreis'),
-        gesamt_ausgaben=Sum('gesamtpreis')
+        min_preis=Min('preis_pro_einheit'),  # ← Stückpreis!
+        max_preis=Max('preis_pro_einheit'),  # ← Stückpreis!
+        avg_preis=Avg('preis_pro_einheit'),  # ← Stückpreis!
+        gesamt_ausgaben=Sum('gesamtpreis')  # ← Gesamtausgaben bleiben
     )
 
     # Letzte Käufe

@@ -95,7 +95,7 @@ class Command(BaseCommand):
         ).annotate(
             anzahl=Count('id'),
             ausgaben=Sum('gesamtpreis'),
-            avg_preis=Avg('gesamtpreis')
+            avg_preis=Avg('preis_pro_einheit')
         ).order_by('-anzahl')[:limit]
 
         for idx, item in enumerate(top, 1):

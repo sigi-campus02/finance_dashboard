@@ -312,6 +312,11 @@ class BillaReceiptParser:
                 i += 1
                 continue
 
+            # NEU: Überspringe Rabatt-Zeilen (werden beim vorherigen Artikel verarbeitet)
+            if self._ist_rabatt_zeile(line):
+                i += 1
+                continue
+
             # Gewichtsartikel
             gewicht_match = self.gewicht_pattern.match(line)
             if gewicht_match and i + 1 < end_idx:
@@ -411,14 +416,53 @@ class BillaReceiptParser:
 
         return artikel
 
+    def _ist_rabatt_zeile(self, line):
+        """Prüft, ob eine Zeile ein Rabatt ist (ohne den Rabatt zu extrahieren)"""
+        line_stripped = line.strip()
+
+        # Rabatte mit Prozentsatz (flexibles Pattern für alle Typen)
+        # Beispiele: "FILIALAKTION 25%", "Verbilligung -25%", "ABVERKAUF 25%",
+        #            "Preiskorrektur 50%", "Free Schlagobers 36%"
+        if re.match(r'^[A-Za-zäöüÄÖÜ\s]+-?\d+%\s+([ABCDG])?\s*-?[\d.,-]+\s*$', line_stripped):
+
+            return True
+
+        # Standard-Rabatte ohne Prozentsatz
+        if self.rabatt_pattern.match(line_stripped):
+            return True
+
+        return False
+
     def _check_rabatt(self, line):
-        """Prüft auf Rabatt in der Zeile"""
-        match = self.rabatt_pattern.match(line.strip())
+        """Prüft auf Rabatt in der Zeile und extrahiert ihn"""
+        line_stripped = line.strip()
+
+        # Rabatte mit Prozentsatz (alle Varianten)
+        # Beispiele:
+        # - "FILIALAKTION 25%        B   -1,17"
+        # - "Verbilligung -25%       B   -0,23"
+        # - "ABVERKAUF 25%           B   -1,17"
+        # - "Preiskorrektur 50%      B   -1,75"
+        # - "Free Schlagobers 36%    B    1,79"
+        prozent_match = re.match(r'^(.+?)\s+(-?\d+)%\s+([ABCDG])?\s*([\d.,-]+)\s*', line_stripped)
+        if prozent_match:
+            rabatt_name = prozent_match.group(1).strip()
+            prozent = prozent_match.group(2)
+            betrag = prozent_match.group(4).replace(',', '.')
+            return {
+                'rabatt_typ': f'{rabatt_name} {prozent}%',
+                'rabatt': abs(Decimal(betrag))
+            }
+
+        # Standard-Rabatte ohne Prozentsatz (EXTREM AKTION, AKTIONSNACHLASS, etc.)
+        match = self.rabatt_pattern.match(line_stripped)
         if match:
+            betrag = match.group(3).replace(',', '.')
             return {
                 'rabatt_typ': match.group(1),
-                'rabatt': abs(Decimal(match.group(3).replace(',', '.')))
+                'rabatt': abs(Decimal(betrag))
             }
+
         return None
 
     def _normalize_name(self, name):
