@@ -55,23 +55,44 @@ CATEGORY_COLORS = {
 
 def generate_color_shades(rgb_tuple, num_shades=5):
     """
-    Generiert verschiedene Schattierungen einer RGB-Farbe
-    rgb_tuple: (r, g, b) als Tuple
-    num_shades: Anzahl der gewünschten Schattierungen
-
-    Rückgabe: Liste von Dictionaries mit 'border' und 'fill'
+    Alternative Implementierung mit maximalen Kontrasten
+    Nutzt verschiedene Helligkeits- und Sättigungsstufen
     """
     r, g, b = rgb_tuple
     shades = []
 
-    for i in range(num_shades):
-        # Berechne Helligkeit (0 = dunkelste, num_shades-1 = hellste)
-        factor = 0.6 + (i * 0.4 / max(num_shades - 1, 1))  # Range: 0.6 bis 1.0
+    # Vordefinierte Faktoren für maximale Unterscheidbarkeit
+    # Diese Werte wurden optimiert um große visuelle Unterschiede zu erzeugen
+    contrast_factors = [
+        0.4,  # Sehr dunkel
+        0.6,  # Dunkel
+        0.8,  # Mittel
+        1.0,  # Normal
+        1.2,  # Hell (mit Weißmischung)
+        1.4,  # Sehr hell
+        1.6,  # Pastell
+        1.8,  # Sehr pastell
+    ]
 
-        # Passe RGB-Werte an (hellere Farben)
-        new_r = min(255, int(r + (255 - r) * (1 - factor)))
-        new_g = min(255, int(g + (255 - g) * (1 - factor)))
-        new_b = min(255, int(b + (255 - b) * (1 - factor)))
+    for i in range(min(num_shades, len(contrast_factors))):
+        factor = contrast_factors[i]
+
+        if factor <= 1.0:
+            # Dunkle Töne: Reduziere RGB-Werte
+            new_r = int(r * factor)
+            new_g = int(g * factor)
+            new_b = int(b * factor)
+        else:
+            # Helle Töne: Mische mit Weiß
+            white_mix = (factor - 1.0) / 0.8  # Normalisiere auf 0-1
+            new_r = int(r + (255 - r) * white_mix)
+            new_g = int(g + (255 - g) * white_mix)
+            new_b = int(b + (255 - b) * white_mix)
+
+        # Stelle sicher, dass Werte im gültigen Bereich liegen
+        new_r = max(0, min(255, new_r))
+        new_g = max(0, min(255, new_g))
+        new_b = max(0, min(255, new_b))
 
         shades.append({
             'border': f'rgb({new_r}, {new_g}, {new_b})',

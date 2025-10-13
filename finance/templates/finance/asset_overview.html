@@ -75,9 +75,9 @@
                         <tr class="table-secondary fw-bold">
                             <td>
                                 {% if category.color_rgb %}
-                                    <span style="display: inline-block; width: 4px; height: 16px; 
-                                        background-color: {{ category.color_rgb }}; 
-                                        margin-right: 8px; border-radius: 2px; 
+                                    <span style="display: inline-block; width: 4px; height: 16px;
+                                        background-color: {{ category.color_rgb }};
+                                        margin-right: 8px; border-radius: 2px;
                                         vertical-align: middle;"></span>
                                 {% endif %}
                                 <i class="bi bi-folder"></i> {{ category.display_name }}
@@ -185,7 +185,7 @@
     <!-- Cash Detail -->
     <div class="col-md-4 mb-4">
         <div class="card">
-            <div class="card-header bg-success text-white">
+            <div class="card-header bg-white">
                 <h6 class="mb-0">
                     <i class="bi bi-wallet2"></i> Cash - Kontendetails
                 </h6>
@@ -195,11 +195,11 @@
             </div>
         </div>
     </div>
-    
+
     <!-- MidtermInvest Detail -->
     <div class="col-md-4 mb-4">
         <div class="card">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-white">
                 <h6 class="mb-0">
                     <i class="bi bi-graph-up-arrow"></i> MidtermInvest - Kontendetails
                 </h6>
@@ -209,11 +209,11 @@
             </div>
         </div>
     </div>
-    
+
     <!-- LongtermInvest Detail -->
     <div class="col-md-4 mb-4">
         <div class="card">
-            <div class="card-header bg-info text-white">
+            <div class="card-header bg-white">
                 <h6 class="mb-0">
                     <i class="bi bi-shield-check"></i> LongtermInvest - Kontendetails
                 </h6>
@@ -224,7 +224,7 @@
         </div>
     </div>
 </div>
-    
+
 {% endblock %}
 
 {% block extra_js %}
@@ -302,7 +302,7 @@ function getStackedChartOptions(yAxisLabel) {
                         tooltipItems.forEach(function(tooltipItem) {
                             sum += tooltipItem.parsed.y;
                         });
-                        return '━━━━━━━━━━━━━━━━━━\nGesamt: € ' + 
+                        return '━━━━━━━━━━━━━━━━━━\nGesamt: € ' +
                             sum.toLocaleString('de-DE', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2
@@ -322,7 +322,7 @@ fetch("{% url 'finance:api_asset_history' %}")
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('assetHistoryChart').getContext('2d');
-        
+
         new Chart(ctx, {
             type: 'line',
             data: {
@@ -396,7 +396,7 @@ fetch("{% url 'finance:api_asset_history' %}")
                                         sum += tooltipItem.parsed.y;
                                     }
                                 });
-                                return '━━━━━━━━━━━━━━━━━━\nKategorien Summe: € ' + 
+                                return '━━━━━━━━━━━━━━━━━━\nKategorien Summe: € ' +
                                     sum.toLocaleString('de-DE', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
@@ -413,7 +413,7 @@ fetch("{% url 'finance:api_asset_history' %}")
     })
     .catch(error => {
         console.error('Fehler beim Laden der Vermögensdaten:', error);
-        document.getElementById('assetHistoryChart').parentElement.innerHTML = 
+        document.getElementById('assetHistoryChart').parentElement.innerHTML =
             '<div class="alert alert-danger">Fehler beim Laden der Daten</div>';
     });
 
@@ -433,10 +433,10 @@ fetch("{% url 'finance:api_asset_category_details' %}")
                 options: getStackedChartOptions('Cash')
             });
         } else {
-            document.getElementById('cashDetailChart').parentElement.innerHTML = 
+            document.getElementById('cashDetailChart').parentElement.innerHTML =
                 '<p class="text-muted text-center">Keine Daten verfügbar</p>';
         }
-        
+
         // MidtermInvest Detail Chart
         if (data.MidtermInvest && data.MidtermInvest.datasets.length > 0) {
             const midtermCtx = document.getElementById('midtermDetailChart').getContext('2d');
@@ -449,10 +449,10 @@ fetch("{% url 'finance:api_asset_category_details' %}")
                 options: getStackedChartOptions('MidtermInvest')
             });
         } else {
-            document.getElementById('midtermDetailChart').parentElement.innerHTML = 
+            document.getElementById('midtermDetailChart').parentElement.innerHTML =
                 '<p class="text-muted text-center">Keine Daten verfügbar</p>';
         }
-        
+
         // LongtermInvest Detail Chart
         if (data.LongtermInvest && data.LongtermInvest.datasets.length > 0) {
             const longtermCtx = document.getElementById('longtermDetailChart').getContext('2d');
@@ -465,7 +465,7 @@ fetch("{% url 'finance:api_asset_category_details' %}")
                 options: getStackedChartOptions('LongtermInvest')
             });
         } else {
-            document.getElementById('longtermDetailChart').parentElement.innerHTML = 
+            document.getElementById('longtermDetailChart').parentElement.innerHTML =
                 '<p class="text-muted text-center">Keine Daten verfügbar</p>';
         }
     })
@@ -474,7 +474,7 @@ fetch("{% url 'finance:api_asset_category_details' %}")
         ['cashDetailChart', 'midtermDetailChart', 'longtermDetailChart'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
-                element.parentElement.innerHTML = 
+                element.parentElement.innerHTML =
                     '<div class="alert alert-danger">Fehler beim Laden</div>';
             }
         });
