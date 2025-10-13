@@ -36,4 +36,8 @@ urlpatterns = [
     # Receipt Scanner
     path('receipt-upload/', views.analyze_receipt_page, name='receipt_upload'),
     path('api/analyze-receipt/', views.analyze_receipt_image, name='api_analyze_receipt'),
+
+    # Inline Transaction Creation
+    path('transactions/update-date/<int:pk>/', views.update_transaction_date, name='update_transaction_date'),
+    path('api/transactions/create/', views.create_transaction_inline, name='create_transaction_inline'),  # NEU
 ]

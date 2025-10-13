@@ -18,7 +18,7 @@
     .action-icon:hover {
         transform: scale(1.2);
     }
-    
+
     .date-cell {
         cursor: pointer;
         position: relative;
@@ -37,13 +37,217 @@
     .date-cell.editing .date-input {
         display: block !important;
     }
-    
+
+    #quickAddModal .form-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    #quickAddModal .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    #quick_category_hint {
+        display: block;
+        margin-top: 0.25rem;
+        min-height: 1.5rem;
+    }
 </style>
-    
+
+
 {% endblock %}
 
 {% block content %}
-<h1 class="h2 mb-4">Transaktionen</h1>
+
+<div class="row mb-4">
+    <h1 class="h2 col-mb-3">Transaktionen</h1>
+
+    <!-- Quick Add Button (füge das oben in dein Template ein, z.B. neben den Filter-Buttons) -->
+    <div class="col-mb-3">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+            <i class="bi bi-plus-circle-fill"></i> Quick Add Transaktion
+        </button>
+    </div>
+</div>
+
+<!-- Quick Add Modal -->
+<div class="modal fade" id="quickAddModal" tabindex="-1" aria-labelledby="quickAddModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="quickAddModalLabel">
+                    <i class="bi bi-plus-circle-fill"></i> Schnell neue Transaktion erstellen
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Alert für Fehler/Success -->
+                <div id="quickAddAlert" class="alert d-none" role="alert"></div>
+
+                <form id="quickAddForm">
+                    <div class="row g-3">
+                        <!-- Datum -->
+                        <div class="col-md-6">
+                            <label for="quick_date" class="form-label">
+                                Datum <span class="text-danger">*</span>
+                            </label>
+                            <input type="date"
+                                   id="quick_date"
+                                   name="date"
+                                   class="form-control"
+                                   value="{{ today|date:'Y-m-d' }}"
+                                   required>
+                        </div>
+
+                        <!-- Account (nur für Nicht-Robert) -->
+                        {% if not is_robert %}
+                        <div class="col-md-6">
+                            <label for="quick_account" class="form-label">
+                                Konto <span class="text-danger">*</span>
+                            </label>
+                            <select id="quick_account" name="account" class="form-select" required>
+                                <option value="">Bitte wählen...</option>
+                                {% for acc in accounts %}
+                                <option value="{{ acc.id }}">{{ acc.account }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <!-- Payee -->
+                        <div class="col-md-6">
+                            <label for="quick_payee" class="form-label">
+                                Payee <span class="text-danger">*</span>
+                            </label>
+                            <input type="text"
+                                   id="quick_payee"
+                                   name="payee"
+                                   class="form-control"
+                                   list="quick-payee-list"
+                                   autocomplete="off"
+                                   placeholder="Name des Zahlungsempfängers"
+                                   required>
+                            <datalist id="quick-payee-list">
+                                {% for p in payees %}
+                                <option value="{{ p.payee }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+
+                        <!-- Betrag -->
+                        <div class="col-md-6">
+                            <label for="quick_amount" class="form-label">
+                                Betrag (€) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input type="number"
+                                       id="quick_amount"
+                                       name="amount"
+                                       class="form-control"
+                                       step="0.01"
+                                       placeholder="0.00"
+                                       required>
+                            </div>
+                        </div>
+
+                        <!-- Kategorie-Gruppe -->
+                        <div class="col-md-6">
+                            <label for="quick_category_group" class="form-label">
+                                Kategoriegruppe <span class="text-danger">*</span>
+                            </label>
+                            <select id="quick_category_group"
+                                    name="category_group"
+                                    class="form-select"
+                                    required>
+                                <option value="">Bitte wählen...</option>
+                                {% for cg in category_groups %}
+                                <option value="{{ cg.id }}">{{ cg.category_group }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Kategorie -->
+                        <div class="col-md-6">
+                            <label for="quick_category" class="form-label">
+                                Kategorie <span class="text-danger">*</span>
+                            </label>
+                            <select id="quick_category"
+                                    name="category"
+                                    class="form-select"
+                                    required>
+                                <option value="">Erst Kategoriegruppe wählen...</option>
+                            </select>
+                            <small id="quick_category_hint" class="form-text text-muted"></small>
+                        </div>
+
+                        <!-- Typ (nur für Nicht-Robert) -->
+                        {% if not is_robert %}
+                        <div class="col-12">
+                            <label class="form-label">Typ <span class="text-danger">*</span></label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input"
+                                           type="radio"
+                                           name="transaction_type"
+                                           id="quick_type_outflow"
+                                           value="outflow"
+                                           checked>
+                                    <label class="form-check-label" for="quick_type_outflow">
+                                        Ausgabe
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input"
+                                           type="radio"
+                                           name="transaction_type"
+                                           id="quick_type_inflow"
+                                           value="inflow">
+                                    <label class="form-check-label" for="quick_type_inflow">
+                                        Einnahme
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Flag (nur für Nicht-Robert, optional) -->
+                        {% if not is_robert %}
+                        <div class="col-12">
+                            <label for="quick_flag" class="form-label">Flag (optional)</label>
+                            <select id="quick_flag" name="flag" class="form-select">
+                                <option value="">Keine Flag</option>
+                                {% for f in flags %}
+                                <option value="{{ f.id }}">{{ f.flag }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <!-- Memo -->
+                        <div class="col-12">
+                            <label for="quick_memo" class="form-label">Notiz (optional)</label>
+                            <textarea id="quick_memo"
+                                      name="memo"
+                                      class="form-control"
+                                      rows="2"
+                                      placeholder="Zusätzliche Details..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Abbrechen
+                </button>
+                <button type="button" class="btn btn-success" id="quickAddSubmit">
+                    <i class="bi bi-check-circle"></i> Transaktion erstellen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Statistik Cards -->
 <div class="row mb-4">
@@ -163,6 +367,8 @@
             </div>
         </form>
     </div>
+
+
 </div>
 
 <!-- Tabelle -->
@@ -187,9 +393,9 @@
                     <tr {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}class="table-secondary" style="opacity: 0.6;"{% endif %}>
                         <td class="date-cell" data-transaction-id="{{ trans.id }}">
                             <span class="date-display">{{ trans.date|date:"d.m.Y" }}</span>
-                            <input type="date" 
-                                   class="form-control form-control-sm date-input" 
-                                   value="{{ trans.date|date:'Y-m-d' }}" 
+                            <input type="date"
+                                   class="form-control form-control-sm date-input"
+                                   value="{{ trans.date|date:'Y-m-d' }}"
                                    style="display: none;">
                         </td>
                         <td>
@@ -363,22 +569,22 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     // Alle Datumszellen
     const dateCells = document.querySelectorAll('.date-cell');
-    
+
     dateCells.forEach(cell => {
         const display = cell.querySelector('.date-display');
         const input = cell.querySelector('.date-input');
         const transactionId = cell.dataset.transactionId;
-        
+
         // Klick auf Datum → Edit-Mode
         display.addEventListener('click', function() {
             cell.classList.add('editing');
             input.focus();
         });
-        
+
         // Datum geändert → Speichern
         input.addEventListener('change', async function() {
             const newDate = input.value;
-            
+
             try {
                 const response = await fetch(`/transactions/update-date/${transactionId}/`, {
                     method: 'POST',
@@ -388,14 +594,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({ date: newDate })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // Update Display
                     display.textContent = data.new_date;
                     cell.classList.remove('editing');
-                    
+
                     // Success Toast
                     showToast('success', data.message);
                 } else {
@@ -411,14 +617,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 cell.classList.remove('editing');
             }
         });
-        
+
         // Abbrechen bei Blur (wenn nicht geändert)
         input.addEventListener('blur', function() {
             setTimeout(() => {
                 cell.classList.remove('editing');
             }, 200);
         });
-        
+
         // ESC zum Abbrechen
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
@@ -432,9 +638,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Toast-Notification Helper
 function showToast(type, message) {
     const toastContainer = document.querySelector('.toast-container');
-    
+
     const toastHtml = `
-        <div class="toast align-items-center text-white bg-${type} border-0 show" 
+        <div class="toast align-items-center text-white bg-${type} border-0 show"
              role="alert" aria-live="assertive" aria-atomic="true"
              data-bs-autohide="true" data-bs-delay="3000">
             <div class="d-flex">
@@ -442,23 +648,255 @@ function showToast(type, message) {
                     <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
                     ${message}
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
                         data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     `;
-    
+
     toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-    
+
     const toastElement = toastContainer.lastElementChild;
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
-    
+
     // Entferne nach dem Ausblenden
     toastElement.addEventListener('hidden.bs.toast', function() {
         toastElement.remove();
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Kategorien-Daten (gleich wie in transaction_form.html)
+    const quickCategories = [
+        {% for cat in categories %}
+        {
+            id: {{ cat.id }},
+            name: "{{ cat.category|escapejs }}",
+            categorygroup_id: {{ cat.categorygroup.id|default:"null" }}
+        },
+        {% endfor %}
+    ];
+
+    const quickCategoryGroupSelect = document.getElementById('quick_category_group');
+    const quickCategorySelect = document.getElementById('quick_category');
+    const quickPayeeInput = document.getElementById('quick_payee');
+    const quickCategoryHint = document.getElementById('quick_category_hint');
+
+    // Kategorien filtern basierend auf Gruppe
+    function updateQuickCategories() {
+        const selectedGroupId = parseInt(quickCategoryGroupSelect.value);
+        const currentCategoryId = parseInt(quickCategorySelect.value);
+
+        quickCategorySelect.innerHTML = '<option value="">Bitte wählen...</option>';
+
+        if (!selectedGroupId) return;
+
+        const filteredCategories = quickCategories.filter(cat =>
+            cat.categorygroup_id === selectedGroupId
+        );
+
+        filteredCategories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            if (cat.id === currentCategoryId) {
+                option.selected = true;
+            }
+            quickCategorySelect.appendChild(option);
+        });
+    }
+
+    quickCategoryGroupSelect.addEventListener('change', updateQuickCategories);
+
+    // Payee Autocomplete mit Kategorie-Vorschlag
+    let suggestionTimeout;
+    quickPayeeInput.addEventListener('input', function() {
+        clearTimeout(suggestionTimeout);
+
+        const payeeName = this.value.trim();
+
+        if (payeeName.length < 2) {
+            quickCategoryHint.textContent = '';
+            return;
+        }
+
+        suggestionTimeout = setTimeout(async function() {
+            try {
+                const response = await fetch(`/api/payee-suggestions/?payee=${encodeURIComponent(payeeName)}`);
+                const data = await response.json();
+
+                if (data.found) {
+                    // Setze Kategorie-Gruppe
+                    quickCategoryGroupSelect.value = data.categorygroup_id;
+                    updateQuickCategories();
+
+                    // Setze Kategorie
+                    quickCategorySelect.value = data.category_id;
+
+                    // Zeige Hinweis
+                    quickCategoryHint.innerHTML = `
+                        <i class="bi bi-stars text-warning"></i>
+                        Vorschlag: ${data.categorygroup_name} → ${data.category_name}
+                        <small class="text-muted">(${data.usage_count}x verwendet)</small>
+                    `;
+                } else {
+                    quickCategoryHint.textContent = '';
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der Vorschläge:', error);
+            }
+        }, 500);
+    });
+
+    // Form Submit
+    const quickAddSubmit = document.getElementById('quickAddSubmit');
+    const quickAddForm = document.getElementById('quickAddForm');
+    const quickAddAlert = document.getElementById('quickAddAlert');
+    const quickAddModal = new bootstrap.Modal(document.getElementById('quickAddModal'));
+
+    quickAddSubmit.addEventListener('click', async function() {
+        // Validierung
+        if (!quickAddForm.checkValidity()) {
+            quickAddForm.reportValidity();
+            return;
+        }
+
+        // Sammle Daten
+        const formData = {
+            date: document.getElementById('quick_date').value,
+            payee: document.getElementById('quick_payee').value,
+            amount: document.getElementById('quick_amount').value,
+            category: document.getElementById('quick_category').value,
+            memo: document.getElementById('quick_memo').value,
+            {% if not is_robert %}
+            account: document.getElementById('quick_account').value,
+            flag: document.getElementById('quick_flag').value || null,
+            transaction_type: document.querySelector('input[name="transaction_type"]:checked').value,
+            {% else %}
+            transaction_type: 'outflow',
+            {% endif %}
+        };
+
+        // Deaktiviere Button
+        quickAddSubmit.disabled = true;
+        quickAddSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Speichere...';
+
+        try {
+            const response = await fetch('/api/transactions/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Success!
+                showQuickAddAlert('success', result.message);
+
+                // Reset Form
+                quickAddForm.reset();
+                document.getElementById('quick_date').value = '{{ today|date:"Y-m-d" }}';
+                quickCategorySelect.innerHTML = '<option value="">Erst Kategoriegruppe wählen...</option>';
+                quickCategoryHint.textContent = '';
+
+                // Optional: Füge neue Transaktion zur Tabelle hinzu (wenn möglich)
+                addTransactionToTable(result.transaction);
+
+                // Schließe Modal nach 2 Sekunden
+                setTimeout(() => {
+                    quickAddModal.hide();
+                    quickAddAlert.classList.add('d-none');
+
+                    // Reload Seite um Statistiken zu aktualisieren
+                    window.location.reload();
+                }, 2000);
+
+            } else {
+                showQuickAddAlert('danger', result.error || 'Fehler beim Erstellen');
+            }
+
+        } catch (error) {
+            showQuickAddAlert('danger', 'Netzwerkfehler: ' + error.message);
+        } finally {
+            // Reaktiviere Button
+            quickAddSubmit.disabled = false;
+            quickAddSubmit.innerHTML = '<i class="bi bi-check-circle"></i> Transaktion erstellen';
+        }
+    });
+
+    function showQuickAddAlert(type, message) {
+        quickAddAlert.className = `alert alert-${type}`;
+        quickAddAlert.innerHTML = `
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+            ${message}
+        `;
+        quickAddAlert.classList.remove('d-none');
+    }
+
+    function addTransactionToTable(transaction) {
+        // Optional: Füge die neue Transaktion zur Tabelle hinzu
+        // Dies funktioniert nur wenn die Tabelle auf der Seite ist
+        const tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td class="date-cell" data-transaction-id="${transaction.id}">
+                <span class="date-display">${transaction.date}</span>
+                <input type="date" class="form-control form-control-sm date-input"
+                       value="${transaction.date_iso}" style="display: none;">
+            </td>
+            {% if not is_robert %}
+            <td>
+                <i class="bi bi-wallet2 text-muted"></i> ${transaction.account}
+            </td>
+            {% endif %}
+            <td>${transaction.payee}</td>
+            <td>
+                <small class="text-muted">${transaction.categorygroup}</small><br>
+                ${transaction.category}
+            </td>
+            <td class="memo-cell"><small>${transaction.memo}</small></td>
+            <td class="text-end text-danger">
+                ${transaction.outflow ? '€ ' + parseFloat(transaction.outflow).toFixed(2) : '-'}
+            </td>
+            <td class="text-end text-success">
+                ${transaction.inflow ? '€ ' + parseFloat(transaction.inflow).toFixed(2) : '-'}
+            </td>
+            <td class="text-center">
+                <i class="bi bi-trash text-danger action-icon"
+                   data-bs-toggle="modal"
+                   data-bs-target="#deleteModal"
+                   data-transaction-id="${transaction.id}"
+                   data-transaction-date="${transaction.date}"
+                   data-transaction-payee="${transaction.payee}"
+                   data-transaction-amount="€ ${transaction.outflow || transaction.inflow}"
+                   data-transaction-category="${transaction.category}"
+                   title="Löschen"></i>
+            </td>
+        `;
+
+        // Füge als erste Zeile ein (neueste zuerst)
+        tbody.insertBefore(newRow, tbody.firstChild);
+
+        // Highlight Animation
+        newRow.style.backgroundColor = '#d4edda';
+        setTimeout(() => {
+            newRow.style.transition = 'background-color 1s';
+            newRow.style.backgroundColor = '';
+        }, 100);
+    }
+
+    // Reset Alert beim Öffnen des Modals
+    document.getElementById('quickAddModal').addEventListener('show.bs.modal', function() {
+        quickAddAlert.classList.add('d-none');
+    });
+});
 
 
 </script>

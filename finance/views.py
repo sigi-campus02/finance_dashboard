@@ -73,7 +73,7 @@ def dashboard(request):
         'transaction_count': transaction_count,
         'last_month_outflow': last_month_outflow,
         'top_categories': top_categories,
-        'recent_transactions': recent_transactions,
+        'recent_transactions': recent_transactions
     }
 
     return render(request, 'finance/dashboard.html', context)
@@ -162,6 +162,11 @@ def transactions_list(request):
         'kursschwankung_count': kursschwankung_count,
         'excluded_count': excluded_count,
         'netto': netto,
+        'category_groups': DimCategoryGroup.objects.all(),
+        'payees': DimPayee.objects.all(),
+        'flags': DimFlag.objects.all(),  # für Nicht-Robert
+        'is_robert': request.user.username == 'robert',
+        'today': date.today(),
     }
 
     return render(request, 'finance/transactions.html', context)
@@ -1298,3 +1303,118 @@ def update_transaction_date(request, pk):
             'error': str(e)
         }, status=500)
 
+
+@login_required
+@require_POST
+def create_transaction_inline(request):
+    """Erstellt eine neue Transaktion via AJAX (Inline-Add)"""
+    try:
+        data = json.loads(request.body)
+
+        # Validierung
+        required_fields = ['date', 'payee', 'category', 'amount', 'transaction_type']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pflichtfeld fehlt: {field}'
+                }, status=400)
+
+        # Payee holen oder erstellen
+        payee_name = data['payee'].strip()
+        try:
+            payee = DimPayee.objects.get(payee__iexact=payee_name)
+        except DimPayee.DoesNotExist:
+            # Neuen Payee erstellen
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO finance.dim_payee (payee, payee_type) VALUES (%s, %s) RETURNING id",
+                    [payee_name, None]
+                )
+                payee_id = cursor.fetchone()[0]
+            payee = DimPayee.objects.get(id=payee_id)
+
+        # Betrag aufteilen
+        amount = Decimal(data['amount'])
+        transaction_type = data['transaction_type']
+
+        outflow = amount if transaction_type == 'outflow' else Decimal('0')
+        inflow = amount if transaction_type == 'inflow' else Decimal('0')
+
+        # Account bestimmen
+        account_id = data.get('account')
+        if not account_id:
+            # Für Robert: Standard Account (ID 18)
+            if request.user.username == 'robert':
+                account_id = 18
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Konto muss ausgewählt werden'
+                }, status=400)
+
+        # Flag (optional)
+        flag_id = data.get('flag') or None
+
+        # Entscheide Zieltabelle
+        # Robert (Account 18) → Robert-Tabelle, sonst Sigi
+        if int(account_id) == 18 or request.user.username == 'robert':
+            transaction = FactTransactionsRobert.objects.create(
+                account_id=account_id,
+                flag_id=flag_id,
+                date=data['date'],
+                payee=payee,
+                category_id=data['category'],
+                memo=data.get('memo', ''),
+                outflow=outflow,
+                inflow=inflow,
+            )
+            table = 'robert'
+        else:
+            transaction = FactTransactionsSigi.objects.create(
+                account_id=account_id,
+                flag_id=flag_id,
+                date=data['date'],
+                payee=payee,
+                category_id=data['category'],
+                memo=data.get('memo', ''),
+                outflow=outflow,
+                inflow=inflow,
+            )
+            table = 'sigi'
+
+        # Hole die erstellte Transaktion mit allen Relationen
+        if table == 'robert':
+            transaction = FactTransactionsRobert.objects.select_related(
+                'account', 'payee', 'category', 'category__categorygroup', 'flag'
+            ).get(pk=transaction.id)
+        else:
+            transaction = FactTransactionsSigi.objects.select_related(
+                'account', 'payee', 'category', 'category__categorygroup', 'flag'
+            ).get(pk=transaction.id)
+
+        # Formatiere Antwort
+        return JsonResponse({
+            'success': True,
+            'message': f'Transaktion erstellt: {transaction.payee}',
+            'transaction': {
+                'id': transaction.id,
+                'date': transaction.date.strftime('%d.%m.%Y'),
+                'date_iso': transaction.date.strftime('%Y-%m-%d'),
+                'account': transaction.account.account if transaction.account else '-',
+                'payee': transaction.payee.payee if transaction.payee else '-',
+                'category': transaction.category.category if transaction.category else '-',
+                'categorygroup': transaction.category.categorygroup.category_group if transaction.category and transaction.category.categorygroup else '-',
+                'memo': transaction.memo or '-',
+                'outflow': str(transaction.outflow) if transaction.outflow else None,
+                'inflow': str(transaction.inflow) if transaction.inflow else None,
+                'table': table
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Fehler beim Erstellen: {str(e)}'
+        }, status=500)
