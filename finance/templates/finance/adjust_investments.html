@@ -1,0 +1,281 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Investment-Anpassung - Finance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .account-card {
+        border-left: 4px solid #007bff;
+    }
+    .input-row {
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .difference-positive {
+        color: #28a745;
+        font-weight: bold;
+    }
+    .difference-negative {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .difference-zero {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-graph-up-arrow"></i> Investment-Kontenstände anpassen
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'finance:asset_overview' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zur Vermögensübersicht
+        </a>
+    </div>
+</div>
+
+<!-- Info Alert -->
+<div class="alert alert-info" role="alert">
+    <i class="bi bi-info-circle"></i>
+    <strong>So funktioniert's:</strong> Trage die aktuellen Kontenstände ein. 
+    Die Differenz zum Datenbankstand wird automatisch berechnet und als Kursschwankungstransaktion erstellt.
+    <br>
+    <small class="text-muted">Datum: {{ today|date:"d.m.Y" }}</small>
+</div>
+
+<form method="post" id="adjustmentForm">
+    {% csrf_token %}
+    
+    <!-- MidtermInvest -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-graph-up"></i> MidtermInvest
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for account in accounts_data %}
+                {% if account.category == 'MidtermInvest' %}
+                <div class="col-md-6">
+                    <div class="card account-card">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-3">{{ account.name }}</h6>
+                            
+                            <!-- Aktueller DB-Stand -->
+                            <div class="mb-3">
+                                <label class="form-label text-muted small">Aktueller Datenbankstand:</label>
+                                <div class="fw-bold">€ {{ account.current_balance|floatformat:2 }}</div>
+                            </div>
+                            
+                            <!-- Input-Felder je nach Typ -->
+                            {% if account.input_type == 'single' %}
+                            <div class="input-row">
+                                <label class="form-label">Neuer Stand</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" 
+                                           step="0.01" 
+                                           class="form-control"
+                                           name="{{ account.field_prefix }}_value"
+                                           data-account="{{ account.field_prefix }}"
+                                           data-current="{{ account.current_balance }}"
+                                           placeholder="0.00">
+                                </div>
+                            </div>
+                            
+                            {% elif account.input_type == 'multi' or account.input_type == 'gold' %}
+                            {% for field in account.fields %}
+                            <div class="input-row">
+                                <label class="form-label small">{{ field.label }}</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" 
+                                           step="0.01" 
+                                           class="form-control multi-input"
+                                           name="{{ account.field_prefix }}_{{ field.name }}"
+                                           data-parent="{{ account.field_prefix }}"
+                                           data-current="{{ account.current_balance }}"
+                                           placeholder="0.00">
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            
+                            <!-- Differenz Anzeige -->
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Differenz:</span>
+                                    <span class="difference" id="diff_{{ account.field_prefix }}">€ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- LongtermInvest -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-shield-check"></i> LongtermInvest
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for account in accounts_data %}
+                {% if account.category == 'LongtermInvest' %}
+                <div class="col-md-4">
+                    <div class="card account-card">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-3">{{ account.name }}</h6>
+                            
+                            <!-- Aktueller DB-Stand -->
+                            <div class="mb-3">
+                                <label class="form-label text-muted small">Aktueller Datenbankstand:</label>
+                                <div class="fw-bold">€ {{ account.current_balance|floatformat:2 }}</div>
+                            </div>
+                            
+                            <!-- Input -->
+                            <div class="input-row">
+                                <label class="form-label">Neuer Stand</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" 
+                                           step="0.01" 
+                                           class="form-control"
+                                           name="{{ account.field_prefix }}_value"
+                                           data-account="{{ account.field_prefix }}"
+                                           data-current="{{ account.current_balance }}"
+                                           placeholder="0.00">
+                                </div>
+                            </div>
+                            
+                            <!-- Differenz Anzeige -->
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Differenz:</span>
+                                    <span class="difference" id="diff_{{ account.field_prefix }}">€ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submit Button -->
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Hinweis:</strong> Es werden Kursschwankungstransaktionen mit heutigem Datum erstellt.
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button type="button" class="btn btn-secondary me-2" onclick="resetForm()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Zurücksetzen
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> Kursschwankungen erstellen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Alle Input-Felder
+    const inputs = document.querySelectorAll('input[type="number"]');
+    
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            calculateDifference(this);
+        });
+    });
+    
+    function calculateDifference(input) {
+        const isMulti = input.classList.contains('multi-input');
+        
+        if (isMulti) {
+            // Multi-Input: Summiere alle Felder der gleichen Gruppe
+            const parent = input.dataset.parent;
+            const siblings = document.querySelectorAll(`input[data-parent="${parent}"]`);
+            
+            let sum = 0;
+            siblings.forEach(sibling => {
+                const value = parseFloat(sibling.value) || 0;
+                sum += value;
+            });
+            
+            const current = parseFloat(input.dataset.current) || 0;
+            const diff = sum - current;
+            
+            updateDifferenceDisplay(parent, diff);
+        } else {
+            // Single Input
+            const account = input.dataset.account;
+            const newValue = parseFloat(input.value) || 0;
+            const current = parseFloat(input.dataset.current) || 0;
+            const diff = newValue - current;
+            
+            updateDifferenceDisplay(account, diff);
+        }
+    }
+    
+    function updateDifferenceDisplay(accountSlug, diff) {
+        const diffElement = document.getElementById(`diff_${accountSlug}`);
+        if (!diffElement) return;
+        
+        // Formatiere Betrag
+        const formatted = new Intl.NumberFormat('de-DE', {
+            style: 'currency',
+            currency: 'EUR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(Math.abs(diff));
+        
+        // Setze Text und Farbe
+        if (diff > 0) {
+            diffElement.textContent = `+${formatted}`;
+            diffElement.className = 'difference difference-positive';
+        } else if (diff < 0) {
+            diffElement.textContent = `-${formatted}`;
+            diffElement.className = 'difference difference-negative';
+        } else {
+            diffElement.textContent = formatted;
+            diffElement.className = 'difference difference-zero';
+        }
+    }
+});
+
+function resetForm() {
+    document.getElementById('adjustmentForm').reset();
+    
+    // Reset alle Differenz-Anzeigen
+    document.querySelectorAll('.difference').forEach(el => {
+        el.textContent = '€ 0,00';
+        el.className = 'difference difference-zero';
+    });
+}
+</script>
+{% endblock %}

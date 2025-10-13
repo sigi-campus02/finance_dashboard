@@ -1418,3 +1418,177 @@ def create_transaction_inline(request):
             'success': False,
             'error': f'Fehler beim Erstellen: {str(e)}'
         }, status=500)
+
+
+@login_required
+def adjust_investments(request):
+    """Ansicht zum Anpassen von Investment-Kontenständen mit Kursschwankungstransaktionen"""
+    # Robert hat keinen Zugriff
+    if request.user.username == 'robert':
+        messages.warning(request, 'Du hast keine Berechtigung für diese Seite.')
+        return redirect('finance:household_transactions')
+
+    # Aktuelles Datum
+    today = date.today()
+
+    # Hole alle relevanten Accounts mit ihren aktuellen Ständen
+    accounts_data = []
+
+    # MidtermInvest Accounts
+    midterm_accounts = [
+        {'name': 'ETF', 'account_names': ['ETF'], 'input_type': 'single'},
+        {'name': 'Top4 Fonds & Green Invest', 'account_names': ['Top4 Fonds & Green Invest'], 'input_type': 'single'},
+        {'name': 'Krypto & Aktien', 'account_names': ['Krypto & Aktien'], 'input_type': 'multi',
+         'fields': ['Krypto', 'Aktien', 'Indizes', 'Cash', 'Rohstoffe']},
+        {'name': 'Goldanlage', 'account_names': ['Goldanlage'], 'input_type': 'gold',
+         'fields': ['€ je oz', '€ je 1/25 oz']},
+    ]
+
+    # LongtermInvest Accounts
+    longterm_accounts = [
+        {'name': 'Pensionskonto', 'account_names': ['Pensionskonto', 'BVK'], 'input_type': 'single'},
+        {'name': 'APK Vorsorgekasse (Energie)', 'account_names': ['APK Vorsorgekasse'], 'input_type': 'single'},
+        {'name': 'Vorsorgekasse (Legero)', 'account_names': ['Vorsorgekasse'], 'input_type': 'single'},
+    ]
+
+    def safe_field_name(name):
+        """Konvertiert Namen in sichere Feldnamen"""
+        import re
+        # Entferne Sonderzeichen und ersetze durch Underscores
+        safe = re.sub(r'[^\w\s-]', '', name)
+        safe = re.sub(r'[-\s]+', '_', safe)
+        return safe.lower()
+
+    # Lade aktuelle Kontostände
+    for category in [('MidtermInvest', midterm_accounts), ('LongtermInvest', longterm_accounts)]:
+        category_name, account_list = category
+
+        for acc_config in account_list:
+            # Finde Account(s) in DB
+            accounts = DimAccount.objects.filter(
+                account__in=acc_config['account_names']
+            )
+
+            if not accounts.exists():
+                continue
+
+            # Berechne Gesamtsaldo über alle passenden Accounts
+            total_balance = Decimal('0')
+            account_ids = []
+
+            for account in accounts:
+                balance = calculate_account_balance(account.id, today)
+                total_balance += balance
+                account_ids.append(account.id)
+
+            # Generiere sichere Feldnamen
+            field_prefix = safe_field_name(acc_config['name'])
+
+            # Verarbeite Felder für multi/gold types
+            processed_fields = []
+            if acc_config.get('fields'):
+                for field in acc_config['fields']:
+                    processed_fields.append({
+                        'label': field,
+                        'name': safe_field_name(field)
+                    })
+
+            accounts_data.append({
+                'category': category_name,
+                'name': acc_config['name'],
+                'field_prefix': field_prefix,
+                'account_ids': account_ids,
+                'current_balance': total_balance,
+                'input_type': acc_config['input_type'],
+                'fields': processed_fields,
+            })
+
+    # POST: Erstelle Kursschwankungstransaktionen
+    if request.method == 'POST':
+        try:
+            # Hole oder erstelle Kursschwankung Payee
+            kursschwankung_payee, _ = DimPayee.objects.get_or_create(
+                payee='Kursschwankung',
+                defaults={'payee_type': 'kursschwankung'}
+            )
+
+            # Zähler für Statistik
+            created_count = 0
+            total_adjustment = Decimal('0')
+
+            # Verarbeite jeden Account
+            for acc_data in accounts_data:
+                field_prefix = acc_data['field_prefix']
+
+                # Berechne neuen Saldo basierend auf Input-Type
+                new_balance = Decimal('0')
+
+                if acc_data['input_type'] == 'single':
+                    value = request.POST.get(f'{field_prefix}_value', '').strip()
+                    if value:
+                        new_balance = Decimal(value)
+
+                elif acc_data['input_type'] in ['multi', 'gold']:
+                    # Summiere alle Felder
+                    for field in acc_data['fields']:
+                        field_name = f'{field_prefix}_{field["name"]}'
+                        value = request.POST.get(field_name, '').strip()
+                        if value:
+                            new_balance += Decimal(value)
+
+                # Berechne Differenz
+                difference = new_balance - acc_data['current_balance']
+
+                # Erstelle Transaktion nur wenn Differenz != 0
+                if difference != 0:
+                    # Für jeden Account-ID eine Transaktion erstellen
+                    for account_id in acc_data['account_ids']:
+                        # Differenz gleichmäßig auf alle Accounts verteilen (falls mehrere)
+                        adjusted_diff = difference / len(acc_data['account_ids'])
+
+                        if adjusted_diff > 0:
+                            # Positive Differenz = Inflow
+                            FactTransactionsSigi.objects.create(
+                                account_id=account_id,
+                                date=today,
+                                payee=kursschwankung_payee,
+                                category_id=None,
+                                memo=f'Kursschwankung {acc_data["name"]} - Anpassung auf €{new_balance}',
+                                outflow=Decimal('0'),
+                                inflow=adjusted_diff,
+                            )
+                        else:
+                            # Negative Differenz = Outflow
+                            FactTransactionsSigi.objects.create(
+                                account_id=account_id,
+                                date=today,
+                                payee=kursschwankung_payee,
+                                category_id=None,
+                                memo=f'Kursschwankung {acc_data["name"]} - Anpassung auf €{new_balance}',
+                                outflow=abs(adjusted_diff),
+                                inflow=Decimal('0'),
+                            )
+
+                        created_count += 1
+                        total_adjustment += adjusted_diff
+
+            if created_count > 0:
+                messages.success(
+                    request,
+                    f'{created_count} Kursschwankungstransaktion(en) erstellt. '
+                    f'Gesamtanpassung: €{total_adjustment:+,.2f}'
+                )
+            else:
+                messages.info(request, 'Keine Anpassungen notwendig (alle Differenzen = 0)')
+
+            return redirect('finance:adjust_investments')
+
+        except Exception as e:
+            messages.error(request, f'Fehler beim Erstellen der Transaktionen: {str(e)}')
+
+    context = {
+        'accounts_data': accounts_data,
+        'today': today,
+    }
+
+    return render(request, 'finance/adjust_investments.html', context)
