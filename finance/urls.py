@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/monthly-spending/', views.api_monthly_spending, name='api_monthly_spending'),
     path('api/category-breakdown/', views.api_category_breakdown, name='api_category_breakdown'),
     path('api/top-payees/', views.api_top_payees, name='api_top_payees'),
+    path('api/spending-trend/', views.api_spending_trend, name='api_spending_trend'),
 
     # API Endpoints für Formular
     path('api/payee-suggestions/', views.api_get_payee_suggestions, name='api_payee_suggestions'),

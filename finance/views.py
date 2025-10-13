@@ -1611,3 +1611,64 @@ def adjust_investments(request):
     }
 
     return render(request, 'finance/adjust_investments.html', context)
+
+
+@login_required
+def api_spending_trend(request):
+    """API: Historische Ausgaben über alle Monate für Trendlinie"""
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
+    # Hole alle Transaktionen, gruppiert nach Monat
+    # Ausschlüsse:
+    # - Transfers & Kursschwankungen
+    # - Ready to Assign (category_id=1)
+    # - CategoryGroup "Inflow"
+    # - CategoryGroup "Longterm Savings"
+    # - Transaktionen ohne CategoryGroup
+    monthly_spending = FactTransactionsSigi.objects.exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # Ready to Assign
+    ).exclude(
+        category__categorygroup__category_group__iexact='Inflow'
+    ).exclude(
+        category__categorygroup__category_group__iexact='Longterm Savings'
+    ).exclude(
+        category__categorygroup__category_group__iexact='NoCategory'  # Ohne CategoryGroup
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        outflow=Sum('outflow'),
+        inflow=Sum('inflow')
+    ).order_by('month')
+
+    labels = []
+    data = []
+
+    for item in monthly_spending:
+        # Formatiere Label als "Jan 2023"
+        labels.append(item['month'].strftime('%b %Y'))
+        # Netto-Ausgaben (Outflow - Inflow)
+        outflow = float(item['outflow'] or 0)
+        inflow = float(item['inflow'] or 0)
+        net_spending = outflow - inflow
+        data.append(net_spending)
+
+    # Berechne Trendlinie (lineare Regression)
+    if len(data) >= 2:
+        import numpy as np
+        x = np.arange(len(data))
+        y = np.array(data)
+
+        # Lineare Regression: y = mx + b
+        m, b = np.polyfit(x, y, 1)
+        trend_data = [m * i + b for i in x]
+    else:
+        trend_data = data
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+        'trend': trend_data
+    })
