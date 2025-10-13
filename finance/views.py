@@ -2413,14 +2413,21 @@ def api_categorygroup_monthly_trend(request):
         netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
         monthly_totals[key] = monthly_totals.get(key, 0) + netto
 
-    # Erstelle Monatsliste für 2024 und 2025
+    # Erstelle Monatsliste für 2024 und 2025 BIS ZUM AKTUELLEN MONAT
     labels = []
     data = []
 
     current_year = 2024
     current_month_num = 1
 
-    while (current_year < 2025) or (current_year == 2025 and current_month_num <= 12):
+    # Aktuelles Jahr und Monat für Vergleich
+    now = datetime.now()
+    current_year_now = now.year
+    current_month_now = now.month
+
+    # GEÄNDERT: Schleife nur bis zum aktuellen Monat
+    while (current_year < current_year_now) or (
+            current_year == current_year_now and current_month_num <= current_month_now):
         month_date = datetime(current_year, current_month_num, 1)
         labels.append(month_date.strftime('%b %Y'))
 
@@ -2436,8 +2443,7 @@ def api_categorygroup_monthly_trend(request):
         else:
             current_month_num += 1
 
-    # Berechne Trendlinie (nur mit vollständigen Monaten)
-    now = datetime.now()
+    # Berechne Trendlinie (nur mit vollständigen Monaten, exkl. aktueller Monat)
     current_month_key = (now.year, now.month)
 
     complete_data_points = []
@@ -2572,7 +2578,11 @@ def api_categorygroup_quarterly_breakdown(request):
     )
 
     # Definiere Quartale für 2024 und 2025
-    quarters = [
+    # GEÄNDERT: Nur vollständige Quartale anzeigen
+    now = datetime.now()
+    current_quarter_start = datetime(now.year, ((now.month - 1) // 3) * 3 + 1, 1)
+
+    all_quarters = [
         ('Q1 2024', datetime(2024, 1, 1), datetime(2024, 3, 31)),
         ('Q2 2024', datetime(2024, 4, 1), datetime(2024, 6, 30)),
         ('Q3 2024', datetime(2024, 7, 1), datetime(2024, 9, 30)),
@@ -2582,6 +2592,9 @@ def api_categorygroup_quarterly_breakdown(request):
         ('Q3 2025', datetime(2025, 7, 1), datetime(2025, 9, 30)),
         ('Q4 2025', datetime(2025, 10, 1), datetime(2025, 12, 31)),
     ]
+
+    # Filtere nur vollständige Quartale (Start-Datum vor dem aktuellen Quartal)
+    quarters = [q for q in all_quarters if q[1] < current_quarter_start]
 
     labels = [q[0] for q in quarters]
 
@@ -2602,8 +2615,11 @@ def api_categorygroup_quarterly_breakdown(request):
         'rgb(99, 132, 255)',  # Hellblau
     ]
 
-    for idx, category in enumerate(categories):
+    color_idx = 0  # Zähler für Farben (nur für Kategorien mit Daten)
+
+    for category in categories:
         category_data = []
+        has_data = False  # GEÄNDERT: Flag um zu prüfen ob Kategorie Daten hat
 
         for quarter_label, start_date, end_date in quarters:
             # Sigi
@@ -2636,18 +2652,26 @@ def api_categorygroup_quarterly_breakdown(request):
             sigi_netto = float((sigi_total['total_outflow'] or 0) - (sigi_total['total_inflow'] or 0))
             robert_netto = float((robert_total['total_outflow'] or 0) - (robert_total['total_inflow'] or 0))
 
-            category_data.append(sigi_netto + robert_netto)
+            total = sigi_netto + robert_netto
+            category_data.append(total)
 
-        # Wähle Farbe (mit Modulo für mehr als 10 Kategorien)
-        color = colors[idx % len(colors)]
+            # GEÄNDERT: Prüfe ob mindestens ein Wert > 0
+            if total > 0:
+                has_data = True
 
-        datasets.append({
-            'label': category.category,
-            'data': category_data,
-            'backgroundColor': color,
-            'borderColor': color,
-            'borderWidth': 1
-        })
+        # GEÄNDERT: Nur hinzufügen wenn Kategorie tatsächlich Daten hat
+        if has_data:
+            # Wähle Farbe
+            color = colors[color_idx % len(colors)]
+            color_idx += 1  # Erhöhe nur bei tatsächlich verwendeten Farben
+
+            datasets.append({
+                'label': category.category,
+                'data': category_data,
+                'backgroundColor': color,
+                'borderColor': color,
+                'borderWidth': 1
+            })
 
     return JsonResponse({
         'labels': labels,
