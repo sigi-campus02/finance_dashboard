@@ -157,88 +157,321 @@
     </div>
 </div>
 
-<!-- Kategorien-Charts -->
+<!-- Historisches Liniendiagramm -->
 <div class="row mt-4">
-    {% for category in categories %}
-    <div class="col-md-6 mb-3">
+    <div class="col-12">
         <div class="card">
-            <div class="card-header bg-white">
-                <h6 class="mb-0">{{ category.display_name }} - Entwicklung</h6>
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-graph-up"></i> Vermögensentwicklung (letzte 24 Monate)
+                </h6>
+                <small class="text-muted">Gestackte Ansicht nach Kategorien</small>
             </div>
             <div class="card-body">
-                <canvas id="chart-{{ category.name|slugify }}"></canvas>
+                <canvas id="assetHistoryChart" height="80"></canvas>
             </div>
         </div>
     </div>
-    {% endfor %}
 </div>
 
+<!-- Detail-Diagramme pro Kategorie -->
+<div class="row mt-4">
+    <!-- Cash Detail -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-wallet2"></i> Cash - Kontendetails
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="cashDetailChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MidtermInvest Detail -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-graph-up-arrow"></i> MidtermInvest - Kontendetails
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="midtermDetailChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LongtermInvest Detail -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-shield-check"></i> LongtermInvest - Kontendetails
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="longtermDetailChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+    
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Charts für jede Kategorie
-{% for category in categories %}
-{
-    const ctx = document.getElementById('chart-{{ category.name|slugify }}').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: [
-                '{{ prev_year|date:"b Y" }}',
-                '{{ prev_month|date:"b Y" }}',
-                '{{ current_date|date:"b Y" }}'
-            ],
-            datasets: [{
-                label: '{{ category.display_name }}',
-                data: [
-                    {{ category.total_prev_year }},
-                    {{ category.total_prev_month }},
-                    {{ category.total_current }}
-                ],
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)'
-                ],
-                borderColor: [
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)'
-                ],
-                borderWidth: 1
-            }]
+// Gemeinsame Chart-Optionen für alle Detail-Charts
+function getStackedChartOptions(yAxisLabel) {
+    return {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: {
+            mode: 'index',
+            intersect: false,
         },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '€ ' + value.toLocaleString('de-DE');
-                        }
+        scales: {
+            y: {
+                beginAtZero: true,
+                stacked: true,
+                ticks: {
+                    callback: function(value) {
+                        return '€ ' + value.toLocaleString('de-DE', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        });
+                    },
+                    font: {
+                        size: 10
                     }
+                },
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
                 }
             },
-            plugins: {
-                legend: {
+            x: {
+                grid: {
                     display: false
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return '€ ' + context.parsed.y.toLocaleString('de-DE', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                            });
-                        }
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 45,
+                    autoSkip: true,
+                    maxTicksLimit: 8,
+                    font: {
+                        size: 9
                     }
                 }
             }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: {
+                    usePointStyle: true,
+                    padding: 8,
+                    font: {
+                        size: 10
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        label += '€ ' + context.parsed.y.toLocaleString('de-DE', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                        return label;
+                    },
+                    footer: function(tooltipItems) {
+                        let sum = 0;
+                        tooltipItems.forEach(function(tooltipItem) {
+                            sum += tooltipItem.parsed.y;
+                        });
+                        return '━━━━━━━━━━━━━━━━━━\nGesamt: € ' + 
+                            sum.toLocaleString('de-DE', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                    }
+                }
+            },
+            filler: {
+                propagate: false
+            }
         }
-    });
+    };
 }
-{% endfor %}
+
+// Haupt-Chart: Gesamtübersicht
+fetch("{% url 'finance:api_asset_history' %}")
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('assetHistoryChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: data.datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stacked: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '€ ' + value.toLocaleString('de-DE', {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
+                                });
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            autoSkip: true,
+                            maxTicksLimit: 12
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += '€ ' + context.parsed.y.toLocaleString('de-DE', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                });
+                                return label;
+                            },
+                            footer: function(tooltipItems) {
+                                let sum = 0;
+                                tooltipItems.forEach(function(tooltipItem) {
+                                    if (tooltipItem.dataset.label !== 'Gesamt') {
+                                        sum += tooltipItem.parsed.y;
+                                    }
+                                });
+                                return '━━━━━━━━━━━━━━━━━━\nKategorien Summe: € ' + 
+                                    sum.toLocaleString('de-DE', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                            }
+                        }
+                    },
+                    filler: {
+                        propagate: false
+                    }
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Fehler beim Laden der Vermögensdaten:', error);
+        document.getElementById('assetHistoryChart').parentElement.innerHTML = 
+            '<div class="alert alert-danger">Fehler beim Laden der Daten</div>';
+    });
+
+// Detail-Charts: Kategorien mit einzelnen Accounts
+fetch("{% url 'finance:api_asset_category_details' %}")
+    .then(response => response.json())
+    .then(data => {
+        // Cash Detail Chart
+        if (data.Cash && data.Cash.datasets.length > 0) {
+            const cashCtx = document.getElementById('cashDetailChart').getContext('2d');
+            new Chart(cashCtx, {
+                type: 'line',
+                data: {
+                    labels: data.Cash.labels,
+                    datasets: data.Cash.datasets
+                },
+                options: getStackedChartOptions('Cash')
+            });
+        } else {
+            document.getElementById('cashDetailChart').parentElement.innerHTML = 
+                '<p class="text-muted text-center">Keine Daten verfügbar</p>';
+        }
+        
+        // MidtermInvest Detail Chart
+        if (data.MidtermInvest && data.MidtermInvest.datasets.length > 0) {
+            const midtermCtx = document.getElementById('midtermDetailChart').getContext('2d');
+            new Chart(midtermCtx, {
+                type: 'line',
+                data: {
+                    labels: data.MidtermInvest.labels,
+                    datasets: data.MidtermInvest.datasets
+                },
+                options: getStackedChartOptions('MidtermInvest')
+            });
+        } else {
+            document.getElementById('midtermDetailChart').parentElement.innerHTML = 
+                '<p class="text-muted text-center">Keine Daten verfügbar</p>';
+        }
+        
+        // LongtermInvest Detail Chart
+        if (data.LongtermInvest && data.LongtermInvest.datasets.length > 0) {
+            const longtermCtx = document.getElementById('longtermDetailChart').getContext('2d');
+            new Chart(longtermCtx, {
+                type: 'line',
+                data: {
+                    labels: data.LongtermInvest.labels,
+                    datasets: data.LongtermInvest.datasets
+                },
+                options: getStackedChartOptions('LongtermInvest')
+            });
+        } else {
+            document.getElementById('longtermDetailChart').parentElement.innerHTML = 
+                '<p class="text-muted text-center">Keine Daten verfügbar</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Laden der Detail-Daten:', error);
+        ['cashDetailChart', 'midtermDetailChart', 'longtermDetailChart'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.parentElement.innerHTML = 
+                    '<div class="alert alert-danger">Fehler beim Laden</div>';
+            }
+        });
+    });
 </script>
 {% endblock %}

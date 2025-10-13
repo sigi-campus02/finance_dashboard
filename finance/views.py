@@ -1692,3 +1692,297 @@ def api_spending_trend(request):
         'income': income_data,  # NEU
         'trend': trend_data
     })
+
+
+@login_required
+def api_asset_history(request):
+    """API: Historische Vermögensentwicklung über alle Kategorien"""
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
+    from dateutil.relativedelta import relativedelta
+
+    # Zeitraum: Vom ersten Datensatz bis heute
+    end_date = datetime.now().date()
+    if end_date.month == 12:
+        end_date = end_date.replace(day=31)
+    else:
+        next_month = end_date.replace(month=end_date.month + 1, day=1)
+        end_date = next_month - timedelta(days=1)
+
+    # Finde früheste Transaktion
+    earliest_sigi = FactTransactionsSigi.objects.order_by('date').first()
+    earliest_robert = FactTransactionsRobert.objects.order_by('date').first()
+
+    earliest_dates = []
+    if earliest_sigi:
+        earliest_dates.append(earliest_sigi.date)
+    if earliest_robert:
+        earliest_dates.append(earliest_robert.date)
+
+    if not earliest_dates:
+        # Keine Transaktionen, Fallback auf letztes Jahr
+        start_date = end_date - relativedelta(months=12)
+    else:
+        start_date = min(earliest_dates)
+        # Setze auf ersten Tag des Monats
+        start_date = start_date.replace(day=1)
+
+    # Generiere Liste aller Monate
+    months = []
+    current = start_date
+    while current <= end_date:
+        # Letzter Tag des Monats
+        if current.month == 12:
+            month_end = current.replace(day=31)
+        else:
+            next_month = current.replace(month=current.month + 1, day=1)
+            month_end = next_month - timedelta(days=1)
+
+        months.append(month_end)
+        current = current + relativedelta(months=1)
+
+    # Hole alle Accounts
+    accounts = DimAccount.objects.select_related('accounttype').all()
+
+    # Datenstruktur für Kategorien (in fester Reihenfolge für Stacking)
+    category_order = ['Cash', 'Credit', 'MidtermInvest', 'LongtermInvest']
+    category_data = {cat: [] for cat in category_order}
+
+    labels = []
+
+    # Für jeden Monat: Berechne Kontostände pro Kategorie
+    for month_end in months:
+        labels.append(month_end.strftime('%b %Y'))
+
+        # Reset für diesen Monat
+        monthly_totals = {cat: Decimal('0') for cat in category_order}
+
+        for account in accounts:
+            # Kategorie bestimmen
+            if account.accounttype and account.accounttype.accounttypes:
+                category_name = account.accounttype.accounttypes
+            else:
+                category_name = 'Sonstige'
+
+            # Nur relevante Kategorien
+            if category_name not in monthly_totals:
+                continue
+
+            # Berechne Kontostand für diesen Monat
+            balance = calculate_account_balance(account.id, month_end)
+            monthly_totals[category_name] += balance
+
+        # Füge zu category_data hinzu
+        for cat_name in category_order:
+            category_data[cat_name].append(float(monthly_totals[cat_name]))
+
+    # Berechne Gesamtwert (Summe aller Kategorien)
+    total_data = []
+    for i in range(len(labels)):
+        total = sum(category_data[cat][i] for cat in category_order)
+        total_data.append(total)
+
+    # Definiere Farben für Kategorien (mit Alpha für Fill)
+    colors = {
+        'Cash': {
+            'border': 'rgb(75, 192, 192)',
+            'fill': 'rgba(75, 192, 192, 0.2)'
+        },
+        'Credit': {
+            'border': 'rgb(255, 99, 132)',
+            'fill': 'rgba(255, 99, 132, 0.2)'
+        },
+        'MidtermInvest': {
+            'border': 'rgb(54, 162, 235)',
+            'fill': 'rgba(54, 162, 235, 0.2)'
+        },
+        'LongtermInvest': {
+            'border': 'rgb(153, 102, 255)',
+            'fill': 'rgba(153, 102, 255, 0.2)'
+        },
+    }
+
+    # Erstelle datasets - wichtig: in umgekehrter Reihenfolge für korrektes Stacking
+    datasets = []
+
+    # Kategorien als gefüllte Flächen (reversed für korrektes Stacking von unten nach oben)
+    for cat_name in reversed(category_order):
+        if cat_name in CATEGORY_CONFIG:
+            cat_config = CATEGORY_CONFIG[cat_name]
+            datasets.append({
+                'label': cat_config['display_name'],
+                'data': category_data[cat_name],
+                'borderColor': colors[cat_name]['border'],
+                'backgroundColor': colors[cat_name]['fill'],
+                'borderWidth': 2,
+                'tension': 0.4,
+                'fill': True,  # Fläche füllen
+                'pointRadius': 0,
+                'pointHoverRadius': 5,
+                'pointHoverBackgroundColor': colors[cat_name]['border'],
+            })
+
+    # Gesamtwert als separate dicke Linie (NICHT gestackt)
+    datasets.append({
+        'label': 'Gesamt',
+        'data': total_data,
+        'borderColor': 'rgb(255, 206, 86)',
+        'backgroundColor': 'transparent',
+        'borderWidth': 3,
+        'tension': 0.4,
+        'fill': False,
+        'pointRadius': 3,
+        'pointHoverRadius': 6,
+        'borderDash': [5, 5],
+        'stack': 'total',  # Separate Stack-Gruppe
+    })
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': datasets
+    })
+
+
+@login_required
+def api_asset_category_details(request):
+    """API: Detaillierte Vermögensentwicklung pro Kategorie mit einzelnen Accounts"""
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
+    from dateutil.relativedelta import relativedelta
+
+    # Zeitraum: Vom ersten Datensatz bis heute
+    end_date = datetime.now().date()
+    if end_date.month == 12:
+        end_date = end_date.replace(day=31)
+    else:
+        next_month = end_date.replace(month=end_date.month + 1, day=1)
+        end_date = next_month - timedelta(days=1)
+
+    # Finde früheste Transaktion
+    earliest_sigi = FactTransactionsSigi.objects.order_by('date').first()
+    earliest_robert = FactTransactionsRobert.objects.order_by('date').first()
+
+    earliest_dates = []
+    if earliest_sigi:
+        earliest_dates.append(earliest_sigi.date)
+    if earliest_robert:
+        earliest_dates.append(earliest_robert.date)
+
+    if not earliest_dates:
+        # Keine Transaktionen, Fallback auf letztes Jahr
+        start_date = end_date - relativedelta(months=12)
+    else:
+        start_date = min(earliest_dates)
+        # Setze auf ersten Tag des Monats
+        start_date = start_date.replace(day=1)
+
+    # Generiere Liste aller Monate
+    months = []
+    current = start_date
+    while current <= end_date:
+        if current.month == 12:
+            month_end = current.replace(day=31)
+        else:
+            next_month = current.replace(month=current.month + 1, day=1)
+            month_end = next_month - timedelta(days=1)
+
+        months.append(month_end)
+        current = current + relativedelta(months=1)
+
+    labels = [month.strftime('%b %Y') for month in months]
+
+    # Hole alle Accounts gruppiert nach Kategorie
+    accounts = DimAccount.objects.select_related('accounttype').all()
+
+    # Gruppiere Accounts nach Kategorie
+    category_accounts = {
+        'Cash': [],
+        'MidtermInvest': [],
+        'LongtermInvest': []
+    }
+
+    for account in accounts:
+        if account.accounttype and account.accounttype.accounttypes:
+            category_name = account.accounttype.accounttypes
+            if category_name in category_accounts:
+                category_accounts[category_name].append(account)
+
+    # Farbpaletten für jede Kategorie
+    color_palettes = {
+        'Cash': [
+            {'border': 'rgb(34, 197, 94)', 'fill': 'rgba(34, 197, 94, 0.5)'},  # Grün
+            {'border': 'rgb(59, 130, 246)', 'fill': 'rgba(59, 130, 246, 0.5)'},  # Blau
+            {'border': 'rgb(168, 85, 247)', 'fill': 'rgba(168, 85, 247, 0.5)'},  # Lila
+            {'border': 'rgb(236, 72, 153)', 'fill': 'rgba(236, 72, 153, 0.5)'},  # Pink
+        ],
+        'MidtermInvest': [
+            {'border': 'rgb(14, 165, 233)', 'fill': 'rgba(14, 165, 233, 0.5)'},  # Sky Blue
+            {'border': 'rgb(99, 102, 241)', 'fill': 'rgba(99, 102, 241, 0.5)'},  # Indigo
+            {'border': 'rgb(139, 92, 246)', 'fill': 'rgba(139, 92, 246, 0.5)'},  # Violet
+            {'border': 'rgb(217, 70, 239)', 'fill': 'rgba(217, 70, 239, 0.5)'},  # Fuchsia
+            {'border': 'rgb(244, 114, 182)', 'fill': 'rgba(244, 114, 182, 0.5)'},  # Pink
+        ],
+        'LongtermInvest': [
+            {'border': 'rgb(126, 34, 206)', 'fill': 'rgba(126, 34, 206, 0.5)'},  # Purple
+            {'border': 'rgb(147, 51, 234)', 'fill': 'rgba(147, 51, 234, 0.5)'},  # Purple 2
+            {'border': 'rgb(168, 85, 247)', 'fill': 'rgba(168, 85, 247, 0.5)'},  # Purple 3
+            {'border': 'rgb(192, 132, 252)', 'fill': 'rgba(192, 132, 252, 0.5)'},  # Purple 4
+            {'border': 'rgb(216, 180, 254)', 'fill': 'rgba(216, 180, 254, 0.5)'},  # Purple 5
+        ]
+    }
+
+    # Erstelle Datasets für jede Kategorie
+    result = {}
+
+    for category_name, accounts_list in category_accounts.items():
+        if not accounts_list:
+            continue
+
+        datasets = []
+        colors = color_palettes.get(category_name, [])
+
+        # Sortiere Accounts nach Namen für konsistente Darstellung
+        accounts_list.sort(key=lambda x: x.account)
+
+        # Für jeden Account: Berechne historische Daten
+        for idx, account in enumerate(accounts_list):
+            account_data = []
+
+            for month_end in months:
+                balance = calculate_account_balance(account.id, month_end)
+                account_data.append(float(balance))
+
+            # Überspringe Accounts die immer 0 sind
+            if all(val == 0 for val in account_data):
+                continue
+
+            # Wähle Farbe (mit Fallback wenn mehr Accounts als Farben)
+            color = colors[idx % len(colors)] if colors else {
+                'border': f'rgb({(idx * 50) % 255}, {(idx * 80) % 255}, {(idx * 120) % 255})',
+                'fill': f'rgba({(idx * 50) % 255}, {(idx * 80) % 255}, {(idx * 120) % 255}, 0.5)'
+            }
+
+            datasets.append({
+                'label': account.account,
+                'data': account_data,
+                'borderColor': color['border'],
+                'backgroundColor': color['fill'],
+                'borderWidth': 2,
+                'tension': 0.4,
+                'fill': True,
+                'pointRadius': 0,
+                'pointHoverRadius': 4,
+                'pointHoverBackgroundColor': color['border'],
+            })
+
+        # Reverse für korrektes Stacking
+        datasets.reverse()
+
+        result[category_name] = {
+            'labels': labels,
+            'datasets': datasets
+        }
+
+    return JsonResponse(result)

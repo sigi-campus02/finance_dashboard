@@ -44,4 +44,8 @@ urlpatterns = [
 
     # Investment Management
     path('investments/adjust/', views.adjust_investments, name='adjust_investments'),
+
+    # API Endpoints für Investment Management
+    path('api/asset-history/', views.api_asset_history, name='api_asset_history'),
+    path('api/asset-category-details/', views.api_asset_category_details, name='api_asset_category_details'),
 ]
