@@ -2767,14 +2767,20 @@ from django.db.models import Sum, Count, Min, Max, Avg, Q
 
 @login_required
 def api_supermarket_monthly_trend(request):
-    """API: Monatliche Entwicklung für Supermarkt-Kategorie (id=5) mit Trendlinie"""
+    """API: Monatliche Entwicklung für Supermarkt-Kategorie (id=5) mit Trendlinie - nur 2024-2025"""
     category_id = 5  # 1.4. Supermarkt
 
+    # Zeitraum: 2024-2025, aber nur bis aktueller Monat
+    start_date = datetime(2024, 1, 1)
+    end_date = datetime(2025, 12, 31)
+    current_month = datetime.now().replace(day=1)
+
     # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
-    # KORRIGIERT: Keine outflow__gt=0 Filterung mehr - wir wollen ALLE Transaktionen
     sigi_transactions = FactTransactionsSigi.objects.filter(
         flag_id=5,
-        category_id=category_id
+        category_id=category_id,
+        date__gte=start_date,
+        date__lte=end_date
     ).exclude(
         payee__payee_type__in=['transfer', 'kursschwankung']
     ).exclude(
@@ -2787,9 +2793,10 @@ def api_supermarket_monthly_trend(request):
     ).order_by('date__year', 'date__month')
 
     # Robert: Alle Transaktionen
-    # KORRIGIERT: Keine outflow__gt=0 Filterung mehr
     robert_transactions = FactTransactionsRobert.objects.filter(
-        category_id=category_id
+        category_id=category_id,
+        date__gte=start_date,
+        date__lte=end_date
     ).exclude(
         payee__payee_type__in=['transfer', 'kursschwankung']
     ).exclude(
@@ -2801,44 +2808,80 @@ def api_supermarket_monthly_trend(request):
         total_inflow=Sum('inflow')
     ).order_by('date__year', 'date__month')
 
-    # Kombiniere beide Datensätze
+    # Kombiniere beide Datensätze - verwende (Jahr, Monat) als Key
     monthly_data = {}
 
     for item in sigi_transactions:
-        key = f"{item['date__year']}-{item['date__month']:02d}"
+        key = (item['date__year'], item['date__month'])
         if key not in monthly_data:
             monthly_data[key] = {'outflow': 0, 'inflow': 0}
         monthly_data[key]['outflow'] += float(item['total_outflow'] or 0)
         monthly_data[key]['inflow'] += float(item['total_inflow'] or 0)
 
     for item in robert_transactions:
-        key = f"{item['date__year']}-{item['date__month']:02d}"
+        key = (item['date__year'], item['date__month'])
         if key not in monthly_data:
             monthly_data[key] = {'outflow': 0, 'inflow': 0}
         monthly_data[key]['outflow'] += float(item['total_outflow'] or 0)
         monthly_data[key]['inflow'] += float(item['total_inflow'] or 0)
 
-    # Sortiere nach Jahr-Monat
-    sorted_data = sorted(monthly_data.items())
-
-    # Erstelle Labels und Daten
+    # Erstelle Monatsliste von 2024-01 bis aktueller Monat
     labels = []
     data = []
     month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
-    for key, values in sorted_data:
-        year, month = key.split('-')
-        month_num = int(month)
-        labels.append(f"{month_names[month_num - 1]} {year}")
-        # KORRIGIERT: Netto = Outflow - Inflow (kann auch negativ sein bei Rückerstattungen)
+    current_year = 2024
+    current_month_num = 1
+
+    # Aktuelles Jahr und Monat für Vergleich
+    now = datetime.now()
+    current_year_now = now.year
+    current_month_now = now.month
+
+    # Schleife nur bis zum aktuellen Monat
+    while (current_year < current_year_now) or (
+            current_year == current_year_now and current_month_num <= current_month_now):
+
+        labels.append(f"{month_names[current_month_num - 1]} {current_year}")
+
+        # Hole Wert mit (Jahr, Monat) Key
+        key = (current_year, current_month_num)
+        values = monthly_data.get(key, {'outflow': 0, 'inflow': 0})
+
+        # Netto = Outflow - Inflow
         netto = values['outflow'] - values['inflow']
         data.append(round(netto, 2))
 
-    # Berechne Trendlinie (lineare Regression)
-    if len(data) >= 2:
-        n = len(data)
-        x = list(range(n))
-        y = data
+        # Nächster Monat
+        if current_month_num == 12:
+            current_year += 1
+            current_month_num = 1
+        else:
+            current_month_num += 1
+
+    # Berechne Trendlinie (nur mit vollständigen Monaten, exkl. aktueller Monat)
+    current_month_key = (now.year, now.month)
+
+    complete_data_points = []
+    complete_indices = []
+
+    for i, value in enumerate(data):
+        # Berechne Jahr und Monat für diesen Index
+        year = 2024 + (i // 12)
+        month = (i % 12) + 1
+
+        # Nur vollständige Monate (nicht der aktuelle)
+        if (year, month) < current_month_key:
+            complete_data_points.append(value)
+            complete_indices.append(i)
+
+    # Lineare Regression für Trendlinie
+    trend_data = []
+    if len(complete_data_points) >= 2:
+        # Berechne Trendlinie mit einfacher linearer Regression
+        x = complete_indices
+        y = complete_data_points
+        n = len(x)
 
         # Berechne Durchschnitte
         x_mean = sum(x) / n
@@ -2852,12 +2895,21 @@ def api_supermarket_monthly_trend(request):
             slope = numerator / denominator
             intercept = y_mean - slope * x_mean
 
-            # Generiere Trendlinie
-            trend_data = [round(slope * i + intercept, 2) for i in x]
+            # Erstelle Trendlinie für alle Monate (auch aktuellen)
+            for i in range(len(data)):
+                year = 2024 + (i // 12)
+                month = (i % 12) + 1
+
+                if (year, month) < current_month_key:
+                    # Vollständige Monate: Zeige Trendlinie
+                    trend_data.append(round(slope * i + intercept, 2))
+                else:
+                    # Aktueller Monat: Keine Trendlinie
+                    trend_data.append(None)
         else:
-            trend_data = [y_mean] * n
+            trend_data = [None] * len(data)
     else:
-        trend_data = data
+        trend_data = [None] * len(data)
 
     return JsonResponse({
         'labels': labels,
