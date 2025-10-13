@@ -1,0 +1,229 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Erweiterte Statistiken - Billa{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .stat-table {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-graph-up"></i> Erweiterte Statistiken
+                </h1>
+                <p class="mb-0">Detaillierte Analysen deines Einkaufsverhaltens</p>
+            </div>
+            <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-light">
+                <i class="bi bi-arrow-left"></i> Zurück
+            </a>
+        </div>
+    </div>
+
+    <!-- Ausgaben nach Wochentag -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5 class="mb-3"><i class="bi bi-calendar-week"></i> Ausgaben nach Wochentag</h5>
+                <div id="chart-wochentag"></div>
+            </div>
+        </div>
+
+        <!-- Ausgaben nach Uhrzeit -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5 class="mb-3"><i class="bi bi-clock"></i> Einkäufe nach Uhrzeit</h5>
+                <div id="chart-uhrzeit"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ausgaben nach Filiale -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="stat-table">
+                <div class="p-3 bg-light border-bottom">
+                    <h5 class="mb-0"><i class="bi bi-shop"></i> Statistiken nach Filiale</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Filiale</th>
+                                <th class="text-center">Anzahl Einkäufe</th>
+                                <th class="text-end">Gesamtausgaben</th>
+                                <th class="text-end">Ø Warenkorbwert</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in ausgaben_filiale %}
+                            <tr>
+                                <td><strong>{{ f.filiale }}</strong></td>
+                                <td class="text-center">{{ f.anzahl }}</td>
+                                <td class="text-end">€ {{ f.ausgaben|floatformat:2 }}</td>
+                                <td class="text-end">€ {{ f.avg_warenkorb|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    Keine Daten verfügbar
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Artikel pro Einkauf -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5 class="mb-3"><i class="bi bi-cart3"></i> Artikel pro Einkauf</h5>
+                <div id="chart-artikel-distribution"></div>
+            </div>
+        </div>
+
+        <!-- Zusammenfassung -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5 class="mb-3"><i class="bi bi-info-circle"></i> Zusammenfassung</h5>
+                
+                <div class="mb-3">
+                    <strong>Beliebtester Einkaufstag:</strong>
+                    <br>
+                    {% if ausgaben_wochentag %}
+                    {{ ausgaben_wochentag.0.name }} 
+                    ({{ ausgaben_wochentag.0.anzahl }} Einkäufe, € {{ ausgaben_wochentag.0.ausgaben|floatformat:2 }})
+                    {% else %}
+                    Keine Daten
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Häufigste Einkaufszeit:</strong>
+                    <br>
+                    {% if ausgaben_stunde %}
+                    {{ ausgaben_stunde.0.stunde }}:00 Uhr 
+                    ({{ ausgaben_stunde.0.anzahl }} Einkäufe)
+                    {% else %}
+                    Keine Daten
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Meistbesuchte Filiale:</strong>
+                    <br>
+                    {% if ausgaben_filiale %}
+                    Filiale {{ ausgaben_filiale.0.filiale }} 
+                    ({{ ausgaben_filiale.0.anzahl }} Besuche)
+                    {% else %}
+                    Keine Daten
+                    {% endif %}
+                </div>
+
+                <hr>
+
+                <div class="alert alert-info mb-0">
+                    <small>
+                        <i class="bi bi-lightbulb"></i>
+                        <strong>Tipp:</strong> Du kaufst am häufigsten 
+                        {% if ausgaben_wochentag %}{{ ausgaben_wochentag.0.name|lower }}s{% endif %} ein. 
+                        Nutze Wochenangebote optimal!
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+// Ausgaben nach Wochentag
+const wochentagData = {{ ausgaben_wochentag|safe }};
+const wochentagTrace = {
+    x: wochentagData.map(d => d.name),
+    y: wochentagData.map(d => d.ausgaben),
+    type: 'bar',
+    marker: {
+        color: '#667eea'
+    },
+    text: wochentagData.map(d => `€ ${d.ausgaben.toFixed(2)}<br>${d.anzahl} Einkäufe`),
+    hovertemplate: '%{text}<extra></extra>'
+};
+
+Plotly.newPlot('chart-wochentag', [wochentagTrace], {
+    margin: { t: 20, b: 60, l: 60, r: 20 },
+    xaxis: { title: 'Wochentag' },
+    yaxis: { title: 'Ausgaben (€)' }
+});
+
+// Ausgaben nach Uhrzeit
+const uhrzeitData = {{ ausgaben_stunde|safe }};
+const uhrzeitTrace = {
+    x: uhrzeitData.map(d => `${d.stunde}:00`),
+    y: uhrzeitData.map(d => d.anzahl),
+    type: 'bar',
+    marker: {
+        color: '#764ba2'
+    },
+    text: uhrzeitData.map(d => `${d.anzahl} Einkäufe`),
+    hovertemplate: '%{x}<br>%{text}<extra></extra>'
+};
+
+Plotly.newPlot('chart-uhrzeit', [uhrzeitTrace], {
+    margin: { t: 20, b: 60, l: 60, r: 20 },
+    xaxis: { title: 'Uhrzeit' },
+    yaxis: { title: 'Anzahl Einkäufe' }
+});
+
+// Artikel pro Einkauf Distribution
+const artikelData = {{ artikel_pro_einkauf|safe }};
+const artikelTrace = {
+    x: artikelData.map(d => d.anzahl_artikel),
+    y: artikelData.map(d => d.anzahl_einkaufe),
+    type: 'scatter',
+    mode: 'lines+markers',
+    marker: {
+        color: '#28a745',
+        size: 8
+    },
+    line: {
+        color: '#28a745',
+        width: 2
+    }
+};
+
+Plotly.newPlot('chart-artikel-distribution', [artikelTrace], {
+    margin: { t: 20, b: 60, l: 60, r: 20 },
+    xaxis: { title: 'Anzahl Artikel' },
+    yaxis: { title: 'Anzahl Einkäufe' }
+});
+</script>
+{% endblock %}

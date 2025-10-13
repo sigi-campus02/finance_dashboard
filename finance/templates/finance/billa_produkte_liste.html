@@ -1,0 +1,278 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Alle Produkte - Billa{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    .produkt-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .produkt-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .produkt-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    .produkt-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #e9ecef;
+    }
+    .stat-item {
+        text-align: center;
+        flex: 1;
+    }
+    .stat-value {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .kategorie-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        background: #e9ecef;
+        color: #495057;
+    }
+    .kategorie-obst_gemuese { background: #d4edda; color: #155724; }
+    .kategorie-milchprodukte { background: #d1ecf1; color: #0c5460; }
+    .kategorie-fleisch_fisch { background: #f8d7da; color: #721c24; }
+    .kategorie-brot_backwaren { background: #fff3cd; color: #856404; }
+    .kategorie-getraenke { background: #cfe2ff; color: #084298; }
+    .kategorie-tiefkuehl { background: #e7f1ff; color: #052c65; }
+    .kategorie-suesses { background: #f8d7da; color: #842029; }
+    .kategorie-haushalt { background: #e2e3e5; color: #383d41; }
+    .kategorie-koerperpflege { background: #d3f9d8; color: #0a3622; }
+    
+    .search-highlight {
+        background-color: yellow;
+        padding: 2px;
+        border-radius: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-box-seam"></i> Alle Produkte</h1>
+        <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zum Dashboard
+        </a>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="get" id="filter-form">
+            <div class="row g-3">
+                <!-- Suche -->
+                <div class="col-md-4">
+                    <label for="suche" class="form-label">
+                        <i class="bi bi-search"></i> Produktsuche
+                    </label>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="suche" 
+                        name="suche" 
+                        placeholder="Produktname suchen..."
+                        value="{{ suche }}"
+                    >
+                </div>
+
+                <!-- Kategorie -->
+                <div class="col-md-3">
+                    <label for="kategorie" class="form-label">
+                        <i class="bi bi-tag"></i> Kategorie
+                    </label>
+                    <select class="form-select" id="kategorie" name="kategorie">
+                        <option value="alle" {% if selected_kategorie == 'alle' %}selected{% endif %}>
+                            Alle Kategorien
+                        </option>
+                        {% for kat_code, kat_name in kategorien %}
+                        <option value="{{ kat_code }}" {% if selected_kategorie == kat_code %}selected{% endif %}>
+                            {{ kat_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Sortierung -->
+                <div class="col-md-3">
+                    <label for="sort" class="form-label">
+                        <i class="bi bi-sort-down"></i> Sortierung
+                    </label>
+                    <select class="form-select" id="sort" name="sort">
+                        <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
+                            Häufigste zuerst
+                        </option>
+                        <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
+                            Seltenste zuerst
+                        </option>
+                        <option value="-letzter_preis" {% if sortierung == '-letzter_preis' %}selected{% endif %}>
+                            Teuerste zuerst
+                        </option>
+                        <option value="letzter_preis" {% if sortierung == 'letzter_preis' %}selected{% endif %}>
+                            Günstigste zuerst
+                        </option>
+                        <option value="name_normalisiert" {% if sortierung == 'name_normalisiert' %}selected{% endif %}>
+                            A-Z
+                        </option>
+                        <option value="-name_normalisiert" {% if sortierung == '-name_normalisiert' %}selected{% endif %}>
+                            Z-A
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+
+            <!-- Aktive Filter anzeigen -->
+            {% if suche or selected_kategorie != 'alle' %}
+            <div class="mt-3">
+                <small class="text-muted">Aktive Filter:</small>
+                {% if suche %}
+                <span class="badge bg-info ms-2">Suche: "{{ suche }}"</span>
+                {% endif %}
+                {% if selected_kategorie != 'alle' %}
+                <span class="badge bg-info ms-2">Kategorie: {{ selected_kategorie_display }}</span>
+                {% endif %}
+                <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-sm btn-outline-secondary ms-2">
+                    <i class="bi bi-x"></i> Zurücksetzen
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Ergebnis-Anzahl -->
+    <div class="mb-3">
+        <p class="text-muted">
+            <strong>{{ produkte.count }}</strong> Produkte gefunden
+        </p>
+    </div>
+
+    <!-- Produktliste -->
+    <div class="row">
+        {% for produkt in produkte %}
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_produkt_detail' produkt.id %}" class="text-decoration-none">
+                <div class="produkt-card">
+                    <!-- Produkt Name -->
+                    <div class="produkt-name">
+                        {{ produkt.name_normalisiert }}
+                    </div>
+
+                    <!-- Kategorie -->
+                    {% if produkt.kategorie %}
+                    <span class="kategorie-badge kategorie-{{ produkt.kategorie }}">
+                        {{ produkt.get_kategorie_display }}
+                    </span>
+                    {% endif %}
+
+                    <!-- Statistiken -->
+                    <div class="produkt-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ produkt.anzahl_kaeufe }}</div>
+                            <div class="stat-label">Käufe</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">
+                                {% if produkt.letzter_preis %}
+                                € {{ produkt.letzter_preis|floatformat:2 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </div>
+                            <div class="stat-label">Aktuell</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">
+                                {% if produkt.durchschnittspreis %}
+                                € {{ produkt.durchschnittspreis|floatformat:2 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </div>
+                            <div class="stat-label">Ø Preis</div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i>
+                Keine Produkte gefunden.
+                {% if suche or selected_kategorie != 'alle' %}
+                <br>
+                <a href="{% url 'finance:billa_produkte_liste' %}" class="alert-link">
+                    Filter zurücksetzen
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination (falls du später implementierst) -->
+    {% if produkte.count > 50 %}
+    <div class="alert alert-warning mt-4">
+        <i class="bi bi-info-circle"></i>
+        <strong>Tipp:</strong> Bei vielen Produkten können Filter die Suche erleichtern!
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-Submit bei Änderung (optional)
+document.getElementById('kategorie').addEventListener('change', function() {
+    // document.getElementById('filter-form').submit();
+});
+
+document.getElementById('sort').addEventListener('change', function() {
+    document.getElementById('filter-form').submit();
+});
+
+// Suche mit Enter
+document.getElementById('suche').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('filter-form').submit();
+    }
+});
+</script>
+{% endblock %}

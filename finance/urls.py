@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_billa
 
 app_name = 'finance'
 
@@ -39,8 +40,7 @@ urlpatterns = [
     path('api/analyze-receipt/', views.analyze_receipt_image, name='api_analyze_receipt'),
 
     # Inline Transaction Creation
-    path('transactions/update-date/<int:pk>/', views.update_transaction_date, name='update_transaction_date'),
-    path('api/transactions/create/', views.create_transaction_inline, name='create_transaction_inline'),  # NEU
+    path('api/transactions/create/', views.create_transaction_inline, name='create_transaction_inline'),
 
     # Investment Management
     path('investments/adjust/', views.adjust_investments, name='adjust_investments'),
@@ -70,7 +70,18 @@ urlpatterns = [
     path('api/billa-combined-chart/', views.api_billa_combined_chart, name='api_billa_combined_chart'),
 
     # DEBUG Endpoints für Supermarkt-Details
-    path('api/supermarket-transactions-detail/', views.api_supermarket_transactions_detail,
-         name='api_supermarket_transactions_detail'),
+    path('api/supermarket-transactions-detail/', views.api_supermarket_transactions_detail, name='api_supermarket_transactions_detail'),
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
+
+    # Billa URLs
+    path('billa/', views_billa.billa_dashboard, name='billa_dashboard'),
+    path('billa/einkauf/<int:einkauf_id>/', views_billa.billa_einkauf_detail, name='billa_einkauf_detail'),
+    path('billa/produkt/<int:produkt_id>/', views_billa.billa_produkt_detail, name='billa_produkt_detail'),
+    path('billa/produkte/', views_billa.billa_produkte_liste, name='billa_produkte_liste'),
+    path('billa/preisentwicklung/', views_billa.billa_preisentwicklung, name='billa_preisentwicklung'),
+    path('billa/statistiken/', views_billa.billa_statistiken, name='billa_statistiken'),
+
+    # Billa API Endpoints
+    path('billa/api/preisverlauf/<int:produkt_id>/', views_billa.billa_api_preisverlauf, name='billa_api_preisverlauf'),
+    path('billa/api/stats/', views_billa.billa_api_stats, name='billa_api_stats'),
 ]

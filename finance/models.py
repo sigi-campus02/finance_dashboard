@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 
 
 # ===== DIMENSION MODELS =====
@@ -517,3 +519,303 @@ class ScheduledTransaction(models.Model):
         """Prüft ob überfällig"""
         from datetime import date
         return self.is_active and self.next_execution_date < date.today()
+
+
+# ===== BILLA MODELS =====
+
+class BillaEinkauf(models.Model):
+    """Billa Einkauf - Haupt-Rechnung"""
+    datum = models.DateField(db_index=True, verbose_name="Einkaufsdatum")
+    zeit = models.TimeField(null=True, blank=True, verbose_name="Uhrzeit")
+    filiale = models.CharField(max_length=20, db_index=True, verbose_name="Filiale")
+    kassa = models.IntegerField(null=True, blank=True, verbose_name="Kassa-Nr")
+    bon_nr = models.CharField(max_length=50, null=True, blank=True, verbose_name="Bon-Nummer")
+    re_nr = models.CharField(max_length=100, unique=True, verbose_name="Rechnungsnummer")
+
+    # Preise
+    gesamt_preis = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name="Gesamtpreis"
+    )
+    gesamt_ersparnis = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Gesamte Ersparnis"
+    )
+    zwischensumme = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Zwischensumme"
+    )
+
+    # MwSt
+    mwst_b = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="MwSt 10%")
+    mwst_c = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="MwSt 20%")
+    mwst_g = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="MwSt 13%")
+    mwst_d = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="MwSt 0%")
+
+    # Ö-Punkte
+    oe_punkte_gesammelt = models.IntegerField(default=0, verbose_name="Ö-Punkte gesammelt")
+    oe_punkte_eingeloest = models.IntegerField(default=0, verbose_name="Ö-Punkte eingelöst")
+
+    # Meta
+    pdf_datei = models.CharField(max_length=500, null=True, blank=True, verbose_name="PDF-Datei")
+    import_datum = models.DateTimeField(auto_now_add=True, verbose_name="Import-Datum")
+    notizen = models.TextField(null=True, blank=True, verbose_name="Notizen")
+
+    class Meta:
+        db_table = 'billa_einkauf'
+        verbose_name = "Billa Einkauf"
+        verbose_name_plural = "Billa Einkäufe"
+        ordering = ['-datum', '-zeit']
+        indexes = [
+            models.Index(fields=['datum', 'filiale']),
+            models.Index(fields=['re_nr']),
+        ]
+
+    def __str__(self):
+        return f"{self.datum} - {self.filiale} (€ {self.gesamt_preis})"
+
+    @property
+    def anzahl_artikel(self):
+        """Gibt die Anzahl der Artikel zurück"""
+        return self.artikel.count()
+
+    @property
+    def ersparnis_prozent(self):
+        """Berechnet die Ersparnis in Prozent"""
+        if self.gesamt_preis > 0:
+            original_preis = self.gesamt_preis + self.gesamt_ersparnis
+            return (self.gesamt_ersparnis / original_preis) * 100
+        return 0
+
+
+class BillaArtikel(models.Model):
+    """Billa Artikel - Einzelner Artikel auf der Rechnung"""
+
+    MWST_CHOICES = [
+        ('A', '0% (Pfand)'),
+        ('B', '10% (Lebensmittel)'),
+        ('C', '20% (Standard)'),
+        ('D', 'Steuerfrei'),
+        ('G', '13% (Sonstige)'),
+    ]
+
+    einkauf = models.ForeignKey(
+        BillaEinkauf,
+        on_delete=models.CASCADE,
+        related_name='artikel',
+        verbose_name="Einkauf"
+    )
+
+    position = models.IntegerField(verbose_name="Position auf Rechnung")
+
+    # Produktinfo
+    produkt_name = models.CharField(max_length=500, verbose_name="Produktname")
+    produkt_name_normalisiert = models.CharField(
+        max_length=500,
+        db_index=True,
+        verbose_name="Produktname (normalisiert)"
+    )
+    produkt = models.ForeignKey(
+        'BillaProdukt',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='artikel',
+        verbose_name="Produkt"
+    )
+
+    # Menge & Preis
+    menge = models.DecimalField(max_digits=10, decimal_places=3, default=1, verbose_name="Menge")
+    einheit = models.CharField(max_length=20, default='Stk', verbose_name="Einheit")
+    einzelpreis = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Einzelpreis"
+    )
+    gesamtpreis = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Gesamtpreis")
+    preis_pro_einheit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Preis pro Einheit",
+        help_text="Automatisch berechnet: gesamtpreis / menge"
+    )
+
+    # Rabatte
+    rabatt = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Rabatt")
+    rabatt_typ = models.CharField(max_length=100, null=True, blank=True, verbose_name="Rabatt-Typ")
+
+    # Eigenschaften
+    mwst_kategorie = models.CharField(max_length=1, choices=MWST_CHOICES, verbose_name="MwSt-Kategorie")
+    ist_gewichtsartikel = models.BooleanField(default=False, verbose_name="Gewichtsartikel")
+    ist_mehrfachgebinde = models.BooleanField(default=False, verbose_name="Mehrfachgebinde")
+
+    class Meta:
+        db_table = 'billa_artikel'
+        verbose_name = "Billa Artikel"
+        verbose_name_plural = "Billa Artikel"
+        ordering = ['einkauf', 'position']
+        indexes = [
+            models.Index(fields=['produkt_name_normalisiert']),
+            models.Index(fields=['einkauf', 'position']),
+        ]
+
+    def __str__(self):
+        return f"{self.produkt_name} (€ {self.gesamtpreis})"
+
+    def save(self, *args, **kwargs):
+        """Berechne preis_pro_einheit beim Speichern"""
+        if self.menge > 0:
+            self.preis_pro_einheit = self.gesamtpreis / self.menge
+        else:
+            self.preis_pro_einheit = self.gesamtpreis
+        super().save(*args, **kwargs)
+
+
+class BillaProdukt(models.Model):
+    """Billa Produkt - Normalisierte Produktdaten"""
+
+    KATEGORIE_CHOICES = [
+        ('obst_gemuese', 'Obst & Gemüse'),
+        ('milchprodukte', 'Milchprodukte'),
+        ('fleisch_fisch', 'Fleisch & Fisch'),
+        ('brot_backwaren', 'Brot & Backwaren'),
+        ('getraenke', 'Getränke'),
+        ('tiefkuehl', 'Tiefkühl'),
+        ('konserven', 'Konserven & Fertiggerichte'),
+        ('suesses', 'Süßigkeiten & Snacks'),
+        ('haushalt', 'Haushalt & Reinigung'),
+        ('koerperpflege', 'Körperpflege'),
+        ('sonstiges', 'Sonstiges'),
+    ]
+
+    name_original = models.CharField(max_length=500, unique=True, verbose_name="Original-Name")
+    name_normalisiert = models.CharField(max_length=500, db_index=True, verbose_name="Normalisierter Name")
+    kategorie = models.CharField(
+        max_length=50,
+        choices=KATEGORIE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Kategorie"
+    )
+    marke = models.CharField(max_length=200, null=True, blank=True, verbose_name="Marke")
+
+    # Statistiken
+    durchschnittspreis = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Durchschnittspreis"
+    )
+    letzter_preis = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Letzter Preis"
+    )
+    anzahl_kaeufe = models.IntegerField(default=0, verbose_name="Anzahl Käufe")
+    letzte_aktualisierung = models.DateTimeField(auto_now=True, verbose_name="Letzte Aktualisierung")
+
+    class Meta:
+        db_table = 'billa_produkt'
+        verbose_name = "Billa Produkt"
+        verbose_name_plural = "Billa Produkte"
+        ordering = ['name_normalisiert']
+        indexes = [
+            models.Index(fields=['name_normalisiert']),
+            models.Index(fields=['kategorie']),
+        ]
+
+    def __str__(self):
+        return self.name_normalisiert
+
+    def update_statistiken(self):
+        """Aktualisiert die Statistiken für dieses Produkt"""
+        from django.db.models import Avg, Max, Count
+
+        stats = self.artikel.aggregate(
+            avg_preis=Avg('preis_pro_einheit'),  # ← Stückpreis!
+            letzter_preis=Max('einkauf__datum'),
+            anzahl=Count('id')
+        )
+
+        if stats['avg_preis']:
+            self.durchschnittspreis = stats['avg_preis']
+
+        if stats['letzter_preis']:
+            letzter_artikel = self.artikel.filter(
+                einkauf__datum=stats['letzter_preis']
+            ).first()
+            if letzter_artikel:
+                self.letzter_preis = letzter_artikel.preis_pro_einheit  # ← Stückpreis!
+
+        self.anzahl_kaeufe = stats['anzahl'] or 0
+        self.save()
+
+
+class BillaPreisHistorie(models.Model):
+    """Billa Preishistorie - Tracking von Preisänderungen"""
+
+    produkt = models.ForeignKey(
+        BillaProdukt,
+        on_delete=models.CASCADE,
+        related_name='preishistorie',
+        verbose_name="Produkt"
+    )
+    artikel = models.ForeignKey(
+        BillaArtikel,
+        on_delete=models.CASCADE,
+        related_name='preishistorie',
+        verbose_name="Artikel"
+    )
+
+    datum = models.DateField(db_index=True, verbose_name="Datum")
+    preis = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preis")
+    menge = models.DecimalField(max_digits=10, decimal_places=3, verbose_name="Menge")
+    einheit = models.CharField(max_length=20, verbose_name="Einheit")
+    filiale = models.CharField(max_length=20, verbose_name="Filiale")
+
+    class Meta:
+        db_table = 'billa_preis_historie'
+        verbose_name = "Billa Preishistorie"
+        verbose_name_plural = "Billa Preishistorie"
+        ordering = ['-datum']
+        indexes = [
+            models.Index(fields=['produkt', 'datum']),
+            models.Index(fields=['datum']),
+        ]
+
+    def __str__(self):
+        return f"{self.produkt.name_normalisiert} - {self.datum}: € {self.preis}"
+
+
+class BillaKategorieMapping(models.Model):
+    """Billa Kategorie-Mapping - Manuelle Zuordnung von Produkten zu Kategorien"""
+
+    suchbegriff = models.CharField(max_length=200, unique=True, verbose_name="Suchbegriff")
+    kategorie = models.CharField(
+        max_length=50,
+        choices=BillaProdukt.KATEGORIE_CHOICES,
+        verbose_name="Kategorie"
+    )
+    marke = models.CharField(max_length=200, null=True, blank=True, verbose_name="Marke")
+    prioritaet = models.IntegerField(default=0, verbose_name="Priorität")
+
+    class Meta:
+        db_table = 'billa_kategorie_mapping'
+        verbose_name = "Billa Kategorie-Mapping"
+        verbose_name_plural = "Billa Kategorie-Mappings"
+        ordering = ['-prioritaet', 'suchbegriff']
+
+    def __str__(self):
+        return f"{self.suchbegriff} → {self.get_kategorie_display()}"

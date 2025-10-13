@@ -1,0 +1,271 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Einkauf {{ einkauf.re_nr }} - Billa{% endblock %}
+
+{% block extra_css %}
+<style>
+    .receipt-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    .receipt-info {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .artikel-table {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .artikel-row:hover {
+        background-color: #f8f9fa;
+    }
+    .price-positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+    .price-negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    .rabatt-badge {
+        background: #28a745;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    .summary-box {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Zurück-Button -->
+    <div class="mb-3">
+        <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zum Dashboard
+        </a>
+    </div>
+
+    <!-- Receipt Header -->
+    <div class="receipt-header">
+        <div class="row">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="bi bi-receipt"></i> Einkauf {{ einkauf.datum|date:"d.m.Y" }}
+                </h1>
+                <p class="mb-0 mt-2">
+                    <i class="bi bi-shop"></i> Filiale {{ einkauf.filiale }}
+                    {% if einkauf.zeit %}
+                    <span class="ms-3"><i class="bi bi-clock"></i> {{ einkauf.zeit|time:"H:i" }} Uhr</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <h2 class="mb-0">€ {{ einkauf.gesamt_preis|floatformat:2 }}</h2>
+                <p class="mb-0">
+                    <small>Ersparnis: € {{ einkauf.gesamt_ersparnis|floatformat:2 }}</small>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Einkaufs-Informationen -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="receipt-info">
+                <h5 class="mb-3"><i class="bi bi-info-circle"></i> Details</h5>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Rechnungsnummer:</strong></td>
+                        <td>{{ einkauf.re_nr }}</td>
+                    </tr>
+                    {% if einkauf.bon_nr %}
+                    <tr>
+                        <td><strong>Bon-Nummer:</strong></td>
+                        <td>{{ einkauf.bon_nr }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>Datum & Zeit:</strong></td>
+                        <td>{{ einkauf.datum|date:"d.m.Y" }} {% if einkauf.zeit %}{{ einkauf.zeit|time:"H:i" }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Filiale:</strong></td>
+                        <td>{{ einkauf.filiale }}</td>
+                    </tr>
+                    {% if einkauf.kassa %}
+                    <tr>
+                        <td><strong>Kassa:</strong></td>
+                        <td>{{ einkauf.kassa }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>Anzahl Artikel:</strong></td>
+                        <td>{{ artikel.count }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="receipt-info">
+                <h5 class="mb-3"><i class="bi bi-calculator"></i> Preise & Steuern</h5>
+                <table class="table table-sm">
+                    {% if einkauf.zwischensumme %}
+                    <tr>
+                        <td><strong>Zwischensumme:</strong></td>
+                        <td class="text-end">€ {{ einkauf.zwischensumme|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>Gesamte Ersparnis:</strong></td>
+                        <td class="text-end price-positive">-€ {{ einkauf.gesamt_ersparnis|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="table-primary">
+                        <td><strong>Gesamtpreis:</strong></td>
+                        <td class="text-end"><strong>€ {{ einkauf.gesamt_preis|floatformat:2 }}</strong></td>
+                    </tr>
+                    <tr><td colspan="2"><hr class="my-2"></td></tr>
+                    {% if einkauf.mwst_b %}
+                    <tr>
+                        <td><small>MwSt 10%:</small></td>
+                        <td class="text-end"><small>€ {{ einkauf.mwst_b|floatformat:2 }}</small></td>
+                    </tr>
+                    {% endif %}
+                    {% if einkauf.mwst_c %}
+                    <tr>
+                        <td><small>MwSt 20%:</small></td>
+                        <td class="text-end"><small>€ {{ einkauf.mwst_c|floatformat:2 }}</small></td>
+                    </tr>
+                    {% endif %}
+                    {% if einkauf.mwst_g %}
+                    <tr>
+                        <td><small>MwSt 13%:</small></td>
+                        <td class="text-end"><small>€ {{ einkauf.mwst_g|floatformat:2 }}</small></td>
+                    </tr>
+                    {% endif %}
+                    <tr><td colspan="2"><hr class="my-2"></td></tr>
+                    {% if einkauf.oe_punkte_gesammelt %}
+                    <tr>
+                        <td><small>Ö-Punkte gesammelt:</small></td>
+                        <td class="text-end"><small class="text-success">+{{ einkauf.oe_punkte_gesammelt }}</small></td>
+                    </tr>
+                    {% endif %}
+                    {% if einkauf.oe_punkte_eingeloest %}
+                    <tr>
+                        <td><small>Ö-Punkte eingelöst:</small></td>
+                        <td class="text-end"><small class="text-danger">-{{ einkauf.oe_punkte_eingeloest }}</small></td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Artikel-Liste -->
+    <div class="artikel-table">
+        <div class="p-3 bg-light border-bottom">
+            <h5 class="mb-0"><i class="bi bi-cart3"></i> Artikel ({{ artikel.count }})</h5>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 40%">Produkt</th>
+                        <th style="width: 10%" class="text-center">Menge</th>
+                        <th style="width: 15%" class="text-end">Einzelpreis</th>
+                        <th style="width: 15%" class="text-end">Preis</th>
+                        <th style="width: 15%" class="text-end">Rabatt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in artikel %}
+                    <tr class="artikel-row">
+                        <td>{{ item.position|add:1 }}</td>
+                        <td>
+                            {% if item.produkt %}
+                            <a href="{% url 'finance:billa_produkt_detail' item.produkt.id %}" class="text-decoration-none">
+                                {{ item.produkt_name }}
+                            </a>
+                            {% else %}
+                            {{ item.produkt_name }}
+                            {% endif %}
+                            {% if item.ist_mehrfachgebinde %}
+                            <span class="badge bg-info ms-1">Gebinde</span>
+                            {% endif %}
+                            {% if item.ist_gewichtsartikel %}
+                            <span class="badge bg-secondary ms-1">Gewicht</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {{ item.menge|floatformat:3 }} {{ item.einheit }}
+                        </td>
+                        <td class="text-end">
+                            {% if item.einzelpreis %}
+                            € {{ item.einzelpreis|floatformat:2 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <strong>€ {{ item.gesamtpreis|floatformat:2 }}</strong>
+                        </td>
+                        <td class="text-end">
+                            {% if item.rabatt > 0 %}
+                            <span class="rabatt-badge">
+                                -€ {{ item.rabatt|floatformat:2 }}
+                            </span>
+                            {% if item.rabatt_typ %}
+                            <br><small class="text-muted">{{ item.rabatt_typ }}</small>
+                            {% endif %}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="4" class="text-end"><strong>Summe:</strong></td>
+                        <td class="text-end"><strong>€ {{ einkauf.gesamt_preis|floatformat:2 }}</strong></td>
+                        <td class="text-end"><strong class="text-success">-€ {{ einkauf.gesamt_ersparnis|floatformat:2 }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Ersparnis-Quote -->
+    {% if einkauf.ersparnis_prozent > 0 %}
+    <div class="summary-box mt-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h5 class="mb-0"><i class="bi bi-piggy-bank"></i> Ersparnis-Quote</h5>
+                <p class="mb-0 text-muted">Du hast {{ einkauf.ersparnis_prozent|floatformat:1 }}% durch Aktionen gespart!</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <h3 class="mb-0 text-success">{{ einkauf.ersparnis_prozent|floatformat:1 }}%</h3>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

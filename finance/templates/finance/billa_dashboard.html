@@ -1,0 +1,275 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Billa Einkaufsanalyse{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+    }
+    .chart-container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>🛒 Billa Einkaufsanalyse</h1>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Von:</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">Bis:</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="filiale" class="form-label">Filiale:</label>
+                <select class="form-select" id="filiale" name="filiale">
+                    <option value="alle" {% if selected_filiale == 'alle' %}selected{% endif %}>Alle Filialen</option>
+                    {% for f in filialen %}
+                    <option value="{{ f }}" {% if selected_filiale == f %}selected{% endif %}>{{ f }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">Filter anwenden</button>
+                <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-secondary">Zurücksetzen</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Kennzahlen -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Anzahl Einkäufe</div>
+                <div class="stat-value">{{ stats.anzahl|default:0 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Gesamtausgaben</div>
+                <div class="stat-value">€ {{ stats.gesamt_ausgaben|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Ø Warenkorbwert</div>
+                <div class="stat-value">€ {{ stats.avg_warenkorb|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Gesamte Ersparnis</div>
+                <div class="stat-value text-success">€ {{ stats.gesamt_ersparnis|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>📊 Tägliche Ausgaben</h5>
+                <div id="chart-daily"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>📊 Monatliche Ausgaben</h5>
+                <div id="chart-monthly"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>🏷️ Top 15 Produkte (Häufigkeit)</h5>
+                <div id="chart-top-products"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>💰 Top 15 Produkte (Ausgaben)</h5>
+                <div id="chart-top-spending"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>🎯 Ausgaben nach Kategorie</h5>
+                <div id="chart-kategorie"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>💸 Ersparnisse nach Rabatt-Typ</h5>
+                <div id="chart-rabatte"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation zu weiteren Seiten -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Weitere Analysen</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-outline-primary w-100">
+                                📦 Alle Produkte
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'finance:billa_preisentwicklung' %}" class="btn btn-outline-primary w-100">
+                                📈 Preisentwicklung
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'finance:billa_statistiken' %}" class="btn btn-outline-primary w-100">
+                                📊 Erweiterte Statistiken
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+// Tägliche Ausgaben
+const dailyData = {{ daily_spending|safe }};
+const dailyTrace = {
+    x: dailyData.map(d => d.tag),
+    y: dailyData.map(d => d.ausgaben),
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: {color: '#FF6B6B'}
+};
+Plotly.newPlot('chart-daily', [dailyTrace], {
+    margin: {t: 20, b: 40, l: 50, r: 20},
+    xaxis: {title: 'Datum'},
+    yaxis: {title: 'Ausgaben (€)'}
+});
+
+// Monatliche Ausgaben
+const monthlyData = {{ monthly_spending|safe }};
+const monthlyTrace = {
+    x: monthlyData.map(d => d.monat),
+    y: monthlyData.map(d => d.ausgaben),
+    type: 'bar',
+    marker: {color: '#4ECDC4'}
+};
+Plotly.newPlot('chart-monthly', [monthlyTrace], {
+    margin: {t: 20, b: 40, l: 50, r: 20},
+    xaxis: {title: 'Monat'},
+    yaxis: {title: 'Ausgaben (€)'}
+});
+
+// Top Produkte (Häufigkeit)
+const topProdukte = {{ top_produkte_anzahl|safe }};
+const topProdukteTrace = {
+    x: topProdukte.map(p => p.anzahl),
+    y: topProdukte.map(p => p.produkt__name_normalisiert),
+    type: 'bar',
+    orientation: 'h',
+    marker: {color: '#95E1D3'}
+};
+Plotly.newPlot('chart-top-products', [topProdukteTrace], {
+    margin: {t: 20, b: 40, l: 200, r: 20},
+    xaxis: {title: 'Anzahl Käufe'},
+    yaxis: {title: ''}
+});
+
+// Top Produkte (Ausgaben)
+const topAusgaben = {{ top_produkte_ausgaben|safe }};
+const topAusgabenTrace = {
+    x: topAusgaben.map(p => p.ausgaben),
+    y: topAusgaben.map(p => p.produkt__name_normalisiert),
+    type: 'bar',
+    orientation: 'h',
+    marker: {color: '#F38181'}
+};
+Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
+    margin: {t: 20, b: 40, l: 200, r: 20},
+    xaxis: {title: 'Ausgaben (€)'},
+    yaxis: {title: ''}
+});
+
+// Ausgaben nach Kategorie
+const kategorieData = {{ ausgaben_kategorie|safe }};
+const kategorieLabels = {
+    'obst_gemuese': 'Obst & Gemüse',
+    'milchprodukte': 'Milchprodukte',
+    'fleisch_fisch': 'Fleisch & Fisch',
+    'brot_backwaren': 'Brot & Backwaren',
+    'getraenke': 'Getränke',
+    'tiefkuehl': 'Tiefkühl',
+    'konserven': 'Konserven',
+    'suesses': 'Süßigkeiten',
+    'haushalt': 'Haushalt',
+    'koerperpflege': 'Körperpflege',
+    'sonstiges': 'Sonstiges'
+};
+const kategorieTrace = {
+    values: kategorieData.map(k => k.ausgaben),
+    labels: kategorieData.map(k => kategorieLabels[k.produkt__kategorie] || k.produkt__kategorie),
+    type: 'pie'
+};
+Plotly.newPlot('chart-kategorie', [kategorieTrace], {
+    margin: {t: 20, b: 20, l: 20, r: 20}
+});
+
+// Rabatte
+const rabatteData = {{ rabatte|safe }};
+const rabatteTrace = {
+    values: rabatteData.map(r => r.ersparnis),
+    labels: rabatteData.map(r => r.rabatt_typ),
+    type: 'pie'
+};
+Plotly.newPlot('chart-rabatte', [rabatteTrace], {
+    margin: {t: 20, b: 20, l: 20, r: 20}
+});
+</script>
+{% endblock %}

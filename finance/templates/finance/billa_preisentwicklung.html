@@ -1,0 +1,201 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Preisentwicklung - Billa{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    .preis-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+    }
+    .preis-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .produkt-link {
+        text-decoration: none;
+        color: inherit;
+    }
+    .produkt-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+    .preis-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+    }
+    .preis-box {
+        text-align: center;
+        flex: 1;
+    }
+    .preis-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        display: block;
+    }
+    .preis-wert {
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    .preis-up {
+        color: #dc3545;
+    }
+    .preis-down {
+        color: #28a745;
+    }
+    .diff-badge {
+        font-size: 1rem;
+        padding: 8px 15px;
+        border-radius: 20px;
+    }
+    .diff-up {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .diff-down {
+        background: #d4edda;
+        color: #155724;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-graph-up-arrow"></i> Preisentwicklung
+                </h1>
+                <p class="mb-0">Produkte mit den größten Preisänderungen</p>
+            </div>
+            <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-light">
+                <i class="bi bi-arrow-left"></i> Zurück
+            </a>
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-info-circle"></i>
+        <strong>Hinweis:</strong> Hier werden nur Produkte angezeigt, die mindestens 3x gekauft wurden 
+        und eine Preisänderung von mehr als 50 Cent aufweisen.
+    </div>
+
+    <!-- Preisentwicklungen -->
+    {% if produkte %}
+    <div class="row">
+        {% for item in produkte %}
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_produkt_detail' item.produkt.id %}" class="produkt-link">
+                <div class="preis-card">
+                    <!-- Produkt Name -->
+                    <div class="produkt-name">
+                        {{ item.produkt.name_normalisiert }}
+                    </div>
+
+                    <!-- Kategorie -->
+                    {% if item.produkt.kategorie %}
+                    <span class="badge bg-secondary">
+                        {{ item.produkt.get_kategorie_display }}
+                    </span>
+                    {% endif %}
+
+                    <!-- Preis-Informationen -->
+                    <div class="preis-info">
+                        <div class="preis-box">
+                            <span class="preis-label">Min. Preis</span>
+                            <span class="preis-wert preis-down">
+                                € {{ item.min_preis|floatformat:2 }}
+                            </span>
+                        </div>
+                        <div class="preis-box">
+                            <i class="bi bi-arrow-right text-muted"></i>
+                        </div>
+                        <div class="preis-box">
+                            <span class="preis-label">Max. Preis</span>
+                            <span class="preis-wert preis-up">
+                                € {{ item.max_preis|floatformat:2 }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Differenz -->
+                    <div class="text-center mt-3">
+                        <span class="diff-badge diff-up">
+                            <i class="bi bi-arrow-up"></i>
+                            +€ {{ item.diff|floatformat:2 }} 
+                            (+{{ item.diff_pct|floatformat:1 }}%)
+                        </span>
+                    </div>
+
+                    <!-- Anzahl Käufe -->
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            <i class="bi bi-cart3"></i> 
+                            {{ item.produkt.anzahl_kaeufe }} Käufe
+                        </small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center">
+        <i class="bi bi-exclamation-triangle"></i>
+        <h5>Keine Preisänderungen gefunden</h5>
+        <p class="mb-0">
+            Es gibt derzeit keine Produkte mit signifikanten Preisänderungen.
+            Importiere mehr Rechnungen, um Preistrends zu erkennen.
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Statistik-Box -->
+    {% if produkte %}
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="bi bi-bar-chart"></i> Zusammenfassung
+            </h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Produkte mit Preisänderungen:</strong> {{ produkte|length }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Durchschnittliche Änderung:</strong> 
+                    {% widthratio produkte|length 1 1 as count %}
+                    {% if count > 0 %}
+                    {{ produkte.0.diff_pct|floatformat:1 }}%
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <strong>Größte Änderung:</strong> 
+                    +€ {{ produkte.0.diff|floatformat:2 }} ({{ produkte.0.diff_pct|floatformat:1 }}%)
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
