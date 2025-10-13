@@ -2975,21 +2975,22 @@ def api_supermarket_year_comparison(request):
 
     month_labels = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
+    # KORRIGIERT: Farben und Reihenfolge wie bei anderen CategoryGroups
     return JsonResponse({
         'labels': month_labels,
         'datasets': [
             {
-                'label': '2024',
-                'data': comparison_data.get(2024, [0] * 12),
-                'backgroundColor': 'rgba(91, 155, 213, 0.8)',
-                'borderColor': 'rgba(91, 155, 213, 1)',
+                'label': '2025',
+                'data': comparison_data.get(2025, [0] * 12),
+                'backgroundColor': 'rgba(54, 162, 235, 0.8)',  # Blau
+                'borderColor': 'rgba(54, 162, 235, 1)',
                 'borderWidth': 1
             },
             {
-                'label': '2025',
-                'data': comparison_data.get(2025, [0] * 12),
-                'backgroundColor': 'rgba(237, 125, 49, 0.8)',
-                'borderColor': 'rgba(237, 125, 49, 1)',
+                'label': '2024',
+                'data': comparison_data.get(2024, [0] * 12),
+                'backgroundColor': 'rgba(128, 128, 128, 0.5)',  # Grau
+                'borderColor': 'rgba(128, 128, 128, 1)',
                 'borderWidth': 1
             }
         ]
