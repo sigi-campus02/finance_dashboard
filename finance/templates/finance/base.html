@@ -139,16 +139,18 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<!-- Navbar -->
+    <nav class="navbar navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'finance:dashboard' %}">
                 <i class="bi bi-currency-euro"></i> Finance Dashboard
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <!-- Toggler nur auf Mobile sichtbar -->
+            <button class="navbar-toggler d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Navigation nur auf Mobile sichtbar (d-md-none) -->
+            <div class="collapse d-md-none" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.username != 'robert' %}
                     <li class="nav-item">
@@ -177,20 +179,15 @@
                             <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
                         </a>
                     </li>
+                    {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:scheduled_transactions' %}">
                             <i class="bi bi-calendar-event"></i> Scheduled Transactions
                         </a>
                     </li>
-                    {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:asset_overview' %}">
                             <i class="bi bi-wallet2"></i> Vermögen
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:receipt_upload' %}">
-                            <i class="bi bi-camera"></i> Rechnung scannen
                         </a>
                     </li>
                     {% endif %}
@@ -206,6 +203,17 @@
                     {% endif %}
                 </ul>
             </div>
+            <!-- Logout Button auf Desktop (d-none d-md-block) -->
+            {% if user.is_authenticated %}
+            <div class="d-none d-md-block ms-auto">
+                <form method="post" action="{% url 'logout' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-box-arrow-right"></i> Logout ({{ user.username }})
+                    </button>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </nav>
 
@@ -213,6 +221,7 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
+<!-- Sidebar -->
             <nav class="col-md-2 d-none d-md-block sidebar">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
@@ -240,13 +249,20 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'add_transaction' %}active{% endif %}"
+                               href="{% url 'finance:add_transaction' %}">
+                                <i class="bi bi-plus-circle"></i>
+                                Transaktion hinzufügen
+                            </a>
+                        </li>
+                        {% if user.username != 'robert' %}
+                        <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
                                href="{% url 'finance:scheduled_transactions' %}">
                                 <i class="bi bi-calendar-event"></i>
                                 Scheduled Transactions
                             </a>
                         </li>
-                        {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
                                href="{% url 'finance:asset_overview' %}">
@@ -264,6 +280,14 @@
                             <a class="nav-link" href="#">
                                 <i class="bi bi-gear"></i>
                                 Einstellungen
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
+                               href="{% url 'finance:scheduled_transactions' %}">
+                                <i class="bi bi-calendar-event"></i>
+                                Scheduled Transactions
                             </a>
                         </li>
                         {% endif %}
