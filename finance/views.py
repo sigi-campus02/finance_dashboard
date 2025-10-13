@@ -122,14 +122,19 @@ def dashboard(request):
         date__gte=last_month
     ).aggregate(Sum('outflow'))['outflow__sum'] or 0
 
-    top_categories = transactions.filter(
+    # Top Payees statt Top Kategorien
+    top_payees = transactions.filter(
         outflow__gt=0
     ).values(
-        'category__category',
-        'category__categorygroup__category_group'
+        'payee__payee'
+    ).exclude(
+        category__categorygroup__category_group__iexact='NoCategory'
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
     ).annotate(
-        total=Sum('outflow')
-    ).order_by('-total')[:5]
+        total=Sum('outflow'),
+        count=Count('id')
+    ).order_by('-total')[:10]
 
     recent_transactions = transactions.select_related(
         'account', 'payee', 'category', 'flag'
@@ -142,7 +147,7 @@ def dashboard(request):
         'netto': netto,
         'transaction_count': transaction_count,
         'last_month_outflow': last_month_outflow,
-        'top_categories': top_categories,
+        'top_payees': top_payees,  # Geändert von top_categories
         'recent_transactions': recent_transactions
     }
 

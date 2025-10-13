@@ -129,22 +129,26 @@
     <div class="col-md-6 mb-3">
         <div class="card">
             <div class="card-header bg-white">
-                <h5 class="card-title mb-0">Top Kategorien</h5>
+                <h5 class="card-title mb-0">Top Payees</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Kategorie</th>
+                                <th>Payee</th>
+                                <th class="text-center">Anzahl</th>
                                 <th class="text-end">Betrag</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for cat in top_categories %}
+                            {% for payee in top_payees %}
                             <tr>
-                                <td>{{ cat.category__categorygroup__category_group|default:"Unbekannt" }}</td>
-                                <td class="text-end">€ {{ cat.total|floatformat:2 }}</td>
+                                <td>{{ payee.payee__payee|default:"Unbekannt" }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">{{ payee.count }}</span>
+                                </td>
+                                <td class="text-end">€ {{ payee.total|floatformat:2 }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
