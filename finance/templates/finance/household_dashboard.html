@@ -10,10 +10,35 @@
         padding-bottom: 10px;
     }
 
+    .chart-container-medium {
+        position: relative;
+        height: 400px;
+        padding-bottom: 10px;
+    }
+
+    .categorygroup-header {
+        padding: 15px 20px;
+        color: white;
+        border-radius: 5px 5px 0 0;
+        margin-bottom: 0;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        border-left: 4px solid;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
+
     /* Mobile: Mehr Höhe für bessere Lesbarkeit */
     @media (max-width: 768px) {
         .chart-container-horizontal {
             height: 700px;
+            padding-bottom: 15px;
+        }
+        .chart-container-medium {
+            height: 500px;
             padding-bottom: 15px;
         }
     }
@@ -22,6 +47,10 @@
     @media (max-width: 576px) {
         .chart-container-horizontal {
             height: 800px;
+            padding-bottom: 20px;
+        }
+        .chart-container-medium {
+            height: 600px;
             padding-bottom: 20px;
         }
     }
@@ -75,7 +104,7 @@
     </div>
 
     <!-- Tortendiagramme -->
-    <div class="row">
+    <div class="row mb-5">
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header bg-primary text-white">
@@ -102,6 +131,426 @@
         </div>
     </div>
 
+    <!-- 1. Haushaltsausgaben -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(91, 155, 213);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-cart"></i> Haushaltsausgaben
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(91, 155, 213);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-2">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-2">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-2">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart2"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart2"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart2"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Wohnung -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(237, 125, 49);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-house"></i> Wohnung
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(237, 125, 49);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-3">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-3">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-3">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart3"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart3"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart3"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Restaurant & Lieferservice -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(132, 151, 176);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-cup-straw"></i> Restaurant & Lieferservice
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(132, 151, 176);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-4">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-4">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-4">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart4"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart4"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart4"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Ärzte & Gesundheit -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(255, 192, 0);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-heart-pulse"></i> Ärzte & Gesundheit
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(255, 192, 0);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-5">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-5">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-5">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart5"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart5"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart5"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Freizeit & Hobby & Urlaub -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(112, 173, 71);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-balloon"></i> Freizeit & Hobby & Urlaub
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(112, 173, 71);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-6">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-6">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-6">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart6"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart6"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart6"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Geschenke -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(68, 114, 196);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-gift"></i> Geschenke
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(68, 114, 196);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-7">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-7">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-7">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart7"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart7"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart7"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. KFZ -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(255, 0, 102);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-car-front"></i> KFZ
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="stat-box" style="border-left-color: rgb(255, 0, 102);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-10">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-10">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-10">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="trendChart10"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="comparisonChart10"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="quarterlyChart10"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Link zur Transaktionsliste -->
     <div class="row">
         <div class="col-12">
@@ -114,7 +563,7 @@
                         Für eine detaillierte Übersicht aller Haushalt-Transaktionen mit Filtermöglichkeiten.
                     </p>
                     <a href="{% url 'finance:household_transactions' %}" class="btn btn-primary">
-                        <i class="bi bi-table"></i> Zur Transaktionsliste
+                        <i class="bi bi-arrow-right-circle"></i> Zu den Transaktionen
                     </a>
                 </div>
             </div>
@@ -124,7 +573,11 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
 <script>
+// ===== BESTEHENDE CHART-VARIABLEN UND FUNKTIONEN =====
 let monthlyChart = null;
 let pieChart2025 = null;
 let pieChart2024 = null;
@@ -237,14 +690,14 @@ function loadPieChart(year, canvasId, chartVariable) {
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById(canvasId).getContext('2d');
-            
+
             // Destroy existing chart
             if (chartVariable === '2025' && pieChart2025) {
                 pieChart2025.destroy();
             } else if (chartVariable === '2024' && pieChart2024) {
                 pieChart2024.destroy();
             }
-            
+
             const newChart = new Chart(ctx, {
                 type: 'pie',
                 data: data,
@@ -269,12 +722,12 @@ function loadPieChart(year, canvasId, chartVariable) {
                                     const value = context.parsed;
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const percentage = ((value / total) * 100).toFixed(1);
-                                    
-                                    return label + ': € ' + 
+
+                                    return label + ': € ' +
                                            value.toLocaleString('de-DE', {
                                                minimumFractionDigits: 2,
                                                maximumFractionDigits: 2
-                                           }) + 
+                                           }) +
                                            ' (' + percentage + '%)';
                                 }
                             }
@@ -282,7 +735,7 @@ function loadPieChart(year, canvasId, chartVariable) {
                     }
                 }
             });
-            
+
             // Store chart reference
             if (chartVariable === '2025') {
                 pieChart2025 = newChart;
@@ -295,14 +748,273 @@ function loadPieChart(year, canvasId, chartVariable) {
         });
 }
 
-// Initial Load
-loadMonthlyChart({{ current_year }});
-loadPieChart(2025, 'categoryPieChart2025', '2025');
-loadPieChart(2024, 'categoryPieChart2024', '2024');
+// ===== NEUE CATEGORYGROUP CHARTS =====
 
-// Event Listener für Jahr-Wechsel beim Balkendiagramm
-document.getElementById('barChartYearSelect').addEventListener('change', function() {
-    loadMonthlyChart(this.value);
+const categoryGroups = [2, 3, 4, 5, 6, 7, 10];
+
+// Format für Euro-Werte
+function formatEuro(value) {
+    return new Intl.NumberFormat('de-DE', { 
+        style: 'currency', 
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
+}
+
+// Lade Statistiken für alle CategoryGroups
+function loadCategoryGroupStats() {
+    categoryGroups.forEach(groupId => {
+        fetch(`/api/categorygroup-stats/?group_id=${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById(`avg-spending-${groupId}`).innerHTML = formatEuro(data.monthly_average);
+                document.getElementById(`num-months-${groupId}`).textContent = data.num_months;
+                document.getElementById(`total-spending-${groupId}`).textContent = formatEuro(data.total_spending);
+            })
+            .catch(error => {
+                console.error(`Error loading stats for group ${groupId}:`, error);
+                document.getElementById(`avg-spending-${groupId}`).innerHTML = '<span class="text-danger">Fehler</span>';
+            });
+    });
+}
+
+// Erstelle Trendlinie-Diagramme
+function createTrendCharts() {
+    categoryGroups.forEach(groupId => {
+        fetch(`/api/categorygroup-monthly-trend/?group_id=${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById(`trendChart${groupId}`).getContext('2d');
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: 'Ausgaben',
+                                data: data.data,
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Trend',
+                                data: data.trend_data,
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                tension: 0,
+                                pointRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatEuro(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatEuro(value);
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error(`Error creating trend chart ${groupId}:`, error));
+    });
+}
+
+// Erstelle Vergleichs-Diagramme (2024 vs 2025)
+function createComparisonCharts() {
+    categoryGroups.forEach(groupId => {
+        fetch(`/api/categorygroup-year-comparison/?group_id=${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById(`comparisonChart${groupId}`).getContext('2d');
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: '2025',
+                                data: data.data_2025,
+                                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: '2024',
+                                data: data.data_2024,
+                                backgroundColor: 'rgba(128, 128, 128, 0.5)',
+                                borderColor: 'rgba(128, 128, 128, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatEuro(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatEuro(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error(`Error creating comparison chart ${groupId}:`, error));
+    });
+}
+
+// Erstelle Quartals-Diagramme
+function createQuarterlyCharts() {
+    categoryGroups.forEach(groupId => {
+        fetch(`/api/categorygroup-quarterly-breakdown/?group_id=${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById(`quarterlyChart${groupId}`).getContext('2d');
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatEuro(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatEuro(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error(`Error creating quarterly chart ${groupId}:`, error));
+    });
+}
+
+// Initialisierung beim Laden der Seite
+document.addEventListener('DOMContentLoaded', function() {
+    // Lade bestehende Charts (Balken und Tortendiagramme)
+    loadMonthlyChart({{ current_year }});
+    loadPieChart(2025, 'categoryPieChart2025', '2025');
+    loadPieChart(2024, 'categoryPieChart2024', '2024');
+    
+    // Event Listener für Jahr-Wechsel beim Balkendiagramm
+    document.getElementById('barChartYearSelect').addEventListener('change', function() {
+        loadMonthlyChart(this.value);
+    });
+    
+    // Lade alle CategoryGroup Daten
+    loadCategoryGroupStats();
+    createTrendCharts();
+    createComparisonCharts();
+    createQuarterlyCharts();
 });
 </script>
 {% endblock %}

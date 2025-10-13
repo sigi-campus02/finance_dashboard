@@ -56,4 +56,11 @@ urlpatterns = [
     # API Endpoints für Haushalt-Dashboard
     path('api/household-monthly-spending/', views.api_household_monthly_spending, name='api_household_monthly_spending'),
     path('api/household-category-breakdown/', views.api_household_category_breakdown, name='api_household_category_breakdown'),
+
+    # API Endpoints für CategoryGroup-Diagramme im Haushalt-Dashboard
+    path('api/categorygroup-monthly-trend/', views.api_categorygroup_monthly_trend, name='api_categorygroup_monthly_trend'),
+    path('api/categorygroup-year-comparison/', views.api_categorygroup_year_comparison, name='api_categorygroup_year_comparison'),
+    path('api/categorygroup-quarterly-breakdown/', views.api_categorygroup_quarterly_breakdown, name='api_categorygroup_quarterly_breakdown'),
+    path('api/categorygroup-stats/', views.api_categorygroup_stats, name='api_categorygroup_stats'),
+
 ]

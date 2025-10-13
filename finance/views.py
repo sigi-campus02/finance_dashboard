@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import json
+import numpy as np
 from django.db.models import Sum, Count, Q, Value, CharField
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta, date
@@ -1768,7 +1769,6 @@ def api_spending_trend(request):
 
     # Berechne Trendlinie nur für Ausgaben (lineare Regression)
     if len(spending_data) >= 2:
-        import numpy as np
         x = np.arange(len(spending_data))
         y = np.array(spending_data)
 
@@ -2265,13 +2265,13 @@ def api_household_category_breakdown(request):
 
     # Definiere die gewünschten CategoryGroups mit Farben
     category_config = {
-        1: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},  # #5B9BD5
-        2: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},  # #ED7D31
-        3: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},  # #8497B0
-        4: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},  # #FFC000
-        5: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},  # #70AD47
-        6: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},  # #4472C4
-        9: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}  # #FF0066
+        2: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},  # #5B9BD5
+        3: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},  # #ED7D31
+        4: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},  # #8497B0
+        5: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},  # #FFC000
+        6: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},  # #70AD47
+        7: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},  # #4472C4
+        10: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}  # #FF0066
     }
 
     # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
@@ -2347,4 +2347,385 @@ def api_household_category_breakdown(request):
             'borderColor': colors,
             'borderWidth': 1
         }]
+    })
+
+
+@login_required
+def api_categorygroup_monthly_trend(request):
+    """API: Monatliche Ausgaben-Entwicklung pro CategoryGroup mit Trendlinie"""
+    group_id = request.GET.get('group_id')
+    if not group_id:
+        return JsonResponse({'error': 'group_id required'}, status=400)
+
+    group_id = int(group_id)
+
+    # Hole Daten für 2024 und 2025
+    start_date = datetime(2024, 1, 1)
+    end_date = datetime(2025, 12, 31)
+    current_month = datetime.now().replace(day=1)
+
+    # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
+    sigi_data = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        date__gte=start_date,
+        date__lte=end_date,
+        category__categorygroup_id=group_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    ).order_by('month')
+
+    # Robert: Alle Transaktionen
+    robert_data = FactTransactionsRobert.objects.filter(
+        date__gte=start_date,
+        date__lte=end_date,
+        category__categorygroup_id=group_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    ).order_by('month')
+
+    # Aggregiere Daten nach Monat (verwende Tuple aus Jahr und Monat als Key!)
+    monthly_totals = {}
+
+    for item in sigi_data:
+        month = item['month']
+        # Verwende (Jahr, Monat) als Key statt datetime-Objekt
+        key = (month.year, month.month)
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+        monthly_totals[key] = monthly_totals.get(key, 0) + netto
+
+    for item in robert_data:
+        month = item['month']
+        key = (month.year, month.month)
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+        monthly_totals[key] = monthly_totals.get(key, 0) + netto
+
+    # Erstelle Monatsliste für 2024 und 2025
+    labels = []
+    data = []
+
+    current_year = 2024
+    current_month_num = 1
+
+    while (current_year < 2025) or (current_year == 2025 and current_month_num <= 12):
+        month_date = datetime(current_year, current_month_num, 1)
+        labels.append(month_date.strftime('%b %Y'))
+
+        # Hole Wert mit (Jahr, Monat) Key
+        key = (current_year, current_month_num)
+        value = monthly_totals.get(key, 0)
+        data.append(value)
+
+        # Nächster Monat
+        if current_month_num == 12:
+            current_year += 1
+            current_month_num = 1
+        else:
+            current_month_num += 1
+
+    # Berechne Trendlinie (nur mit vollständigen Monaten)
+    now = datetime.now()
+    current_month_key = (now.year, now.month)
+
+    complete_data_points = []
+    complete_indices = []
+
+    for i, value in enumerate(data):
+        # Berechne Jahr und Monat für diesen Index
+        year = 2024 + (i // 12)
+        month = (i % 12) + 1
+
+        # Nur vollständige Monate (nicht der aktuelle)
+        if (year, month) < current_month_key:
+            complete_data_points.append(value)
+            complete_indices.append(i)
+
+    # Lineare Regression für Trendlinie
+    trend_data = []
+    if len(complete_data_points) >= 2:
+        try:
+            import numpy as np
+            x = np.array(complete_indices)
+            y = np.array(complete_data_points)
+
+            # Berechne Steigung und Y-Achsenabschnitt
+            m, b = np.polyfit(x, y, 1)
+
+            # Erstelle Trendlinie
+            for i in range(len(data)):
+                year = 2024 + (i // 12)
+                month = (i % 12) + 1
+
+                if (year, month) < current_month_key:
+                    trend_data.append(float(m * i + b))
+                else:
+                    trend_data.append(None)
+        except ImportError:
+            trend_data = [None] * len(data)
+    else:
+        trend_data = [None] * len(data)
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+        'trend_data': trend_data
+    })
+
+
+@login_required
+def api_categorygroup_year_comparison(request):
+    """API: Monatsvergleich 2024 vs 2025 pro CategoryGroup"""
+    group_id = request.GET.get('group_id')
+    if not group_id:
+        return JsonResponse({'error': 'group_id required'}, status=400)
+
+    group_id = int(group_id)
+
+    months_labels = [
+        'Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'
+    ]
+
+    data_2024 = [0] * 12
+    data_2025 = [0] * 12
+
+    # Daten für beide Jahre sammeln
+    for year, data_array in [(2024, data_2024), (2025, data_2025)]:
+        # Sigi
+        sigi_monthly = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            date__year=year,
+            category__categorygroup_id=group_id,
+            outflow__gt=0
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
+
+        # Robert
+        robert_monthly = FactTransactionsRobert.objects.filter(
+            date__year=year,
+            category__categorygroup_id=group_id,
+            outflow__gt=0
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
+
+        # Fülle Daten
+        for item in sigi_monthly:
+            month_index = item['month'].month - 1
+            netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+            data_array[month_index] += netto
+
+        for item in robert_monthly:
+            month_index = item['month'].month - 1
+            netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+            data_array[month_index] += netto
+
+    return JsonResponse({
+        'labels': months_labels,
+        'data_2024': data_2024,
+        'data_2025': data_2025
+    })
+
+
+@login_required
+def api_categorygroup_quarterly_breakdown(request):
+    """API: Quartalsweise gestapelte Ausgaben nach Kategorien"""
+    group_id = request.GET.get('group_id')
+    if not group_id:
+        return JsonResponse({'error': 'group_id required'}, status=400)
+
+    group_id = int(group_id)
+
+    # Hole alle Kategorien dieser CategoryGroup
+    categories = DimCategory.objects.filter(
+        categorygroup_id=group_id
+    ).exclude(
+        id=1  # "Ready to Assign"
+    )
+
+    # Definiere Quartale für 2024 und 2025
+    quarters = [
+        ('Q1 2024', datetime(2024, 1, 1), datetime(2024, 3, 31)),
+        ('Q2 2024', datetime(2024, 4, 1), datetime(2024, 6, 30)),
+        ('Q3 2024', datetime(2024, 7, 1), datetime(2024, 9, 30)),
+        ('Q4 2024', datetime(2024, 10, 1), datetime(2024, 12, 31)),
+        ('Q1 2025', datetime(2025, 1, 1), datetime(2025, 3, 31)),
+        ('Q2 2025', datetime(2025, 4, 1), datetime(2025, 6, 30)),
+        ('Q3 2025', datetime(2025, 7, 1), datetime(2025, 9, 30)),
+        ('Q4 2025', datetime(2025, 10, 1), datetime(2025, 12, 31)),
+    ]
+
+    labels = [q[0] for q in quarters]
+
+    # Erstelle Datasets für jede Kategorie
+    datasets = []
+
+    # Farbpalette für deutliche Unterscheidung
+    colors = [
+        'rgb(255, 99, 132)',  # Rot
+        'rgb(54, 162, 235)',  # Blau
+        'rgb(255, 206, 86)',  # Gelb
+        'rgb(75, 192, 192)',  # Türkis
+        'rgb(153, 102, 255)',  # Lila
+        'rgb(255, 159, 64)',  # Orange
+        'rgb(201, 203, 207)',  # Grau
+        'rgb(255, 99, 255)',  # Pink
+        'rgb(99, 255, 132)',  # Hellgrün
+        'rgb(99, 132, 255)',  # Hellblau
+    ]
+
+    for idx, category in enumerate(categories):
+        category_data = []
+
+        for quarter_label, start_date, end_date in quarters:
+            # Sigi
+            sigi_total = FactTransactionsSigi.objects.filter(
+                flag_id=5,
+                date__gte=start_date,
+                date__lte=end_date,
+                category_id=category.id,
+                outflow__gt=0
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).aggregate(
+                total_inflow=Sum('inflow'),
+                total_outflow=Sum('outflow')
+            )
+
+            # Robert
+            robert_total = FactTransactionsRobert.objects.filter(
+                date__gte=start_date,
+                date__lte=end_date,
+                category_id=category.id,
+                outflow__gt=0
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).aggregate(
+                total_inflow=Sum('inflow'),
+                total_outflow=Sum('outflow')
+            )
+
+            sigi_netto = float((sigi_total['total_outflow'] or 0) - (sigi_total['total_inflow'] or 0))
+            robert_netto = float((robert_total['total_outflow'] or 0) - (robert_total['total_inflow'] or 0))
+
+            category_data.append(sigi_netto + robert_netto)
+
+        # Wähle Farbe (mit Modulo für mehr als 10 Kategorien)
+        color = colors[idx % len(colors)]
+
+        datasets.append({
+            'label': category.category,
+            'data': category_data,
+            'backgroundColor': color,
+            'borderColor': color,
+            'borderWidth': 1
+        })
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': datasets
+    })
+
+
+@login_required
+def api_categorygroup_stats(request):
+    """API: Statistiken für CategoryGroup (z.B. monthly average)"""
+    group_id = request.GET.get('group_id')
+    if not group_id:
+        return JsonResponse({'error': 'group_id required'}, status=400)
+
+    group_id = int(group_id)
+
+    # Berechne Monthly Average (nur vollständige Monate)
+    current_month_start = datetime.now().replace(day=1)
+    start_date = datetime(2024, 1, 1)
+
+    # Sigi
+    sigi_data = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        date__gte=start_date,
+        date__lt=current_month_start,  # Exkl. aktueller Monat
+        category__categorygroup_id=group_id,
+        outflow__gt=0
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    )
+
+    # Robert
+    robert_data = FactTransactionsRobert.objects.filter(
+        date__gte=start_date,
+        date__lt=current_month_start,
+        category__categorygroup_id=group_id,
+        outflow__gt=0
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    )
+
+    # Aggregiere nach Monat
+    monthly_totals = {}
+
+    for item in sigi_data:
+        month = item['month']
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+        monthly_totals[month] = monthly_totals.get(month, 0) + netto
+
+    for item in robert_data:
+        month = item['month']
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+        monthly_totals[month] = monthly_totals.get(month, 0) + netto
+
+    # Berechne Durchschnitt
+    if monthly_totals:
+        total_spending = sum(monthly_totals.values())
+        num_months = len(monthly_totals)
+        monthly_average = total_spending / num_months if num_months > 0 else 0
+    else:
+        monthly_average = 0
+
+    return JsonResponse({
+        'monthly_average': round(monthly_average, 2),
+        'num_months': len(monthly_totals),
+        'total_spending': round(sum(monthly_totals.values()), 2) if monthly_totals else 0
     })
