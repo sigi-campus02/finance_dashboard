@@ -93,15 +93,26 @@ class Command(BaseCommand):
         for artikel_data in artikel_liste:
             artikel_data['einkauf'] = einkauf
 
-            # Finde oder erstelle Produkt
+            # Finde oder erstelle Produkt basierend auf NORMALISIERTEM Namen
             produkt_name_norm = artikel_data['produkt_name_normalisiert']
+            produkt_name_original = artikel_data['produkt_name']
+
+            # ✅ GEÄNDERT: get_or_create jetzt mit name_normalisiert
             produkt, created = BillaProdukt.objects.get_or_create(
-                name_original=artikel_data['produkt_name'],
+                name_normalisiert=produkt_name_norm,  # ← FIX: normalisiert statt original
                 defaults={
-                    'name_normalisiert': produkt_name_norm,
+                    'name_original': produkt_name_original,
                     'letzter_preis': artikel_data['gesamtpreis']
                 }
             )
+
+            # Falls das Produkt bereits existiert, aber unter anderem Original-Namen,
+            # aktualisiere den Original-Namen auf die häufigste Variante
+            if not created:
+                # Optionales Update: Behalte den kürzesten/häufigsten Original-Namen
+                if len(produkt_name_original) < len(produkt.name_original):
+                    produkt.name_original = produkt_name_original
+                    produkt.save(update_fields=['name_original'])
 
             # Automatische Kategorisierung
             if created or not produkt.kategorie:

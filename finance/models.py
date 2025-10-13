@@ -697,8 +697,21 @@ class BillaProdukt(models.Model):
         ('sonstiges', 'Sonstiges'),
     ]
 
-    name_original = models.CharField(max_length=500, unique=True, verbose_name="Original-Name")
-    name_normalisiert = models.CharField(max_length=500, db_index=True, verbose_name="Normalisierter Name")
+    # ✅ GEÄNDERT: name_original ist jetzt NICHT mehr unique
+    name_original = models.CharField(
+        max_length=500,
+        verbose_name="Original-Name",
+        help_text="Eine der Original-Varianten dieses Produkts"
+    )
+
+    # ✅ GEÄNDERT: name_normalisiert ist jetzt unique
+    name_normalisiert = models.CharField(
+        max_length=500,
+        db_index=True,
+        unique=True,  # ← NEU: unique constraint
+        verbose_name="Normalisierter Name"
+    )
+
     kategorie = models.CharField(
         max_length=50,
         choices=KATEGORIE_CHOICES,
@@ -744,7 +757,7 @@ class BillaProdukt(models.Model):
         from django.db.models import Avg, Max, Count
 
         stats = self.artikel.aggregate(
-            avg_preis=Avg('preis_pro_einheit'),  # ← Stückpreis!
+            avg_preis=Avg('preis_pro_einheit'),
             letzter_preis=Max('einkauf__datum'),
             anzahl=Count('id')
         )
@@ -757,10 +770,10 @@ class BillaProdukt(models.Model):
                 einkauf__datum=stats['letzter_preis']
             ).first()
             if letzter_artikel:
-                self.letzter_preis = letzter_artikel.preis_pro_einheit  # ← Stückpreis!
+                self.letzter_preis = letzter_artikel.preis_pro_einheit
 
         self.anzahl_kaeufe = stats['anzahl'] or 0
-        self.save()
+        self.save(update_fields=['durchschnittspreis', 'letzter_preis', 'anzahl_kaeufe'])
 
 
 class BillaPreisHistorie(models.Model):
