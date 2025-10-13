@@ -109,8 +109,15 @@ def dashboard(request):
     if request.user.username == 'robert':
         return redirect('finance:household_transactions')
 
-    current_year = datetime.now().year
-    transactions = FactTransactionsSigi.objects.filter(date__year=current_year)
+    # Jahr-Filter aus GET-Parameter, Standard ist aktuelles Jahr
+    selected_year = request.GET.get('year', datetime.now().year)
+    selected_year = int(selected_year)
+
+    # Verfügbare Jahre für Dropdown (von aktuell bis 2020)
+    current_year_now = datetime.now().year
+    available_years = range(current_year_now, 2019, -1)
+
+    transactions = FactTransactionsSigi.objects.filter(date__year=selected_year)
 
     total_inflow = transactions.aggregate(Sum('inflow'))['inflow__sum'] or 0
     total_outflow = transactions.aggregate(Sum('outflow'))['outflow__sum'] or 0
@@ -141,13 +148,14 @@ def dashboard(request):
     )[:10]
 
     context = {
-        'current_year': current_year,
+        'current_year': selected_year,  # Das ausgewählte Jahr
+        'available_years': available_years,  # Für Dropdown
         'total_inflow': total_inflow,
         'total_outflow': total_outflow,
         'netto': netto,
         'transaction_count': transaction_count,
         'last_month_outflow': last_month_outflow,
-        'top_payees': top_payees,  # Geändert von top_categories
+        'top_payees': top_payees,
         'recent_transactions': recent_transactions
     }
 
