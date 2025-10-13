@@ -174,10 +174,18 @@
                             </a></li>
                         </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:add_transaction' %}">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="addTransactionDropdown">
+                            <li><a class="dropdown-item" href="{% url 'finance:add_transaction' %}">
+                                <i class="bi bi-keyboard"></i> Manuell eingeben
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'finance:receipt_upload' %}">
+                                <i class="bi bi-camera"></i> Rechnung scannen
+                            </a></li>
+                        </ul>
                     </li>
                     {% if user.username != 'robert' %}
                     <li class="nav-item">
@@ -248,12 +256,18 @@
                                 Transaktionen Haushalt
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'add_transaction' %}active{% endif %}"
-                               href="{% url 'finance:add_transaction' %}">
-                                <i class="bi bi-plus-circle"></i>
-                                Transaktion hinzufügen
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
                             </a>
+                            <ul class="dropdown-menu" aria-labelledby="addTransactionDropdown">
+                                <li><a class="dropdown-item" href="{% url 'finance:add_transaction' %}">
+                                    <i class="bi bi-keyboard"></i> Manuell eingeben
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'finance:receipt_upload' %}">
+                                    <i class="bi bi-camera"></i> Rechnung scannen
+                                </a></li>
+                            </ul>
                         </li>
                         {% if user.username != 'robert' %}
                         <li class="nav-item">
