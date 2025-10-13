@@ -28,6 +28,7 @@
         padding: 20px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin-bottom: 20px;
+        min-height: 400px;
     }
     .filter-section {
         background: #f8f9fa;
@@ -175,70 +176,20 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
-// Tägliche Ausgaben
+// Daten aus Django Template
 const dailyData = {{ daily_spending|safe }};
-const dailyTrace = {
-    x: dailyData.map(d => d.tag),
-    y: dailyData.map(d => d.ausgaben),
-    type: 'scatter',
-    mode: 'lines+markers',
-    line: {color: '#FF6B6B'}
-};
-Plotly.newPlot('chart-daily', [dailyTrace], {
-    margin: {t: 20, b: 40, l: 50, r: 20},
-    xaxis: {title: 'Datum'},
-    yaxis: {title: 'Ausgaben (€)'}
-});
-
-// Monatliche Ausgaben
 const monthlyData = {{ monthly_spending|safe }};
-const monthlyTrace = {
-    x: monthlyData.map(d => d.monat),
-    y: monthlyData.map(d => d.ausgaben),
-    type: 'bar',
-    marker: {color: '#4ECDC4'}
-};
-Plotly.newPlot('chart-monthly', [monthlyTrace], {
-    margin: {t: 20, b: 40, l: 50, r: 20},
-    xaxis: {title: 'Monat'},
-    yaxis: {title: 'Ausgaben (€)'}
-});
-
-// Top Produkte (Häufigkeit)
 const topProdukte = {{ top_produkte_anzahl|safe }};
-const topProdukteTrace = {
-    x: topProdukte.map(p => p.anzahl),
-    y: topProdukte.map(p => p.produkt__name_normalisiert),
-    type: 'bar',
-    orientation: 'h',
-    marker: {color: '#95E1D3'}
-};
-Plotly.newPlot('chart-top-products', [topProdukteTrace], {
-    margin: {t: 20, b: 40, l: 200, r: 20},
-    xaxis: {title: 'Anzahl Käufe'},
-    yaxis: {title: ''}
-});
-
-// Top Produkte (Ausgaben)
 const topAusgaben = {{ top_produkte_ausgaben|safe }};
-const topAusgabenTrace = {
-    x: topAusgaben.map(p => p.ausgaben),
-    y: topAusgaben.map(p => p.produkt__name_normalisiert),
-    type: 'bar',
-    orientation: 'h',
-    marker: {color: '#F38181'}
-};
-Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
-    margin: {t: 20, b: 40, l: 200, r: 20},
-    xaxis: {title: 'Ausgaben (€)'},
-    yaxis: {title: ''}
-});
-
-// Ausgaben nach Kategorie
 const kategorieData = {{ ausgaben_kategorie|safe }};
+const rabatteData = {{ rabatte|safe }};
+
+// Kategorie Labels Mapping
 const kategorieLabels = {
     'obst_gemuese': 'Obst & Gemüse',
     'milchprodukte': 'Milchprodukte',
@@ -252,24 +203,179 @@ const kategorieLabels = {
     'koerperpflege': 'Körperpflege',
     'sonstiges': 'Sonstiges'
 };
-const kategorieTrace = {
-    values: kategorieData.map(k => k.ausgaben),
-    labels: kategorieData.map(k => kategorieLabels[k.produkt__kategorie] || k.produkt__kategorie),
-    type: 'pie'
-};
-Plotly.newPlot('chart-kategorie', [kategorieTrace], {
-    margin: {t: 20, b: 20, l: 20, r: 20}
-});
 
-// Rabatte
-const rabatteData = {{ rabatte|safe }};
-const rabatteTrace = {
-    values: rabatteData.map(r => r.ersparnis),
-    labels: rabatteData.map(r => r.rabatt_typ),
-    type: 'pie'
+// Plotly Layout Config (responsive)
+const layoutConfig = {
+    responsive: true,
+    displayModeBar: false,
+    font: {
+        family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    }
 };
-Plotly.newPlot('chart-rabatte', [rabatteTrace], {
-    margin: {t: 20, b: 20, l: 20, r: 20}
+
+// 1. Tägliche Ausgaben (Line Chart)
+if (dailyData && dailyData.length > 0) {
+    const dailyTrace = {
+        x: dailyData.map(d => d.tag),
+        y: dailyData.map(d => parseFloat(d.ausgaben)),
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#FF6B6B', width: 3 },
+        marker: { size: 6, color: '#FF6B6B' },
+        hovertemplate: '<b>%{x}</b><br>€ %{y:.2f}<extra></extra>'
+    };
+    
+    Plotly.newPlot('chart-daily', [dailyTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 50, l: 60, r: 20 },
+        xaxis: { 
+            title: 'Datum',
+            tickangle: -45
+        },
+        yaxis: { 
+            title: 'Ausgaben (€)',
+            tickprefix: '€ '
+        }
+    });
+} else {
+    document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 2. Monatliche Ausgaben (Bar Chart)
+if (monthlyData && monthlyData.length > 0) {
+    const monthlyTrace = {
+        x: monthlyData.map(d => d.monat),
+        y: monthlyData.map(d => parseFloat(d.ausgaben)),
+        type: 'bar',
+        marker: { color: '#4ECDC4' },
+        hovertemplate: '<b>%{x}</b><br>€ %{y:.2f}<extra></extra>'
+    };
+    
+    Plotly.newPlot('chart-monthly', [monthlyTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 50, l: 60, r: 20 },
+        xaxis: { 
+            title: 'Monat',
+            tickangle: -45
+        },
+        yaxis: { 
+            title: 'Ausgaben (€)',
+            tickprefix: '€ '
+        }
+    });
+} else {
+    document.getElementById('chart-monthly').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 3. Top 15 Produkte nach Häufigkeit (Horizontal Bar)
+if (topProdukte && topProdukte.length > 0) {
+    const topProdukteTrace = {
+        x: topProdukte.map(p => p.anzahl),
+        y: topProdukte.map(p => p.produkt__name_normalisiert),
+        type: 'bar',
+        orientation: 'h',
+        marker: { color: '#95E1D3' },
+        hovertemplate: '<b>%{y}</b><br>%{x} Käufe<extra></extra>'
+    };
+    
+    Plotly.newPlot('chart-top-products', [topProdukteTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 40, l: 200, r: 20 },
+        xaxis: { title: 'Anzahl Käufe' },
+        yaxis: { 
+            title: '',
+            automargin: true
+        }
+    });
+} else {
+    document.getElementById('chart-top-products').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 4. Top 15 Produkte nach Ausgaben (Horizontal Bar)
+if (topAusgaben && topAusgaben.length > 0) {
+    const topAusgabenTrace = {
+        x: topAusgaben.map(p => parseFloat(p.ausgaben)),
+        y: topAusgaben.map(p => p.produkt__name_normalisiert),
+        type: 'bar',
+        orientation: 'h',
+        marker: { color: '#F38181' },
+        hovertemplate: '<b>%{y}</b><br>€ %{x:.2f}<extra></extra>'
+    };
+    
+    Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 40, l: 200, r: 20 },
+        xaxis: { 
+            title: 'Ausgaben (€)',
+            tickprefix: '€ '
+        },
+        yaxis: { 
+            title: '',
+            automargin: true
+        }
+    });
+} else {
+    document.getElementById('chart-top-spending').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 5. Ausgaben nach Kategorie (Pie Chart)
+if (kategorieData && kategorieData.length > 0) {
+    const kategorieTrace = {
+        values: kategorieData.map(k => parseFloat(k.ausgaben)),
+        labels: kategorieData.map(k => kategorieLabels[k.produkt__kategorie] || k.produkt__kategorie),
+        type: 'pie',
+        hovertemplate: '<b>%{label}</b><br>€ %{value:.2f}<br>%{percent}<extra></extra>',
+        textposition: 'auto',
+        textinfo: 'label+percent'
+    };
+    
+    Plotly.newPlot('chart-kategorie', [kategorieTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: true,
+        legend: {
+            orientation: 'v',
+            x: 1.1,
+            y: 0.5
+        }
+    });
+} else {
+    document.getElementById('chart-kategorie').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 6. Ersparnisse nach Rabatt-Typ (Pie Chart)
+if (rabatteData && rabatteData.length > 0) {
+    const rabatteTrace = {
+        values: rabatteData.map(r => parseFloat(r.ersparnis)),
+        labels: rabatteData.map(r => r.rabatt_typ || 'Unbekannt'),
+        type: 'pie',
+        hovertemplate: '<b>%{label}</b><br>€ %{value:.2f}<br>%{percent}<extra></extra>',
+        textposition: 'auto',
+        textinfo: 'label+percent'
+    };
+    
+    Plotly.newPlot('chart-rabatte', [rabatteTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: true,
+        legend: {
+            orientation: 'v',
+            x: 1.1,
+            y: 0.5
+        }
+    });
+} else {
+    document.getElementById('chart-rabatte').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// Responsive resize handling
+window.addEventListener('resize', function() {
+    Plotly.Plots.resize('chart-daily');
+    Plotly.Plots.resize('chart-monthly');
+    Plotly.Plots.resize('chart-top-products');
+    Plotly.Plots.resize('chart-top-spending');
+    Plotly.Plots.resize('chart-kategorie');
+    Plotly.Plots.resize('chart-rabatte');
 });
 </script>
 {% endblock %}

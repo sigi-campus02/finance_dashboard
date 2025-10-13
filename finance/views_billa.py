@@ -49,15 +49,24 @@ def billa_dashboard(request):
         avg_warenkorb=Avg('gesamt_preis')
     )
 
-    # Ausgaben im Zeitverlauf (täglich)
-    daily_spending = einkaufe.annotate(
+    # Ausgaben im Zeitverlauf (täglich) - JSON-serialisierbar machen
+    daily_spending_raw = einkaufe.annotate(
         tag=TruncDate('datum')
     ).values('tag').annotate(
         ausgaben=Sum('gesamt_preis')
     ).order_by('tag')
 
-    # Ausgaben pro Monat
-    monthly_spending = einkaufe.annotate(
+    # Konvertiere zu JSON-serialisierbarem Format
+    daily_spending = [
+        {
+            'tag': item['tag'].strftime('%Y-%m-%d'),
+            'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
+        }
+        for item in daily_spending_raw
+    ]
+
+    # Ausgaben pro Monat - JSON-serialisierbar machen
+    monthly_spending_raw = einkaufe.annotate(
         monat=TruncMonth('datum')
     ).values('monat').annotate(
         ausgaben=Sum('gesamt_preis'),
@@ -65,8 +74,18 @@ def billa_dashboard(request):
         anzahl=Count('id')
     ).order_by('monat')
 
-    # Top Produkte nach Häufigkeit
-    top_produkte_anzahl = artikel.values(
+    monthly_spending = [
+        {
+            'monat': item['monat'].strftime('%Y-%m'),
+            'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0,
+            'ersparnis': float(item['ersparnis']) if item['ersparnis'] else 0,
+            'anzahl': item['anzahl']
+        }
+        for item in monthly_spending_raw
+    ]
+
+    # Top Produkte nach Häufigkeit - JSON-serialisierbar machen
+    top_produkte_anzahl_raw = artikel.values(
         'produkt__name_normalisiert',
         'produkt__kategorie'
     ).annotate(
@@ -74,8 +93,18 @@ def billa_dashboard(request):
         ausgaben=Sum('gesamtpreis')
     ).order_by('-anzahl')[:15]
 
-    # Top Produkte nach Ausgaben
-    top_produkte_ausgaben = artikel.values(
+    top_produkte_anzahl = [
+        {
+            'produkt__name_normalisiert': item['produkt__name_normalisiert'],
+            'produkt__kategorie': item['produkt__kategorie'],
+            'anzahl': item['anzahl'],
+            'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
+        }
+        for item in top_produkte_anzahl_raw
+    ]
+
+    # Top Produkte nach Ausgaben - JSON-serialisierbar machen
+    top_produkte_ausgaben_raw = artikel.values(
         'produkt__name_normalisiert',
         'produkt__kategorie'
     ).annotate(
@@ -83,20 +112,47 @@ def billa_dashboard(request):
         anzahl=Count('id')
     ).order_by('-ausgaben')[:15]
 
-    # Ausgaben nach Kategorie
-    ausgaben_kategorie = artikel.values(
+    top_produkte_ausgaben = [
+        {
+            'produkt__name_normalisiert': item['produkt__name_normalisiert'],
+            'produkt__kategorie': item['produkt__kategorie'],
+            'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0,
+            'anzahl': item['anzahl']
+        }
+        for item in top_produkte_ausgaben_raw
+    ]
+
+    # Ausgaben nach Kategorie - JSON-serialisierbar machen
+    ausgaben_kategorie_raw = artikel.values(
         'produkt__kategorie'
     ).annotate(
         ausgaben=Sum('gesamtpreis')
     ).order_by('-ausgaben')
 
-    # Rabatte nach Typ
-    rabatte = artikel.filter(
+    ausgaben_kategorie = [
+        {
+            'produkt__kategorie': item['produkt__kategorie'],
+            'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
+        }
+        for item in ausgaben_kategorie_raw
+    ]
+
+    # Rabatte nach Typ - JSON-serialisierbar machen
+    rabatte_raw = artikel.filter(
         rabatt__gt=0
     ).values('rabatt_typ').annotate(
         ersparnis=Sum('rabatt'),
         anzahl=Count('id')
     ).order_by('-ersparnis')
+
+    rabatte = [
+        {
+            'rabatt_typ': item['rabatt_typ'],
+            'ersparnis': float(item['ersparnis']) if item['ersparnis'] else 0,
+            'anzahl': item['anzahl']
+        }
+        for item in rabatte_raw
+    ]
 
     # Filialen für Filter
     filialen = BillaEinkauf.objects.values_list(
@@ -105,12 +161,12 @@ def billa_dashboard(request):
 
     context = {
         'stats': stats,
-        'daily_spending': list(daily_spending),
-        'monthly_spending': list(monthly_spending),
-        'top_produkte_anzahl': list(top_produkte_anzahl),
-        'top_produkte_ausgaben': list(top_produkte_ausgaben),
-        'ausgaben_kategorie': list(ausgaben_kategorie),
-        'rabatte': list(rabatte),
+        'daily_spending': json.dumps(daily_spending),  # JSON string für Template
+        'monthly_spending': json.dumps(monthly_spending),
+        'top_produkte_anzahl': json.dumps(top_produkte_anzahl),
+        'top_produkte_ausgaben': json.dumps(top_produkte_ausgaben),
+        'ausgaben_kategorie': json.dumps(ausgaben_kategorie),
+        'rabatte': json.dumps(rabatte),
         'filialen': list(filialen),
         'selected_filiale': filiale or 'alle',
         'start_date': start_date,
@@ -145,10 +201,10 @@ def billa_produkt_detail(request, produkt_id):
     # Statistiken
     stats = produkt.artikel.aggregate(
         anzahl_kaeufe=Count('id'),
-        min_preis=Min('preis_pro_einheit'),  # ← Stückpreis!
-        max_preis=Max('preis_pro_einheit'),  # ← Stückpreis!
-        avg_preis=Avg('preis_pro_einheit'),  # ← Stückpreis!
-        gesamt_ausgaben=Sum('gesamtpreis')  # ← Gesamtausgaben bleiben
+        min_preis=Min('preis_pro_einheit'),
+        max_preis=Max('preis_pro_einheit'),
+        avg_preis=Avg('preis_pro_einheit'),
+        gesamt_ausgaben=Sum('gesamtpreis')
     )
 
     # Letzte Käufe
@@ -224,7 +280,7 @@ def billa_preisentwicklung(request):
             diff = max_preis - min_preis
             diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
 
-            if diff > Decimal('0.5'):  # Nur Änderungen über 50 Cent
+            if diff > Decimal('0.5'):
                 produkte_mit_aenderungen.append({
                     'produkt': produkt,
                     'min_preis': min_preis,
@@ -233,11 +289,10 @@ def billa_preisentwicklung(request):
                     'diff_pct': diff_pct
                 })
 
-    # Sortiere nach größter prozentualer Änderung
     produkte_mit_aenderungen.sort(key=lambda x: x['diff_pct'], reverse=True)
 
     context = {
-        'produkte': produkte_mit_aenderungen[:50]  # Top 50
+        'produkte': produkte_mit_aenderungen[:50]
     }
 
     return render(request, 'finance/billa_preisentwicklung.html', context)
@@ -247,8 +302,9 @@ def billa_preisentwicklung(request):
 def billa_statistiken(request):
     """Erweiterte Statistiken und Analysen"""
 
+    from django.db.models.functions import ExtractWeekDay, ExtractHour
+
     # Ausgaben nach Wochentag
-    from django.db.models.functions import ExtractWeekDay
     ausgaben_wochentag = BillaEinkauf.objects.annotate(
         wochentag=ExtractWeekDay('datum')
     ).values('wochentag').annotate(
@@ -265,7 +321,6 @@ def billa_statistiken(request):
         item['name'] = wochentage.get(item['wochentag'], '')
 
     # Ausgaben nach Uhrzeit
-    from django.db.models.functions import ExtractHour
     ausgaben_stunde = BillaEinkauf.objects.filter(
         zeit__isnull=False
     ).annotate(
@@ -324,7 +379,6 @@ def billa_api_preisverlauf(request, produkt_id):
 def billa_api_stats(request):
     """API: Aktuelle Statistiken"""
 
-    # Zeitraum: letzter Monat
     heute = datetime.now().date()
     vor_30_tagen = heute - timedelta(days=30)
 
