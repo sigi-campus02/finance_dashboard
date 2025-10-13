@@ -378,6 +378,10 @@ def api_category_breakdown(request):
         outflow__gt=0
     ).values(
         'category__categorygroup__category_group'
+    ).exclude(
+        category__categorygroup__category_group__iexact='NoCategory'
+    ).exclude(
+        category__categorygroup__category_group__iexact='Inflow'
     ).annotate(
         total=Sum('outflow')
     ).order_by('-total')[:10]
@@ -1615,17 +1619,11 @@ def adjust_investments(request):
 
 @login_required
 def api_spending_trend(request):
-    """API: Historische Ausgaben über alle Monate für Trendlinie"""
+    """API: Historische Ausgaben und Einnahmen über alle Monate für Trendlinie"""
     if request.user.username == 'robert':
         return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
 
-    # Hole alle Transaktionen, gruppiert nach Monat
-    # Ausschlüsse:
-    # - Transfers & Kursschwankungen
-    # - Ready to Assign (category_id=1)
-    # - CategoryGroup "Inflow"
-    # - CategoryGroup "Longterm Savings"
-    # - Transaktionen ohne CategoryGroup
+    # Ausgaben: Alle Transaktionen außer Ready to Assign, Transfers, etc.
     monthly_spending = FactTransactionsSigi.objects.exclude(
         payee__payee_type__in=['transfer', 'kursschwankung']
     ).exclude(
@@ -1635,7 +1633,7 @@ def api_spending_trend(request):
     ).exclude(
         category__categorygroup__category_group__iexact='Longterm Savings'
     ).exclude(
-        category__categorygroup__category_group__iexact='NoCategory'  # Ohne CategoryGroup
+        category__categorygroup__category_group__iexact='NoCategory'
     ).annotate(
         month=TruncMonth('date')
     ).values('month').annotate(
@@ -1643,32 +1641,54 @@ def api_spending_trend(request):
         inflow=Sum('inflow')
     ).order_by('month')
 
+    # Einnahmen: Nur Ready to Assign (category_id=1)
+    monthly_income = FactTransactionsSigi.objects.exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).filter(
+        category_id=1  # Ready to Assign
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        total_inflow=Sum('inflow')
+    ).order_by('month')
+
+    # Erstelle Dictionaries für einfacheren Zugriff
+    income_by_month = {item['month']: float(item['total_inflow'] or 0) for item in monthly_income}
+
     labels = []
-    data = []
+    spending_data = []
+    income_data = []
 
     for item in monthly_spending:
+        month = item['month']
+
         # Formatiere Label als "Jan 2023"
-        labels.append(item['month'].strftime('%b %Y'))
+        labels.append(month.strftime('%b %Y'))
+
         # Netto-Ausgaben (Outflow - Inflow)
         outflow = float(item['outflow'] or 0)
         inflow = float(item['inflow'] or 0)
         net_spending = outflow - inflow
-        data.append(net_spending)
+        spending_data.append(net_spending)
 
-    # Berechne Trendlinie (lineare Regression)
-    if len(data) >= 2:
+        # Einnahmen für diesen Monat
+        income_data.append(income_by_month.get(month, 0))
+
+    # Berechne Trendlinie nur für Ausgaben (lineare Regression)
+    if len(spending_data) >= 2:
         import numpy as np
-        x = np.arange(len(data))
-        y = np.array(data)
+        x = np.arange(len(spending_data))
+        y = np.array(spending_data)
 
         # Lineare Regression: y = mx + b
         m, b = np.polyfit(x, y, 1)
         trend_data = [m * i + b for i in x]
     else:
-        trend_data = data
+        trend_data = spending_data
 
     return JsonResponse({
         'labels': labels,
-        'data': data,
+        'spending': spending_data,  # Geändert von 'data' zu 'spending'
+        'income': income_data,  # NEU
         'trend': trend_data
     })

@@ -262,7 +262,6 @@ fetch("{% url 'finance:api_category_breakdown' %}?year={{ current_year }}")
         });
     });
 
-// NEU: Historischer Trend mit Trendlinie
 fetch("{% url 'finance:api_spending_trend' %}")
     .then(response => response.json())
     .then(data => {
@@ -275,20 +274,32 @@ fetch("{% url 'finance:api_spending_trend' %}")
                 datasets: [
                     {
                         label: 'Netto-Ausgaben',
-                        data: data.data,
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        data: data.spending,
+                        borderColor: 'rgb(243,123,123)',
+                        backgroundColor: 'rgba(243,123,123,0.16)',
                         borderWidth: 2,
                         tension: 0.1,
                         fill: true,
                         pointRadius: 3,
                         pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointBackgroundColor: 'rgb(243,123,123)',
                     },
                     {
-                        label: 'Trend',
+                        label: 'Einnahmen',
+                        data: data.income,
+                        borderColor: 'rgb(115,239,100)',
+                        backgroundColor: 'rgba(115,239,100,0.11)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: 'rgb(115,239,100)',
+                    },
+                    {
+                        label: 'Ausgaben-Trend',
                         data: data.trend,
-                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderColor: 'rgba(236,119,0,0.59)',
                         backgroundColor: 'transparent',
                         borderWidth: 3,
                         borderDash: [10, 5],
@@ -326,7 +337,7 @@ fetch("{% url 'finance:api_spending_trend' %}")
                             maxRotation: 45,
                             minRotation: 45,
                             autoSkip: true,
-                            maxTicksLimit: 24  // Max 24 Monate anzeigen
+                            maxTicksLimit: 24
                         }
                     }
                 },
