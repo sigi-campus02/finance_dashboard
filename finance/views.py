@@ -2038,3 +2038,102 @@ def api_asset_category_details(request):
         }
 
     return JsonResponse(result)
+
+
+@login_required
+def api_income_payees(request):
+    """API: Einnahmen nach Payee für gestapeltes Balkendiagramm"""
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
+    year = request.GET.get('year', datetime.now().year)
+
+    from django.db.models import Q
+    from collections import defaultdict
+
+    # Hole alle relevanten Transaktionen ohne Gruppierung
+    transactions = FactTransactionsSigi.objects.filter(
+        date__year=year
+    ).filter(
+        Q(category_id=1) |  # Ready to Assign
+        Q(payee__payee__icontains='Robert', inflow__gt=0)  # Robert Inflows
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).select_related('payee')
+
+    # Manuelle Gruppierung mit defaultdict
+    payees_data = defaultdict(lambda: defaultdict(float))
+    all_months = set()
+
+    for trans in transactions:
+        # Extrahiere Monat (als datetime Objekt)
+        month = trans.date.replace(day=1)
+        all_months.add(month)
+
+        # Bestimme Payee-Name (fasse alle Robert zusammen)
+        original_payee = trans.payee.payee if trans.payee else 'Unbekannt'
+
+        if 'robert' in original_payee.lower():
+            payee_name = 'Robert (gesamt)'
+        else:
+            payee_name = original_payee
+
+        # Summiere Inflow für diesen Payee und Monat
+        payees_data[payee_name][month] += float(trans.inflow or 0)
+
+    # Sortiere Monate
+    sorted_months = sorted(list(all_months))
+    labels = [month.strftime('%b %Y') for month in sorted_months]
+
+    # Erstelle Datasets für jeden Payee
+    datasets = []
+    colors = generate_distinct_colors(len(payees_data))
+
+    for idx, (payee, month_data) in enumerate(sorted(payees_data.items())):
+        # Erstelle Daten-Array in richtiger Reihenfolge
+        data = [month_data.get(month, 0) for month in sorted_months]
+
+        datasets.append({
+            'label': payee,
+            'data': data,
+            'backgroundColor': colors[idx]['fill'],
+            'borderColor': colors[idx]['border'],
+            'borderWidth': 1
+        })
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': datasets
+    })
+
+
+def generate_distinct_colors(num_colors):
+    """Generiere unterscheidbare Farben für Payees"""
+    # Vordefinierte Farbpalette für gute Unterscheidbarkeit
+    base_colors = [
+        (255, 99, 132),  # Rot
+        (54, 162, 235),  # Blau
+        (255, 206, 86),  # Gelb
+        (75, 192, 192),  # Türkis
+        (153, 102, 255),  # Lila
+        (255, 159, 64),  # Orange
+        (199, 199, 199),  # Grau
+        (83, 102, 255),  # Indigo
+        (255, 99, 255),  # Pink
+        (99, 255, 132),  # Grün
+        (255, 183, 77),  # Gold
+        (77, 208, 225),  # Cyan
+        (240, 98, 146),  # Rosa
+        (139, 195, 74),  # Lime
+        (121, 85, 72),  # Braun
+    ]
+
+    colors = []
+    for i in range(num_colors):
+        rgb = base_colors[i % len(base_colors)]
+        colors.append({
+            'border': f'rgb({rgb[0]}, {rgb[1]}, {rgb[2]})',
+            'fill': f'rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, 0.7)'
+        })
+
+    return colors
