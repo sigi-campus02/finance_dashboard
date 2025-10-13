@@ -118,7 +118,7 @@ class Command(BaseCommand):
                 produkt=produkt,
                 artikel=artikel,
                 datum=einkauf.datum,
-                preis=artikel.gesamtpreis,
+                preis=artikel.preis_pro_einheit,
                 menge=artikel.menge,
                 einheit=artikel.einheit,
                 filiale=einkauf.filiale
