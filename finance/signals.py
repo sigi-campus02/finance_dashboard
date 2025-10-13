@@ -48,7 +48,7 @@ COUNTERPART_PAYEE_MAPPING = {
 def should_create_counterpart(instance):
     """Prüft ob Gegenbuchung erstellt werden soll"""
     # WICHTIG: Prüfe ob es bereits eine automatisch erstellte Gegenbuchung ist
-    if instance.memo and 'Gegenbuchung zu Transfer' in instance.memo:
+    if instance.memo and '[Auto-Gegenbuchung]' in instance.memo:  # ← GEÄNDERT
         return False
 
     if not instance.payee or not instance.payee.is_transfer:
@@ -138,6 +138,12 @@ def create_transfer_counterpart(instance):
     elif instance.inflow and instance.inflow > 0:
         counterpart_outflow = instance.inflow
 
+    # Memo: Original-Memo beibehalten + Hinweis auf Auto-Gegenbuchung
+    if instance.memo:
+        counterpart_memo = f'{instance.memo} [Auto-Gegenbuchung]'
+    else:
+        counterpart_memo = f'Gegenbuchung zu Transfer von {instance.account.account}'
+
     # Erstelle Gegenbuchung
     counterpart_data = {
         'account_id': target_account_id,
@@ -145,7 +151,7 @@ def create_transfer_counterpart(instance):
         'date': instance.date,
         'payee_id': counterpart_payee_id,
         'category_id': None,
-        'memo': f'Gegenbuchung zu Transfer von {instance.account.account}',
+        'memo': counterpart_memo,  # ← GEÄNDERT
         'outflow': counterpart_outflow,
         'inflow': counterpart_inflow,
     }
@@ -157,7 +163,6 @@ def create_transfer_counterpart(instance):
 
     # KRITISCH: Deaktiviere Signals während der Erstellung!
     if target_account_id in robert_account_ids or target_account.account in robert_account_names:
-        # Erstelle in Robert-Tabelle MIT deaktivierten Signals
         post_save.disconnect(handle_robert_transfer, sender=FactTransactionsRobert)
         try:
             FactTransactionsRobert.objects.create(**counterpart_data)
@@ -165,14 +170,12 @@ def create_transfer_counterpart(instance):
         finally:
             post_save.connect(handle_robert_transfer, sender=FactTransactionsRobert)
     else:
-        # Erstelle in Sigi-Tabelle MIT deaktivierten Signals
         post_save.disconnect(handle_sigi_transfer, sender=FactTransactionsSigi)
         try:
             FactTransactionsSigi.objects.create(**counterpart_data)
             logger.info(f"Gegenbuchung erstellt in Sigi-Tabelle")
         finally:
             post_save.connect(handle_sigi_transfer, sender=FactTransactionsSigi)
-
 
 @receiver(post_save, sender=FactTransactionsSigi)
 def handle_sigi_transfer(sender, instance, created, **kwargs):
