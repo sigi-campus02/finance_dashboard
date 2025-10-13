@@ -32,6 +32,55 @@ def user_is_not_robert(user):
     return user.username != 'robert'
 
 
+# Zentrale Farbdefinitionen für Kategorien
+CATEGORY_COLORS = {
+    'Cash': {
+        'rgb': (75, 192, 192),  # Türkis
+        'name': 'Cash'
+    },
+    'Credit': {
+        'rgb': (255, 99, 132),  # Rot
+        'name': 'Credit'
+    },
+    'MidtermInvest': {
+        'rgb': (54, 162, 235),  # Blau
+        'name': 'Mittelfristige Investments'
+    },
+    'LongtermInvest': {
+        'rgb': (153, 102, 255),  # Lila
+        'name': 'Langfristige Investments'
+    },
+}
+
+
+def generate_color_shades(rgb_tuple, num_shades=5):
+    """
+    Generiert verschiedene Schattierungen einer RGB-Farbe
+    rgb_tuple: (r, g, b) als Tuple
+    num_shades: Anzahl der gewünschten Schattierungen
+
+    Rückgabe: Liste von Dictionaries mit 'border' und 'fill'
+    """
+    r, g, b = rgb_tuple
+    shades = []
+
+    for i in range(num_shades):
+        # Berechne Helligkeit (0 = dunkelste, num_shades-1 = hellste)
+        factor = 0.6 + (i * 0.4 / max(num_shades - 1, 1))  # Range: 0.6 bis 1.0
+
+        # Passe RGB-Werte an (hellere Farben)
+        new_r = min(255, int(r + (255 - r) * (1 - factor)))
+        new_g = min(255, int(g + (255 - g) * (1 - factor)))
+        new_b = min(255, int(b + (255 - b) * (1 - factor)))
+
+        shades.append({
+            'border': f'rgb({new_r}, {new_g}, {new_b})',
+            'fill': f'rgba({new_r}, {new_g}, {new_b}, 0.5)'
+        })
+
+    return shades
+
+
 @login_required
 def dashboard(request):
     """Haupt-Dashboard mit Übersicht und KPIs"""
@@ -573,6 +622,15 @@ def asset_overview(request):
         })
 
     categories_data.sort(key=lambda x: x['order'])
+
+    # Füge Farbinformationen zu jeder Kategorie hinzu
+    for category in categories_data:
+        cat_name = category['name']
+        if cat_name in CATEGORY_COLORS:
+            r, g, b = CATEGORY_COLORS[cat_name]['rgb']
+            category['color_rgb'] = f'rgb({r}, {g}, {b})'
+            category['color_rgba'] = f'rgba({r}, {g}, {b}, 0.15)'
+
 
     total_current = sum(cat['total_current'] for cat in categories_data)
     total_prev_month = sum(cat['total_prev_month'] for cat in categories_data)
@@ -1783,44 +1841,28 @@ def api_asset_history(request):
         total = sum(category_data[cat][i] for cat in category_order)
         total_data.append(total)
 
-    # Definiere Farben für Kategorien (mit Alpha für Fill)
-    colors = {
-        'Cash': {
-            'border': 'rgb(75, 192, 192)',
-            'fill': 'rgba(75, 192, 192, 0.2)'
-        },
-        'Credit': {
-            'border': 'rgb(255, 99, 132)',
-            'fill': 'rgba(255, 99, 132, 0.2)'
-        },
-        'MidtermInvest': {
-            'border': 'rgb(54, 162, 235)',
-            'fill': 'rgba(54, 162, 235, 0.2)'
-        },
-        'LongtermInvest': {
-            'border': 'rgb(153, 102, 255)',
-            'fill': 'rgba(153, 102, 255, 0.2)'
-        },
-    }
-
-    # Erstelle datasets - wichtig: in umgekehrter Reihenfolge für korrektes Stacking
+    # Erstelle datasets mit zentralen Farben
     datasets = []
 
-    # Kategorien als gefüllte Flächen (reversed für korrektes Stacking von unten nach oben)
     for cat_name in reversed(category_order):
-        if cat_name in CATEGORY_CONFIG:
-            cat_config = CATEGORY_CONFIG[cat_name]
+        if cat_name in CATEGORY_COLORS:
+            cat_config = CATEGORY_COLORS[cat_name]
+            r, g, b = cat_config['rgb']
+
+            # Hole Display-Name aus CATEGORY_CONFIG
+            display_name = CATEGORY_CONFIG.get(cat_name, {}).get('display_name', cat_name)
+
             datasets.append({
-                'label': cat_config['display_name'],
+                'label': display_name,
                 'data': category_data[cat_name],
-                'borderColor': colors[cat_name]['border'],
-                'backgroundColor': colors[cat_name]['fill'],
+                'borderColor': f'rgb({r}, {g}, {b})',
+                'backgroundColor': f'rgba({r}, {g}, {b}, 0.2)',
                 'borderWidth': 2,
                 'tension': 0.4,
-                'fill': True,  # Fläche füllen
+                'fill': True,
                 'pointRadius': 0,
                 'pointHoverRadius': 5,
-                'pointHoverBackgroundColor': colors[cat_name]['border'],
+                'pointHoverBackgroundColor': f'rgb({r}, {g}, {b})',
             })
 
     # Gesamtwert als separate dicke Linie (NICHT gestackt)
@@ -1835,7 +1877,7 @@ def api_asset_history(request):
         'pointRadius': 3,
         'pointHoverRadius': 6,
         'borderDash': [5, 5],
-        'stack': 'total',  # Separate Stack-Gruppe
+        'stack': 'total',
     })
 
     return JsonResponse({
@@ -1909,29 +1951,13 @@ def api_asset_category_details(request):
             if category_name in category_accounts:
                 category_accounts[category_name].append(account)
 
-    # Farbpaletten für jede Kategorie
-    color_palettes = {
-        'Cash': [
-            {'border': 'rgb(34, 197, 94)', 'fill': 'rgba(34, 197, 94, 0.5)'},  # Grün
-            {'border': 'rgb(59, 130, 246)', 'fill': 'rgba(59, 130, 246, 0.5)'},  # Blau
-            {'border': 'rgb(168, 85, 247)', 'fill': 'rgba(168, 85, 247, 0.5)'},  # Lila
-            {'border': 'rgb(236, 72, 153)', 'fill': 'rgba(236, 72, 153, 0.5)'},  # Pink
-        ],
-        'MidtermInvest': [
-            {'border': 'rgb(14, 165, 233)', 'fill': 'rgba(14, 165, 233, 0.5)'},  # Sky Blue
-            {'border': 'rgb(99, 102, 241)', 'fill': 'rgba(99, 102, 241, 0.5)'},  # Indigo
-            {'border': 'rgb(139, 92, 246)', 'fill': 'rgba(139, 92, 246, 0.5)'},  # Violet
-            {'border': 'rgb(217, 70, 239)', 'fill': 'rgba(217, 70, 239, 0.5)'},  # Fuchsia
-            {'border': 'rgb(244, 114, 182)', 'fill': 'rgba(244, 114, 182, 0.5)'},  # Pink
-        ],
-        'LongtermInvest': [
-            {'border': 'rgb(126, 34, 206)', 'fill': 'rgba(126, 34, 206, 0.5)'},  # Purple
-            {'border': 'rgb(147, 51, 234)', 'fill': 'rgba(147, 51, 234, 0.5)'},  # Purple 2
-            {'border': 'rgb(168, 85, 247)', 'fill': 'rgba(168, 85, 247, 0.5)'},  # Purple 3
-            {'border': 'rgb(192, 132, 252)', 'fill': 'rgba(192, 132, 252, 0.5)'},  # Purple 4
-            {'border': 'rgb(216, 180, 254)', 'fill': 'rgba(216, 180, 254, 0.5)'},  # Purple 5
-        ]
-    }
+    # Generiere Farbpaletten basierend auf den Hauptfarben
+    color_palettes = {}
+    for category_name in category_accounts.keys():
+        if category_name in CATEGORY_COLORS:
+            rgb = CATEGORY_COLORS[category_name]['rgb']
+            # Generiere 8 Schattierungen (sollte für die meisten Accounts reichen)
+            color_palettes[category_name] = generate_color_shades(rgb, num_shades=8)
 
     # Erstelle Datasets für jede Kategorie
     result = {}
@@ -1958,7 +1984,7 @@ def api_asset_category_details(request):
             if all(val == 0 for val in account_data):
                 continue
 
-            # Wähle Farbe (mit Fallback wenn mehr Accounts als Farben)
+            # Wähle Farbe aus den Schattierungen
             color = colors[idx % len(colors)] if colors else {
                 'border': f'rgb({(idx * 50) % 255}, {(idx * 80) % 255}, {(idx * 120) % 255})',
                 'fill': f'rgba({(idx * 50) % 255}, {(idx * 80) % 255}, {(idx * 120) % 255}, 0.5)'

@@ -72,10 +72,16 @@
                 <tbody>
                     {% for category in categories %}
                     <!-- Kategorie Header -->
-                    <tr class="table-secondary fw-bold">
-                        <td>
-                            <i class="bi bi-folder"></i> {{ category.display_name }}
-                        </td>
+                        <tr class="table-secondary fw-bold">
+                            <td>
+                                {% if category.color_rgb %}
+                                    <span style="display: inline-block; width: 4px; height: 16px; 
+                                        background-color: {{ category.color_rgb }}; 
+                                        margin-right: 8px; border-radius: 2px; 
+                                        vertical-align: middle;"></span>
+                                {% endif %}
+                                <i class="bi bi-folder"></i> {{ category.display_name }}
+                            </td>
                         <td class="text-end">€ {{ category.total_current|floatformat:2 }}</td>
                         <td class="text-end">€ {{ category.total_prev_month|floatformat:2 }}</td>
                         <td class="text-end">
