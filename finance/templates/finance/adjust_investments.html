@@ -89,10 +89,16 @@
                                 </div>
                             </div>
                             
+                            <!-- In der Schleife für multi/gold Input-Felder -->
                             {% elif account.input_type == 'multi' or account.input_type == 'gold' %}
                             {% for field in account.fields %}
                             <div class="input-row">
-                                <label class="form-label small">{{ field.label }}</label>
+                                <label class="form-label small">
+                                    {{ field.label }}
+                                    {% if field.multiplier != 1 %}
+                                        <span class="badge bg-info">×{{ field.multiplier }}</span>
+                                    {% endif %}
+                                </label>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">€</span>
                                     <input type="number" 
@@ -101,6 +107,7 @@
                                            name="{{ account.field_prefix }}_{{ field.name }}"
                                            data-parent="{{ account.field_prefix }}"
                                            data-current="{{ account.current_balance }}"
+                                           data-multiplier="{{ field.multiplier }}"
                                            placeholder="0.00">
                                 </div>
                             </div>
@@ -217,14 +224,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const isMulti = input.classList.contains('multi-input');
         
         if (isMulti) {
-            // Multi-Input: Summiere alle Felder der gleichen Gruppe
+            // Multi-Input: Summiere alle Felder der gleichen Gruppe MIT Multiplikatoren
             const parent = input.dataset.parent;
             const siblings = document.querySelectorAll(`input[data-parent="${parent}"]`);
             
             let sum = 0;
             siblings.forEach(sibling => {
                 const value = parseFloat(sibling.value) || 0;
-                sum += value;
+                const multiplier = parseFloat(sibling.dataset.multiplier) || 1; // ← NEU
+                sum += value * multiplier; // ← Multipliziere hier
             });
             
             const current = parseFloat(input.dataset.current) || 0;

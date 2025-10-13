@@ -1444,9 +1444,18 @@ def adjust_investments(request):
         {'name': 'ETF', 'account_names': ['ETF'], 'input_type': 'single'},
         {'name': 'Top4 Fonds & Green Invest', 'account_names': ['Top4 Fonds & Green Invest'], 'input_type': 'single'},
         {'name': 'Krypto & Aktien', 'account_names': ['Krypto & Aktien'], 'input_type': 'multi',
-         'fields': ['Krypto', 'Aktien', 'Indizes', 'Cash', 'Rohstoffe']},
+         'fields': [
+             {'label': 'Krypto', 'multiplier': 1},
+             {'label': 'Aktien', 'multiplier': 1},
+             {'label': 'Indizes', 'multiplier': 1},
+             {'label': 'Cash', 'multiplier': 1},
+             {'label': 'Rohstoffe', 'multiplier': 1}
+         ]},
         {'name': 'Goldanlage', 'account_names': ['Goldanlage'], 'input_type': 'gold',
-         'fields': ['€ je oz', '€ je 1/25 oz']},
+         'fields': [
+             {'label': '€ je oz', 'multiplier': 7},  # ← 7 Unzen
+             {'label': '€ je 1/25 oz', 'multiplier': 1}  # ← Bereits Gesamtwert
+         ]},
     ]
 
     # LongtermInvest Accounts
@@ -1459,7 +1468,6 @@ def adjust_investments(request):
     def safe_field_name(name):
         """Konvertiert Namen in sichere Feldnamen"""
         import re
-        # Entferne Sonderzeichen und ersetze durch Underscores
         safe = re.sub(r'[^\w\s-]', '', name)
         safe = re.sub(r'[-\s]+', '_', safe)
         return safe.lower()
@@ -1493,9 +1501,14 @@ def adjust_investments(request):
             processed_fields = []
             if acc_config.get('fields'):
                 for field in acc_config['fields']:
+                    # field ist jetzt ein Dict mit 'label' und 'multiplier'
+                    label = field['label'] if isinstance(field, dict) else field
+                    multiplier = field.get('multiplier', 1) if isinstance(field, dict) else 1
+
                     processed_fields.append({
-                        'label': field,
-                        'name': safe_field_name(field)
+                        'label': label,
+                        'name': safe_field_name(label),
+                        'multiplier': multiplier  # ← NEU
                     })
 
             accounts_data.append({
@@ -1534,12 +1547,13 @@ def adjust_investments(request):
                         new_balance = Decimal(value)
 
                 elif acc_data['input_type'] in ['multi', 'gold']:
-                    # Summiere alle Felder
+                    # Summiere alle Felder MIT Multiplikatoren ← NEU
                     for field in acc_data['fields']:
                         field_name = f'{field_prefix}_{field["name"]}'
                         value = request.POST.get(field_name, '').strip()
                         if value:
-                            new_balance += Decimal(value)
+                            # Multipliziere Wert mit Multiplikator
+                            new_balance += Decimal(value) * Decimal(field['multiplier'])
 
                 # Berechne Differenz
                 difference = new_balance - acc_data['current_balance']
