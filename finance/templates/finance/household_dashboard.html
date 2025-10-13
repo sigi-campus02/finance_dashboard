@@ -131,6 +131,74 @@
         </div>
     </div>
 
+    <!-- ===== SPECIAL SECTION: SUPERMARKT (Kategorie 1.4. id=5) ===== -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="categorygroup-header" style="background-color: rgb(52, 168, 83);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-cart"></i> 1.4. Supermarkt - Detailanalyse
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Statistiken -->
+                    <div class="stat-box" style="border-left-color: rgb(52, 168, 83);">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Durchschnittliche monatliche Ausgaben</h6>
+                                <h3 class="mb-0" id="avg-spending-supermarket">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
+                                <h5 class="mb-0" id="num-months-supermarket">-</h5>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                <h5 class="mb-0" id="total-spending-supermarket">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Monatliche Entwicklung mit Trendlinie -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="supermarketTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Jahresvergleich 2024 vs 2025 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
+                            <div class="chart-container-medium">
+                                <canvas id="supermarketComparisonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SPECIAL: Kombiniertes Billa-Diagramm -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="bi bi-bag-check"></i> Billa-Einkäufe: Anzahl & Durchschnittliche Höhe</h5>
+                            <p class="text-muted">
+                                <small>Balken zeigen die Anzahl der Einkäufe, Linie zeigt die durchschnittliche Einkaufshöhe pro Monat</small>
+                            </p>
+                            <div class="chart-container-medium">
+                                <canvas id="billaCombinedChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ===== END SUPERMARKT SECTION ===== -->
+
     <!-- 1. Haushaltsausgaben -->
     <div class="row mb-5">
         <div class="col-12">
@@ -997,7 +1065,247 @@ function createQuarterlyCharts() {
             .catch(error => console.error(`Error creating quarterly chart ${groupId}:`, error));
     });
 }
+// ===== SUPERMARKT-BEREICH FUNCTIONS =====
 
+// Lade Supermarkt-Statistiken
+function loadSupermarketStats() {
+    fetch('/api/supermarket-stats/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('avg-spending-supermarket').innerHTML = formatEuro(data.monthly_average);
+            document.getElementById('num-months-supermarket').textContent = data.num_months;
+            document.getElementById('total-spending-supermarket').textContent = formatEuro(data.total_spending);
+        })
+        .catch(error => {
+            console.error('Error loading supermarket stats:', error);
+            document.getElementById('avg-spending-supermarket').innerHTML = '<span class="text-danger">Fehler</span>';
+        });
+}
+
+// Erstelle Supermarkt Trendlinie-Diagramm
+function createSupermarketTrendChart() {
+    fetch('/api/supermarket-monthly-trend/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('supermarketTrendChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Ausgaben',
+                            data: data.data,
+                            borderColor: 'rgb(52, 168, 83)',
+                            backgroundColor: 'rgba(52, 168, 83, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Trend',
+                            data: data.trend_data,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += formatEuro(context.parsed.y);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatEuro(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error loading supermarket trend chart:', error));
+}
+
+// Erstelle Supermarkt Jahresvergleichs-Diagramm
+function createSupermarketComparisonChart() {
+    fetch('/api/supermarket-year-comparison/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('supermarketComparisonChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatEuro(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatEuro(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error loading supermarket comparison chart:', error));
+}
+
+// Erstelle kombiniertes Billa-Diagramm (Balken + Linie)
+function createBillaCombinedChart() {
+    fetch('/api/billa-combined-chart/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('billaCombinedChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Anzahl Einkäufe',
+                            data: data.count_data,
+                            backgroundColor: 'rgba(91, 155, 213, 0.7)',
+                            borderColor: 'rgba(91, 155, 213, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y-count',
+                            order: 2
+                        },
+                        {
+                            label: 'Durchschnittliche Einkaufshöhe',
+                            data: data.avg_data,
+                            type: 'line',
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: 'rgb(255, 99, 132)',
+                            tension: 0.4,
+                            yAxisID: 'y-avg',
+                            order: 1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y-count') {
+                                        label += context.parsed.y + ' Einkäufe';
+                                    } else {
+                                        label += formatEuro(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        'y-count': {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value) {
+                                    return value + ' x';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Anzahl Einkäufe'
+                            }
+                        },
+                        'y-avg': {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatEuro(value);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Durchschnittliche Einkaufshöhe'
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error loading Billa combined chart:', error));
+}
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     // Lade bestehende Charts (Balken und Tortendiagramme)
@@ -1015,6 +1323,12 @@ document.addEventListener('DOMContentLoaded', function() {
     createTrendCharts();
     createComparisonCharts();
     createQuarterlyCharts();
+    
+    // Supermarkt-Bereich laden
+    loadSupermarketStats();
+    createSupermarketTrendChart();
+    createSupermarketComparisonChart();
+    createBillaCombinedChart();
 });
 </script>
 {% endblock %}

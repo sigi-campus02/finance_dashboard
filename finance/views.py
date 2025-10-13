@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import json
 import numpy as np
-from django.db.models import Sum, Count, Q, Value, CharField
+from django.db.models import Sum, Count, Q, Value, CharField, Min, Max, Avg
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta, date
 from django.contrib.auth.decorators import login_required
@@ -22,7 +22,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.conf import settings
 import logging
-
 from .receipt_analyzer import ReceiptAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -2752,4 +2751,596 @@ def api_categorygroup_stats(request):
         'monthly_average': round(monthly_average, 2),
         'num_months': len(monthly_totals),
         'total_spending': round(sum(monthly_totals.values()), 2) if monthly_totals else 0
+    })
+
+
+# Füge diese Views zu finance/views.py hinzu
+
+# ===== WICHTIG: Diese Imports müssen ganz oben in views.py stehen =====
+from datetime import datetime
+from django.db.models import Sum, Count, Min, Max, Avg, Q
+
+
+# Falls bereits vorhanden, überspringe die Imports
+
+# ===== SUPERMARKT-BEREICH API VIEWS (KORRIGIERT) =====
+
+@login_required
+def api_supermarket_monthly_trend(request):
+    """API: Monatliche Entwicklung für Supermarkt-Kategorie (id=5) mit Trendlinie"""
+    category_id = 5  # 1.4. Supermarkt
+
+    # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
+    # KORRIGIERT: Keine outflow__gt=0 Filterung mehr - wir wollen ALLE Transaktionen
+    sigi_transactions = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        category_id=category_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # "Ready to Assign" ausschließen
+    ).values(
+        'date__year', 'date__month'
+    ).annotate(
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    ).order_by('date__year', 'date__month')
+
+    # Robert: Alle Transaktionen
+    # KORRIGIERT: Keine outflow__gt=0 Filterung mehr
+    robert_transactions = FactTransactionsRobert.objects.filter(
+        category_id=category_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # "Ready to Assign" ausschließen
+    ).values(
+        'date__year', 'date__month'
+    ).annotate(
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    ).order_by('date__year', 'date__month')
+
+    # Kombiniere beide Datensätze
+    monthly_data = {}
+
+    for item in sigi_transactions:
+        key = f"{item['date__year']}-{item['date__month']:02d}"
+        if key not in monthly_data:
+            monthly_data[key] = {'outflow': 0, 'inflow': 0}
+        monthly_data[key]['outflow'] += float(item['total_outflow'] or 0)
+        monthly_data[key]['inflow'] += float(item['total_inflow'] or 0)
+
+    for item in robert_transactions:
+        key = f"{item['date__year']}-{item['date__month']:02d}"
+        if key not in monthly_data:
+            monthly_data[key] = {'outflow': 0, 'inflow': 0}
+        monthly_data[key]['outflow'] += float(item['total_outflow'] or 0)
+        monthly_data[key]['inflow'] += float(item['total_inflow'] or 0)
+
+    # Sortiere nach Jahr-Monat
+    sorted_data = sorted(monthly_data.items())
+
+    # Erstelle Labels und Daten
+    labels = []
+    data = []
+    month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+
+    for key, values in sorted_data:
+        year, month = key.split('-')
+        month_num = int(month)
+        labels.append(f"{month_names[month_num - 1]} {year}")
+        # KORRIGIERT: Netto = Outflow - Inflow (kann auch negativ sein bei Rückerstattungen)
+        netto = values['outflow'] - values['inflow']
+        data.append(round(netto, 2))
+
+    # Berechne Trendlinie (lineare Regression)
+    if len(data) >= 2:
+        n = len(data)
+        x = list(range(n))
+        y = data
+
+        # Berechne Durchschnitte
+        x_mean = sum(x) / n
+        y_mean = sum(y) / n
+
+        # Berechne Steigung und Achsenabschnitt
+        numerator = sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(n))
+        denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
+
+        if denominator != 0:
+            slope = numerator / denominator
+            intercept = y_mean - slope * x_mean
+
+            # Generiere Trendlinie
+            trend_data = [round(slope * i + intercept, 2) for i in x]
+        else:
+            trend_data = [y_mean] * n
+    else:
+        trend_data = data
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+        'trend_data': trend_data
+    })
+
+
+@login_required
+def api_supermarket_year_comparison(request):
+    """API: Jahresvergleich 2024 vs 2025 für Supermarkt-Kategorie"""
+    category_id = 5  # 1.4. Supermarkt
+    years = [2024, 2025]
+
+    comparison_data = {}
+
+    for year in years:
+        # Sigi - KORRIGIERT: Keine outflow__gt=0 Filterung
+        sigi_data = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            category_id=category_id,
+            date__year=year
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).values(
+            'date__month'
+        ).annotate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        )
+
+        # Robert - KORRIGIERT: Keine outflow__gt=0 Filterung
+        robert_data = FactTransactionsRobert.objects.filter(
+            category_id=category_id,
+            date__year=year
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).values(
+            'date__month'
+        ).annotate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        )
+
+        # Kombiniere
+        monthly_totals = {i: 0 for i in range(1, 13)}
+
+        for item in sigi_data:
+            month = item['date__month']
+            netto = float((item['total_outflow'] or 0) - (item['total_inflow'] or 0))
+            monthly_totals[month] += netto
+
+        for item in robert_data:
+            month = item['date__month']
+            netto = float((item['total_outflow'] or 0) - (item['total_inflow'] or 0))
+            monthly_totals[month] += netto
+
+        comparison_data[year] = [round(monthly_totals[i], 2) for i in range(1, 13)]
+
+    month_labels = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+
+    return JsonResponse({
+        'labels': month_labels,
+        'datasets': [
+            {
+                'label': '2024',
+                'data': comparison_data.get(2024, [0] * 12),
+                'backgroundColor': 'rgba(91, 155, 213, 0.8)',
+                'borderColor': 'rgba(91, 155, 213, 1)',
+                'borderWidth': 1
+            },
+            {
+                'label': '2025',
+                'data': comparison_data.get(2025, [0] * 12),
+                'backgroundColor': 'rgba(237, 125, 49, 0.8)',
+                'borderColor': 'rgba(237, 125, 49, 1)',
+                'borderWidth': 1
+            }
+        ]
+    })
+
+
+@login_required
+def api_supermarket_stats(request):
+    """API: Statistiken für Supermarkt-Kategorie"""
+    category_id = 5  # 1.4. Supermarkt
+
+    # Sigi - KORRIGIERT: Keine outflow__gt=0 Filterung
+    sigi_data = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        category_id=category_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    ).aggregate(
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow'),
+        earliest=Min('date')
+    )
+
+    # Robert - KORRIGIERT: Keine outflow__gt=0 Filterung
+    robert_data = FactTransactionsRobert.objects.filter(
+        category_id=category_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    ).aggregate(
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow'),
+        earliest=Min('date')
+    )
+
+    # Kombiniere
+    total_outflow = float((sigi_data['total_outflow'] or 0) + (robert_data['total_outflow'] or 0))
+    total_inflow = float((sigi_data['total_inflow'] or 0) + (robert_data['total_inflow'] or 0))
+    # KORRIGIERT: Netto-Ausgaben = Outflow - Inflow
+    total_spending = total_outflow - total_inflow
+
+    # Berechne Anzahl Monate
+    earliest_date = min(
+        sigi_data['earliest'] or datetime.now().date(),
+        robert_data['earliest'] or datetime.now().date()
+    )
+
+    today = datetime.now().date()
+    num_months = ((today.year - earliest_date.year) * 12 +
+                  today.month - earliest_date.month + 1)
+
+    monthly_average = total_spending / num_months if num_months > 0 else 0
+
+    return JsonResponse({
+        'total_spending': round(total_spending, 2),
+        'monthly_average': round(monthly_average, 2),
+        'num_months': num_months
+    })
+
+
+@login_required
+def api_billa_combined_chart(request):
+    """API: Kombiniertes Diagramm - Anzahl Billa-Einkäufe + Durchschnittliche Einkaufshöhe"""
+    category_id = 5  # 1.4. Supermarkt
+
+    # Finde alle Payees die "Billa" enthalten
+    billa_payees = DimPayee.objects.filter(
+        payee__icontains='Billa'
+    ).exclude(
+        payee_type__in=['transfer', 'kursschwankung']
+    ).values_list('id', flat=True)
+
+    # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
+    # KORRIGIERT: Wir wollen alle Transaktionen (auch Inflows wie Pfandgeld)
+    # Aber für die Anzahl zählen wir nur "echte Einkäufe" (mit Outflow > 0)
+    sigi_transactions = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        category_id=category_id,
+        payee_id__in=billa_payees
+    ).exclude(
+        Q(outflow__isnull=True) | Q(outflow=0)  # Nur echte Einkäufe zählen
+    ).values(
+        'date__year', 'date__month'
+    ).annotate(
+        count=Count('id'),
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    ).order_by('date__year', 'date__month')
+
+    # Robert
+    robert_transactions = FactTransactionsRobert.objects.filter(
+        category_id=category_id,
+        payee_id__in=billa_payees
+    ).exclude(
+        Q(outflow__isnull=True) | Q(outflow=0)  # Nur echte Einkäufe zählen
+    ).values(
+        'date__year', 'date__month'
+    ).annotate(
+        count=Count('id'),
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    ).order_by('date__year', 'date__month')
+
+    # Kombiniere beide Datensätze
+    monthly_data = {}
+
+    for item in sigi_transactions:
+        key = f"{item['date__year']}-{item['date__month']:02d}"
+        if key not in monthly_data:
+            monthly_data[key] = {'count': 0, 'outflow': 0, 'inflow': 0}
+        monthly_data[key]['count'] += item['count']
+        monthly_data[key]['outflow'] += float(item['total_outflow'] or 0)
+        monthly_data[key]['inflow'] += float(item['total_inflow'] or 0)
+
+    for item in robert_transactions:
+        key = f"{item['date__year']}-{item['date__month']:02d}"
+        if key not in monthly_data:
+            monthly_data[key] = {'count': 0, 'outflow': 0, 'inflow': 0}
+        monthly_data[key]['count'] += item['count']
+        monthly_data[key]['outflow'] += float(item['total_outflow'] or 0)
+        monthly_data[key]['inflow'] += float(item['total_inflow'] or 0)
+
+    # Sortiere und erstelle Ausgabe
+    sorted_data = sorted(monthly_data.items())
+
+    labels = []
+    count_data = []
+    avg_data = []
+    month_names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+
+    for key, values in sorted_data:
+        year, month = key.split('-')
+        month_num = int(month)
+        labels.append(f"{month_names[month_num - 1]} {year}")
+
+        count_data.append(values['count'])
+
+        # KORRIGIERT: Durchschnittliche NETTO-Ausgabe pro Einkauf
+        netto_total = values['outflow'] - values['inflow']
+        avg_purchase = netto_total / values['count'] if values['count'] > 0 else 0
+        avg_data.append(round(avg_purchase, 2))
+
+    return JsonResponse({
+        'labels': labels,
+        'count_data': count_data,
+        'avg_data': avg_data
+    })
+
+
+# Füge diesen Debug-View zu finance/views.py hinzu
+# WICHTIG: Stelle sicher dass Q importiert ist:
+# from django.db.models import Q
+
+@login_required
+def api_supermarket_transactions_detail(request):
+    """
+    DEBUG: Zeigt alle Transaktionen die in Supermarkt-Berechnungen verwendet werden
+    Optional: Filter nach Jahr und Monat mit ?year=2024&month=10
+    """
+    category_id = 5  # 1.4. Supermarkt
+
+    # Optionale Filter
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+
+    # Basis-Query für Sigi
+    # KORRIGIERT: Keine outflow__gt=0 Filterung - wir wollen ALLE Transaktionen
+    sigi_query = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        category_id=category_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # "Ready to Assign" ausschließen
+    ).select_related('payee', 'category', 'account')
+
+    # Basis-Query für Robert
+    # KORRIGIERT: Keine outflow__gt=0 Filterung
+    robert_query = FactTransactionsRobert.objects.filter(
+        category_id=category_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # "Ready to Assign" ausschließen
+    ).select_related('payee', 'category', 'account')
+
+    # Filter nach Jahr/Monat wenn angegeben
+    if year:
+        sigi_query = sigi_query.filter(date__year=int(year))
+        robert_query = robert_query.filter(date__year=int(year))
+    if month:
+        sigi_query = sigi_query.filter(date__month=int(month))
+        robert_query = robert_query.filter(date__month=int(month))
+
+    # Sortiere nach Datum
+    sigi_query = sigi_query.order_by('-date')
+    robert_query = robert_query.order_by('-date')
+
+    # Erstelle Response-Daten
+    sigi_transactions = []
+    for t in sigi_query:
+        sigi_transactions.append({
+            'id': t.id,
+            'date': t.date.strftime('%Y-%m-%d'),
+            'year': t.date.year,
+            'month': t.date.month,
+            'payee': t.payee.payee if t.payee else 'N/A',
+            'category': t.category.category if t.category else 'N/A',
+            'account': t.account.account if t.account else 'N/A',
+            'outflow': float(t.outflow or 0),
+            'inflow': float(t.inflow or 0),
+            'netto': float((t.outflow or 0) - (t.inflow or 0)),
+            'memo': t.memo or '',
+            'source': 'Sigi'
+        })
+
+    robert_transactions = []
+    for t in robert_query:
+        robert_transactions.append({
+            'id': t.id,
+            'date': t.date.strftime('%Y-%m-%d'),
+            'year': t.date.year,
+            'month': t.date.month,
+            'payee': t.payee.payee if t.payee else 'N/A',
+            'category': t.category.category if t.category else 'N/A',
+            'account': t.account.account if t.account else 'N/A',
+            'outflow': float(t.outflow or 0),
+            'inflow': float(t.inflow or 0),
+            'netto': float((t.outflow or 0) - (t.inflow or 0)),
+            'memo': t.memo or '',
+            'source': 'Robert'
+        })
+
+    # Kombiniere beide Listen
+    all_transactions = sigi_transactions + robert_transactions
+
+    # Sortiere nach Datum (neueste zuerst)
+    all_transactions.sort(key=lambda x: x['date'], reverse=True)
+
+    # Berechne Statistiken
+    total_sigi = sum(t['netto'] for t in sigi_transactions)
+    total_robert = sum(t['netto'] for t in robert_transactions)
+    total_all = total_sigi + total_robert
+
+    # Gruppiere nach Monat
+    monthly_summary = {}
+    for t in all_transactions:
+        key = f"{t['year']}-{t['month']:02d}"
+        if key not in monthly_summary:
+            monthly_summary[key] = {
+                'count': 0,
+                'total': 0,
+                'sigi_count': 0,
+                'robert_count': 0
+            }
+        monthly_summary[key]['count'] += 1
+        monthly_summary[key]['total'] += t['netto']
+        if t['source'] == 'Sigi':
+            monthly_summary[key]['sigi_count'] += 1
+        else:
+            monthly_summary[key]['robert_count'] += 1
+
+    return JsonResponse({
+        'filters': {
+            'category_id': category_id,
+            'category_name': '1.4. Supermarkt',
+            'year': year,
+            'month': month
+        },
+        'statistics': {
+            'total_transactions': len(all_transactions),
+            'sigi_transactions': len(sigi_transactions),
+            'robert_transactions': len(robert_transactions),
+            'total_sigi': round(total_sigi, 2),
+            'total_robert': round(total_robert, 2),
+            'total_all': round(total_all, 2)
+        },
+        'monthly_summary': {
+            k: {
+                'count': v['count'],
+                'total': round(v['total'], 2),
+                'sigi_count': v['sigi_count'],
+                'robert_count': v['robert_count']
+            }
+            for k, v in sorted(monthly_summary.items())
+        },
+        'transactions': all_transactions
+    })
+
+
+@login_required
+def api_billa_transactions_detail(request):
+    """
+    DEBUG: Zeigt alle Billa-Transaktionen
+    Optional: Filter nach Jahr und Monat mit ?year=2024&month=10
+    """
+    category_id = 5  # 1.4. Supermarkt
+
+    # Finde alle Payees die "Billa" enthalten
+    billa_payees = DimPayee.objects.filter(
+        payee__icontains='Billa'
+    ).exclude(
+        payee_type__in=['transfer', 'kursschwankung']
+    )
+
+    billa_payee_ids = list(billa_payees.values_list('id', flat=True))
+    billa_payee_names = list(billa_payees.values_list('payee', flat=True))
+
+    # Optionale Filter
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+
+    # Sigi - KORRIGIERT: Nur echte Einkäufe (mit Outflow), aber inkl. Inflows für Netto-Berechnung
+    sigi_query = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        category_id=category_id,
+        payee_id__in=billa_payee_ids
+    ).exclude(
+        Q(outflow__isnull=True) | Q(outflow=0)  # Nur Transaktionen mit Outflow
+    ).select_related('payee', 'category', 'account')
+
+    # Robert - KORRIGIERT
+    robert_query = FactTransactionsRobert.objects.filter(
+        category_id=category_id,
+        payee_id__in=billa_payee_ids
+    ).exclude(
+        Q(outflow__isnull=True) | Q(outflow=0)  # Nur Transaktionen mit Outflow
+    ).select_related('payee', 'category', 'account')
+
+    # Filter nach Jahr/Monat
+    if year:
+        sigi_query = sigi_query.filter(date__year=int(year))
+        robert_query = robert_query.filter(date__year=int(year))
+    if month:
+        sigi_query = sigi_query.filter(date__month=int(month))
+        robert_query = robert_query.filter(date__month=int(month))
+
+    sigi_query = sigi_query.order_by('-date')
+    robert_query = robert_query.order_by('-date')
+
+    # Erstelle Response
+    transactions = []
+
+    for t in sigi_query:
+        transactions.append({
+            'id': t.id,
+            'date': t.date.strftime('%Y-%m-%d'),
+            'year': t.date.year,
+            'month': t.date.month,
+            'payee': t.payee.payee if t.payee else 'N/A',
+            'outflow': float(t.outflow or 0),
+            'memo': t.memo or '',
+            'source': 'Sigi'
+        })
+
+    for t in robert_query:
+        transactions.append({
+            'id': t.id,
+            'date': t.date.strftime('%Y-%m-%d'),
+            'year': t.date.year,
+            'month': t.date.month,
+            'payee': t.payee.payee if t.payee else 'N/A',
+            'outflow': float(t.outflow or 0),
+            'memo': t.memo or '',
+            'source': 'Robert'
+        })
+
+    transactions.sort(key=lambda x: x['date'], reverse=True)
+
+    # Monatliche Zusammenfassung
+    monthly_summary = {}
+    for t in transactions:
+        key = f"{t['year']}-{t['month']:02d}"
+        if key not in monthly_summary:
+            monthly_summary[key] = {
+                'count': 0,
+                'total': 0,
+                'avg': 0
+            }
+        monthly_summary[key]['count'] += 1
+        monthly_summary[key]['total'] += t['outflow']
+
+    # Berechne Durchschnitte
+    for key in monthly_summary:
+        count = monthly_summary[key]['count']
+        total = monthly_summary[key]['total']
+        monthly_summary[key]['avg'] = round(total / count if count > 0 else 0, 2)
+        monthly_summary[key]['total'] = round(total, 2)
+
+    return JsonResponse({
+        'filters': {
+            'year': year,
+            'month': month,
+            'billa_payees': billa_payee_names
+        },
+        'statistics': {
+            'total_transactions': len(transactions),
+            'total_amount': round(sum(t['outflow'] for t in transactions), 2),
+            'avg_purchase': round(sum(t['outflow'] for t in transactions) / len(transactions) if transactions else 0, 2)
+        },
+        'monthly_summary': {k: v for k, v in sorted(monthly_summary.items())},
+        'transactions': transactions
     })

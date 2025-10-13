@@ -63,4 +63,14 @@ urlpatterns = [
     path('api/categorygroup-quarterly-breakdown/', views.api_categorygroup_quarterly_breakdown, name='api_categorygroup_quarterly_breakdown'),
     path('api/categorygroup-stats/', views.api_categorygroup_stats, name='api_categorygroup_stats'),
 
+    # API Endpoints für Supermarkt-Bereich (Kategorie id=5)
+    path('api/supermarket-monthly-trend/', views.api_supermarket_monthly_trend, name='api_supermarket_monthly_trend'),
+    path('api/supermarket-year-comparison/', views.api_supermarket_year_comparison, name='api_supermarket_year_comparison'),
+    path('api/supermarket-stats/', views.api_supermarket_stats, name='api_supermarket_stats'),
+    path('api/billa-combined-chart/', views.api_billa_combined_chart, name='api_billa_combined_chart'),
+
+    # DEBUG Endpoints für Supermarkt-Details
+    path('api/supermarket-transactions-detail/', views.api_supermarket_transactions_detail,
+         name='api_supermarket_transactions_detail'),
+    path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 ]
