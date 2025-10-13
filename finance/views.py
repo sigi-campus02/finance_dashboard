@@ -2145,3 +2145,206 @@ def generate_distinct_colors(num_colors):
         })
 
     return colors
+
+
+# Füge diese Views zu deiner finance/views.py hinzu
+
+@login_required
+def household_dashboard(request):
+    """Dashboard für Haushaltsausgaben - zeigt Visualisierungen"""
+    # Verfügbare Jahre ermitteln
+    sigi_base = FactTransactionsSigi.objects.filter(flag_id=5)
+    robert_base = FactTransactionsRobert.objects.all()
+
+    from django.db.models import functions
+    sigi_years = sigi_base.annotate(
+        year=functions.ExtractYear('date')
+    ).values_list('year', flat=True).distinct()
+    robert_years = robert_base.annotate(
+        year=functions.ExtractYear('date')
+    ).values_list('year', flat=True).distinct()
+    available_years = sorted(set(sigi_years) | set(robert_years), reverse=True)
+
+    context = {
+        'available_years': available_years,
+        'current_year': datetime.now().year,
+    }
+
+    return render(request, 'finance/household_dashboard.html', context)
+
+
+@login_required
+def api_household_monthly_spending(request):
+    """API: Monatliche Haushaltsausgaben (Gestapelt nach Person)"""
+    year = request.GET.get('year', datetime.now().year)
+    year = int(year)
+
+    # Sigi: Nur mit Flag "Relevant für Haushaltsbudget" (flag_id=5)
+    sigi_transactions = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        date__year=year
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # "Ready to Assign" ausschließen
+    )
+
+    # Robert: Alle Transaktionen
+    robert_transactions = FactTransactionsRobert.objects.filter(
+        date__year=year
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    )
+
+    # Monatliche Aggregation für Sigi
+    sigi_monthly = sigi_transactions.annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    ).order_by('month')
+
+    # Monatliche Aggregation für Robert
+    robert_monthly = robert_transactions.annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    ).order_by('month')
+
+    # Erstelle vollständige Monatsliste
+    months_labels = [
+        'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+        'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    ]
+
+    # Initialisiere Daten-Arrays
+    sigi_data = [0] * 12
+    robert_data = [0] * 12
+
+    # Fülle Sigi-Daten
+    for item in sigi_monthly:
+        month_index = item['month'].month - 1
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+        sigi_data[month_index] = netto
+
+    # Fülle Robert-Daten
+    for item in robert_monthly:
+        month_index = item['month'].month - 1
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+        robert_data[month_index] = netto
+
+    return JsonResponse({
+        'labels': months_labels,
+        'datasets': [
+            {
+                'label': 'Robert',
+                'data': robert_data,
+                'backgroundColor': 'rgba(0, 176, 240, 0.8)',  # #00B0F0
+                'borderColor': 'rgba(0, 176, 240, 1)',
+                'borderWidth': 1
+            },
+            {
+                'label': 'Sigi',
+                'data': sigi_data,
+                'backgroundColor': 'rgba(0, 242, 196, 0.8)',  # #00F2C4
+                'borderColor': 'rgba(0, 242, 196, 1)',
+                'borderWidth': 1
+            }
+        ]
+    })
+
+
+@login_required
+def api_household_category_breakdown(request):
+    """API: Ausgaben nach CategoryGroup für Tortendiagramm"""
+    year = request.GET.get('year', datetime.now().year)
+    year = int(year)
+
+    # Definiere die gewünschten CategoryGroups mit Farben
+    category_config = {
+        1: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},  # #5B9BD5
+        2: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},  # #ED7D31
+        3: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},  # #8497B0
+        4: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},  # #FFC000
+        5: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},  # #70AD47
+        6: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},  # #4472C4
+        9: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}  # #FF0066
+    }
+
+    # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
+    sigi_transactions = FactTransactionsSigi.objects.filter(
+        flag_id=5,
+        date__year=year,
+        outflow__gt=0
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # "Ready to Assign"
+    )
+
+    # Robert: Alle Transaktionen
+    robert_transactions = FactTransactionsRobert.objects.filter(
+        date__year=year,
+        outflow__gt=0
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    )
+
+    # Aggregiere nach CategoryGroup für Sigi
+    sigi_by_group = sigi_transactions.values(
+        'category__categorygroup_id',
+        'category__categorygroup__category_group'
+    ).annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    )
+
+    # Aggregiere nach CategoryGroup für Robert
+    robert_by_group = robert_transactions.values(
+        'category__categorygroup_id',
+        'category__categorygroup__category_group'
+    ).annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    )
+
+    # Kombiniere beide und berechne Netto pro CategoryGroup
+    category_totals = {}
+
+    for item in sigi_by_group:
+        group_id = item['category__categorygroup_id']
+        if group_id in category_config:
+            netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+            category_totals[group_id] = category_totals.get(group_id, 0) + netto
+
+    for item in robert_by_group:
+        group_id = item['category__categorygroup_id']
+        if group_id in category_config:
+            netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+            category_totals[group_id] = category_totals.get(group_id, 0) + netto
+
+    # Bereite Daten für Chart.js vor
+    labels = []
+    data = []
+    colors = []
+
+    for group_id in sorted(category_config.keys()):
+        if group_id in category_totals and category_totals[group_id] > 0:
+            labels.append(category_config[group_id]['name'])
+            data.append(category_totals[group_id])
+            colors.append(category_config[group_id]['color'])
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': [{
+            'data': data,
+            'backgroundColor': colors,
+            'borderColor': colors,
+            'borderWidth': 1
+        }]
+    })

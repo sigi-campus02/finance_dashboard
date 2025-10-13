@@ -159,6 +159,12 @@
                         </a>
                     </li>
                     {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}" 
+                           href="{% url 'finance:household_dashboard' %}">
+                            <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-list-ul"></i> Transaktionen
@@ -228,7 +234,7 @@
     <!-- Main Content -->
     <div class="container-fluid">
         <div class="row">
-        
+
             <!-- Sidebar -->
 
             <nav class="col-md-2 d-none d-md-block sidebar">
@@ -240,6 +246,12 @@
                                href="{% url 'finance:dashboard' %}">
                                 <i class="bi bi-speedometer2"></i>
                                 Übersicht
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}" 
+                               href="{% url 'finance:household_dashboard' %}">
+                                <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
                             </a>
                         </li>
                         <li class="nav-item">

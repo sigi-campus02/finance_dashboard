@@ -49,4 +49,11 @@ urlpatterns = [
     path('api/asset-history/', views.api_asset_history, name='api_asset_history'),
     path('api/asset-category-details/', views.api_asset_category_details, name='api_asset_category_details'),
     path('api/income-payees/', views.api_income_payees, name='api_income_payees'),
+
+    # Dashboard Haushalt
+    path('dashboard/household/', views.household_dashboard, name='household_dashboard'),
+
+    # API Endpoints für Haushalt-Dashboard
+    path('api/household-monthly-spending/', views.api_household_monthly_spending, name='api_household_monthly_spending'),
+    path('api/household-category-breakdown/', views.api_household_category_breakdown, name='api_household_category_breakdown'),
 ]
