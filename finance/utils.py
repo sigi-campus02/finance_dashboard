@@ -1,4 +1,4 @@
-# finance/utils.py (neue Datei erstellen)
+# finance/utils.py
 """
 Utility-Funktionen für das Finance-Modul
 """
@@ -35,11 +35,13 @@ ACCOUNT_ICON_MAPPING = {
 
     # LongtermInvest
     'pension': 'shield-check',
+    'pensionskonto': 'shield-check',
     'rente': 'shield-check',
     'vorsorge': 'briefcase',
     'vorsorgekasse': 'piggy-bank-fill',
     'apk': 'building',
     'vbv': 'safe',
+    'bvk': 'shield-check',
     'versicherung': 'shield-fill',
     'uniqa': 'shield-check',
 }
@@ -52,7 +54,6 @@ CATEGORY_CONFIG = {
         'color_class': 'text-success',
         'bg_class': 'bg-success',
         'icon': 'wallet2',
-        'keywords': ['giro', 'konto', 'bargeld', 'cash', 'sparen', 'online', 'gutschein']
     },
     'Credit': {
         'display_name': 'Credit',
@@ -60,7 +61,6 @@ CATEGORY_CONFIG = {
         'color_class': 'text-danger',
         'bg_class': 'bg-danger',
         'icon': 'credit-card',
-        'keywords': ['kredit', 'credit', 'mastercard', 'visa', 'karte']
     },
     'MidtermInvest': {
         'display_name': 'MidtermInvest',
@@ -68,7 +68,6 @@ CATEGORY_CONFIG = {
         'color_class': 'text-primary',
         'bg_class': 'bg-primary',
         'icon': 'graph-up-arrow',
-        'keywords': ['etf', 'fonds', 'krypto', 'aktien', 'gold', 'wertpapier']
     },
     'LongtermInvest': {
         'display_name': 'LongtermInvest',
@@ -76,7 +75,6 @@ CATEGORY_CONFIG = {
         'color_class': 'text-info',
         'bg_class': 'bg-info',
         'icon': 'shield-check',
-        'keywords': ['pension', 'rente', 'vorsorge', 'apk', 'vbv', 'versicherung']
     },
     'Sonstige': {
         'display_name': 'Sonstige',
@@ -84,7 +82,6 @@ CATEGORY_CONFIG = {
         'color_class': 'text-secondary',
         'bg_class': 'bg-secondary',
         'icon': 'question-circle',
-        'keywords': []
     }
 }
 
@@ -110,41 +107,6 @@ def get_account_icon(account_name):
             return icon
 
     return 'wallet2'  # Standard-Icon
-
-
-def get_account_category(account_name, account_type=None):
-    """
-    Kategorisiert Accounts basierend auf Namen oder Typ
-
-    Args:
-        account_name (str): Name des Accounts
-        account_type (str): Typ des Accounts (optional)
-
-    Returns:
-        tuple: (category, display_name, order, color_class, icon)
-    """
-    if not account_name:
-        config = CATEGORY_CONFIG['Sonstige']
-        return ('Sonstige', config['display_name'], config['order'],
-                config['color_class'], config['icon'])
-
-    account_lower = account_name.lower()
-
-    # Prüfe jede Kategorie
-    for category_name, config in CATEGORY_CONFIG.items():
-        if category_name == 'Sonstige':
-            continue
-
-        # Prüfe ob Account zu dieser Kategorie passt
-        if any(keyword in account_lower for keyword in config['keywords']):
-            icon = get_account_icon(account_name)
-            return (category_name, config['display_name'], config['order'],
-                    config['color_class'], icon)
-
-    # Fallback: Sonstige
-    config = CATEGORY_CONFIG['Sonstige']
-    return ('Sonstige', config['display_name'], config['order'],
-            config['color_class'], get_account_icon(account_name))
 
 
 def calculate_account_balance(account_id, end_date):

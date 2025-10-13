@@ -14,7 +14,7 @@ from .models import (
 from .forms import TransactionForm
 from collections import defaultdict
 from decimal import Decimal
-from .utils import get_account_category, calculate_account_balance, CATEGORY_CONFIG
+from .utils import get_account_icon, calculate_account_balance, CATEGORY_CONFIG
 
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
@@ -485,7 +485,7 @@ def asset_overview(request):
     except ValueError:
         prev_year = current_date.replace(year=current_date.year - 1, day=28)
 
-    accounts = DimAccount.objects.all()
+    accounts = DimAccount.objects.select_related('accounttype').all()
 
     categories_dict = defaultdict(lambda: {
         'positions': [],
@@ -498,12 +498,17 @@ def asset_overview(request):
     })
 
     for account in accounts:
-        account_name = account.account
-        account_type = account.accounttype.accounttypes if account.accounttype else None
+        # **NEU: Hole Kategorie direkt aus Datenbank**
+        if account.accounttype and account.accounttype.accounttypes:
+            category_name = account.accounttype.accounttypes
+        else:
+            category_name = 'Sonstige'
 
-        category, display_name, order, color_class, icon = get_account_category(
-            account_name, account_type
-        )
+        # Hole Konfiguration für diese Kategorie
+        category_config = CATEGORY_CONFIG.get(category_name, CATEGORY_CONFIG['Sonstige'])
+
+        # Icon weiterhin aus Account-Namen ableiten (für Details)
+        icon = get_account_icon(account.account)
 
         current_balance = calculate_account_balance(account.id, current_date)
         prev_month_balance = calculate_account_balance(account.id, prev_month)
@@ -521,7 +526,7 @@ def asset_overview(request):
             delta_year = ((current_balance - prev_year_balance) / abs(prev_year_balance) * 100)
 
         position_info = {
-            'name': account_name,
+            'name': account.account,
             'icon': icon,
             'current_balance': current_balance,
             'prev_month_balance': prev_month_balance,
@@ -530,13 +535,13 @@ def asset_overview(request):
             'delta_year': delta_year,
         }
 
-        categories_dict[category]['positions'].append(position_info)
-        categories_dict[category]['total_current'] += current_balance
-        categories_dict[category]['total_prev_month'] += prev_month_balance
-        categories_dict[category]['total_prev_year'] += prev_year_balance
-        categories_dict[category]['display_name'] = display_name
-        categories_dict[category]['order'] = order
-        categories_dict[category]['color_class'] = color_class
+        categories_dict[category_name]['positions'].append(position_info)
+        categories_dict[category_name]['total_current'] += current_balance
+        categories_dict[category_name]['total_prev_month'] += prev_month_balance
+        categories_dict[category_name]['total_prev_year'] += prev_year_balance
+        categories_dict[category_name]['display_name'] = category_config['display_name']
+        categories_dict[category_name]['order'] = category_config['order']
+        categories_dict[category_name]['color_class'] = category_config['color_class']
 
     categories_data = []
     for category_name, data in categories_dict.items():
