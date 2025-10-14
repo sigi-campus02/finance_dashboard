@@ -107,28 +107,35 @@
 
     <!-- Navigation - AN DEN ANFANG VERSCHOBEN -->
     <div class="row g-3 mb-4">
-        <div class="col-md-3 col-sm-6">
+        <div class="col">
+            <a href="{% url 'finance:billa_einkauefe_uebersicht' %}" class="nav-card-compact" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <span class="nav-card-icon">🛒</span>
+                <div class="nav-card-title">Einkäufe Übersicht</div>
+                <div class="nav-card-description">Alle Einkäufe anzeigen</div>
+            </a>
+        </div>
+        <div class="col">
             <a href="{% url 'finance:billa_produkte_liste' %}" class="nav-card-compact blue">
                 <span class="nav-card-icon">📦</span>
                 <div class="nav-card-title">Alle Produkte</div>
                 <div class="nav-card-description">Durchsuche alle gekauften Produkte</div>
             </a>
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col">
             <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="nav-card-compact green">
                 <span class="nav-card-icon">🏷️</span>
                 <div class="nav-card-title">Produktgruppen</div>
                 <div class="nav-card-description">Ausgaben nach Kategorien</div>
             </a>
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col">
             <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}" class="nav-card-compact orange">
                 <span class="nav-card-icon">📈</span>
                 <div class="nav-card-title">Preisentwicklung</div>
                 <div class="nav-card-description">Preisänderungen verfolgen</div>
             </a>
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col">
             <a href="{% url 'finance:billa_import' %}" class="nav-card-compact yellow">
                 <span class="nav-card-icon">💾</span>
                 <div class="nav-card-title">Import</div>
@@ -136,6 +143,7 @@
             </a>
         </div>
     </div>
+</div>
 
     <!-- Filter -->
     <div class="filter-section">

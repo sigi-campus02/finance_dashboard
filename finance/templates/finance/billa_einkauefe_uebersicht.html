@@ -1,0 +1,183 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Einkäufe Übersicht{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    
+    .badge-filiale {
+        font-size: 0.85rem;
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_dashboard' %}">Billa Dashboard</a></li>
+            <li class="breadcrumb-item active">Einkäufe Übersicht</li>
+        </ol>
+    </nav>
+    
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1>🛒 Alle Einkäufe</h1>
+        </div>
+    </div>
+    
+    <!-- Statistiken -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-label">Anzahl Einkäufe</div>
+                <div class="stat-value">{{ stats.anzahl|default:0 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-label">Gesamt Ausgaben</div>
+                <div class="stat-value">€{{ stats.gesamt_ausgaben|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-label">Gespart</div>
+                <div class="stat-value text-success">€{{ stats.gesamt_ersparnis|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-label">Ø Warenkorb</div>
+                <div class="stat-value">€{{ stats.avg_warenkorb|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="filter-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Von</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Bis</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Filiale</label>
+                <select name="filiale" class="form-select">
+                    <option value="alle" {% if selected_filiale == 'alle' %}selected{% endif %}>Alle Filialen</option>
+                    {% for fil in filialen %}
+                    <option value="{{ fil }}" {% if selected_filiale == fil %}selected{% endif %}>{{ fil }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">
+                    <i class="bi bi-filter"></i> Filtern
+                </button>
+                <a href="{% url 'finance:billa_einkauefe_uebersicht' %}" class="btn btn-secondary">
+                    <i class="bi bi-x"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Tabelle -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Alle Einkäufe ({{ einkaufe.count }})</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if einkaufe %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Datum</th>
+                            <th>Uhrzeit</th>
+                            <th>Filiale</th>
+                            <th class="text-end">Artikel</th>
+                            <th class="text-end">Gesamt</th>
+                            <th class="text-end">Ersparnis</th>
+                            <th class="text-center">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for einkauf in einkaufe %}
+                        <tr onclick="window.location='{% url 'finance:billa_einkauf_detail' einkauf.id %}'">
+                            <td>{{ einkauf.datum|date:"d.m.Y" }}</td>
+                            <td>{{ einkauf.zeit|default:"-" }}</td>
+                            <td>
+                                <span class="badge badge-filiale bg-secondary">{{ einkauf.filiale }}</span>
+                            </td>
+                            <td class="text-end">{{ einkauf.artikel.count }}</td>
+                            <td class="text-end">
+                                <strong>€{{ einkauf.gesamt_preis|floatformat:2 }}</strong>
+                            </td>
+                            <td class="text-end text-success">
+                                {% if einkauf.gesamt_ersparnis %}
+                                €{{ einkauf.gesamt_ersparnis|floatformat:2 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td class="text-center" onclick="event.stopPropagation()">
+                                <a href="{% url 'finance:billa_einkauf_detail' einkauf.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <p class="text-muted mt-3">Keine Einkäufe gefunden</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

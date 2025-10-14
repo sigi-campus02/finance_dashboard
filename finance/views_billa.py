@@ -1774,3 +1774,68 @@ def billa_import_upload(request):
 
     context = {}
     return render(request, 'finance/billa_import.html', context)
+
+
+# Füge diese View in finance/views_billa.py hinzu, direkt VOR der billa_einkauf_detail View:
+
+@login_required
+def billa_einkauefe_uebersicht(request):
+    """Übersicht aller Einkäufe"""
+
+    # Filter aus GET-Parametern
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    filiale = request.GET.get('filiale')
+
+    # Basis-Queryset
+    einkaufe = BillaEinkauf.objects.all()
+
+    # Datum-Filter
+    if start_date:
+        einkaufe = einkaufe.filter(datum__gte=start_date)
+    if end_date:
+        einkaufe = einkaufe.filter(datum__lte=end_date)
+
+    # Filialen-Filter
+    if filiale and filiale != 'alle':
+        einkaufe = einkaufe.filter(filiale=filiale)
+
+    # Sortierung
+    einkaufe = einkaufe.order_by('-datum', '-zeit')
+
+    # Statistiken
+    stats = einkaufe.aggregate(
+        anzahl=Count('id'),
+        gesamt_ausgaben=Sum('gesamt_preis'),
+        gesamt_ersparnis=Sum('gesamt_ersparnis'),
+        avg_warenkorb=Avg('gesamt_preis')
+    )
+
+    # Filialen für Filter
+    filialen = BillaEinkauf.objects.values_list(
+        'filiale', flat=True
+    ).distinct().order_by('filiale')
+
+    context = {
+        'einkaufe': einkaufe,
+        'stats': stats,
+        'filialen': list(filialen),
+        'selected_filiale': filiale or 'alle',
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+
+    return render(request, 'finance/billa_einkauefe_uebersicht.html', context)
+
+@login_required
+def billa_einkauf_detail(request, einkauf_id):
+    """Detail-Ansicht eines Einkaufs"""
+    einkauf = get_object_or_404(BillaEinkauf, pk=einkauf_id)
+    artikel = einkauf.artikel.select_related('produkt').order_by('position')
+
+    context = {
+        'einkauf': einkauf,
+        'artikel': artikel
+    }
+
+    return render(request, 'finance/billa_einkauf_detail.html', context)
