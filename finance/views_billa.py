@@ -443,3 +443,157 @@ def produktgruppen_speichern(request):
             'status': 'error',
             'message': str(e)
         }, status=400)
+
+
+# Füge diese Views zu finance/views_billa.py hinzu
+
+@login_required
+def billa_produktgruppen_liste(request):
+    """Übersicht aller Produktgruppen mit aggregierten Daten"""
+
+    # Icon-Mapping für Überkategorien
+    KATEGORIE_ICONS = {
+        'Gemüse': 'bi-basket',
+        'Obst': 'bi-apple',
+        'Milchprodukte': 'bi-cup-straw',
+        'Fleisch & Wurst': 'bi-shop',
+        'Getränke': 'bi-cup',
+        'Brot & Gebäck': 'bi-bread-slice',
+        'Tiefkühl': 'bi-snow',
+        'Süßigkeiten': 'bi-candy',
+        'Konserven': 'bi-archive',
+        'Haushalt': 'bi-house',
+        'Körperpflege': 'bi-droplet',
+        'Sonstiges': 'bi-three-dots'
+    }
+
+    # Filter
+    ueberkategorie_filter = request.GET.get('ueberkategorie')
+    suche = request.GET.get('suche')
+    sortierung = request.GET.get('sort', '-anzahl_kaeufe')
+
+    # Aggregiere Daten nach Produktgruppe
+    produktgruppen = BillaProdukt.objects.exclude(
+        produktgruppe__isnull=True
+    ).exclude(
+        produktgruppe=''
+    ).values(
+        'produktgruppe', 'ueberkategorie'
+    ).annotate(
+        anzahl_produkte=Count('id'),
+        anzahl_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis'),
+        aktueller_preis=Avg('letzter_preis')
+    )
+
+    # Filter nach Überkategorie
+    if ueberkategorie_filter and ueberkategorie_filter != 'alle':
+        produktgruppen = produktgruppen.filter(ueberkategorie=ueberkategorie_filter)
+
+    # Suche
+    if suche:
+        produktgruppen = produktgruppen.filter(produktgruppe__icontains=suche)
+
+    # Sortierung
+    sortierung_map = {
+        '-anzahl_kaeufe': '-anzahl_kaeufe',
+        'anzahl_kaeufe': 'anzahl_kaeufe',
+        '-durchschnittspreis': '-durchschnittspreis',
+        'durchschnittspreis': 'durchschnittspreis',
+        'produktgruppe': 'produktgruppe',
+        '-produktgruppe': '-produktgruppe',
+        '-anzahl_produkte': '-anzahl_produkte'
+    }
+    produktgruppen = produktgruppen.order_by(sortierung_map.get(sortierung, '-anzahl_kaeufe'))
+
+    # Liste in Python umwandeln und Icons hinzufügen
+    produktgruppen_list = []
+    for gruppe in produktgruppen:
+        gruppe['icon'] = KATEGORIE_ICONS.get(gruppe['ueberkategorie'], 'bi-box-seam')
+        produktgruppen_list.append(gruppe)
+
+    # Alle Überkategorien für Filter
+    alle_ueberkategorien = BillaProdukt.objects.exclude(
+        ueberkategorie__isnull=True
+    ).values_list('ueberkategorie', flat=True).distinct().order_by('ueberkategorie')
+
+    context = {
+        'produktgruppen': produktgruppen_list,
+        'ueberkategorien': list(alle_ueberkategorien),
+        'selected_ueberkategorie': ueberkategorie_filter or 'alle',
+        'suche': suche or '',
+        'sortierung': sortierung,
+        'gesamt_gruppen': len(produktgruppen_list)
+    }
+
+    return render(request, 'finance/billa_produktgruppen_liste.html', context)
+
+
+@login_required
+def billa_produktgruppe_detail(request, produktgruppe):
+    """Detailansicht einer Produktgruppe"""
+
+    # Alle Produkte dieser Gruppe
+    produkte = BillaProdukt.objects.filter(
+        produktgruppe=produktgruppe
+    ).annotate(
+        gesamtausgaben=Sum('artikel__gesamtpreis')
+    ).order_by('-anzahl_kaeufe')
+
+    if not produkte.exists():
+        from django.http import Http404
+        raise Http404("Produktgruppe nicht gefunden")
+
+    # Überkategorie und Icon
+    ueberkategorie = produkte.first().ueberkategorie
+    KATEGORIE_ICONS = {
+        'Gemüse': 'bi-basket',
+        'Obst': 'bi-apple',
+        'Milchprodukte': 'bi-cup-straw',
+        'Fleisch & Wurst': 'bi-shop',
+        'Getränke': 'bi-cup',
+        'Brot & Gebäck': 'bi-bread-slice',
+        'Tiefkühl': 'bi-snow',
+        'Süßigkeiten': 'bi-candy',
+        'Konserven': 'bi-archive',
+        'Haushalt': 'bi-house',
+        'Körperpflege': 'bi-droplet',
+        'Sonstiges': 'bi-three-dots'
+    }
+    icon = KATEGORIE_ICONS.get(ueberkategorie, 'bi-box-seam')
+
+    # Statistiken für die gesamte Gruppe
+    stats = produkte.aggregate(
+        gesamt_produkte=Count('id'),
+        gesamt_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis'),
+        min_preis=Min('letzter_preis'),
+        max_preis=Max('letzter_preis'),
+        gesamt_ausgaben=Sum('gesamtausgaben')
+    )
+
+    # Letzte Käufe ALLER Produkte dieser Gruppe (mit Produktname)
+    letzte_kaeufe = BillaArtikel.objects.filter(
+        produkt__produktgruppe=produktgruppe
+    ).select_related(
+        'einkauf', 'produkt'
+    ).order_by('-einkauf__datum')[:30]
+
+    # Preisentwicklung über Zeit (Durchschnitt der Gruppe)
+    preis_historie = BillaPreisHistorie.objects.filter(
+        produkt__produktgruppe=produktgruppe
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis')
+    ).order_by('datum')
+
+    context = {
+        'produktgruppe': produktgruppe,
+        'ueberkategorie': ueberkategorie,
+        'icon': icon,
+        'produkte': produkte,
+        'stats': stats,
+        'letzte_kaeufe': letzte_kaeufe,
+        'preis_historie': list(preis_historie)
+    }
+
+    return render(request, 'finance/billa_produktgruppe_detail.html', context)

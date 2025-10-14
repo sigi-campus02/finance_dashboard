@@ -193,29 +193,29 @@
                             </a></li>
                         </ul>
                     </li>
-                
+
                     <!-- Billa Dropdown in der Sidebar -->
                     <li class="nav-item">
-                        <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}" 
-                           href="#" 
-                           id="billaDropdown" 
-                           role="button" 
-                           data-bs-toggle="collapse" 
-                           data-bs-target="#billaSubmenu" 
+                        <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
+                           href="#"
+                           id="billaDropdown"
+                           role="button"
+                           data-bs-toggle="collapse"
+                           data-bs-target="#billaSubmenu"
                            aria-expanded="false">
                             <i class="bi bi-cart3"></i> Billa
                         </a>
-                        <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}" 
+                        <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}"
                              id="billaSubmenu">
                             <ul class="nav flex-column ms-3">
                                 <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}" 
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
                                        href="{% url 'finance:billa_dashboard' %}">
                                         <i class="bi bi-graph-up"></i> Dashboard
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'produktgruppen_mapper' %}active{% endif %}" 
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'produktgruppen_mapper' %}active{% endif %}"
                                        href="{% url 'finance:produktgruppen_mapper' %}">
                                         <i class="bi bi-tag"></i> Produktgruppen
                                     </a>
@@ -223,7 +223,7 @@
                             </ul>
                         </div>
                     </li>
-                
+
                     {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:scheduled_transactions' %}">
@@ -337,27 +337,27 @@
                         </li>
                         <!-- Billa Dropdown in der Sidebar -->
                         <li class="nav-item">
-                            <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}" 
-                               href="#" 
-                               id="billaDropdown" 
-                               role="button" 
-                               data-bs-toggle="collapse" 
-                               data-bs-target="#billaSubmenu" 
+                            <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
+                               href="#"
+                               id="billaDropdown"
+                               role="button"
+                               data-bs-toggle="collapse"
+                               data-bs-target="#billaSubmenu"
                                aria-expanded="false">
                                 <i class="bi bi-cart3"></i> Billa
                             </a>
-                            <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}" 
+                            <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}"
                                  id="billaSubmenu">
                                 <ul class="nav flex-column ms-3">
                                     <li class="nav-item">
-                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}" 
+                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
                                            href="{% url 'finance:billa_dashboard' %}">
                                             <i class="bi bi-graph-up"></i> Dashboard
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link {% if request.resolver_match.url_name == 'produktgruppen_mapper' %}active{% endif %}" 
-                                           href="{% url 'finance:produktgruppen_mapper' %}">
+                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
+                                           href="{% url 'finance:billa_produktgruppen_liste' %}">
                                             <i class="bi bi-tag"></i> Produktgruppen
                                         </a>
                                     </li>

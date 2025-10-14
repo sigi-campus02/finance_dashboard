@@ -74,10 +74,6 @@ urlpatterns = [
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 
     # Billa URLs
-    path('billa/', views_billa.billa_dashboard, name='billa_dashboard'),
-    path('billa/einkauf/<int:einkauf_id>/', views_billa.billa_einkauf_detail, name='billa_einkauf_detail'),
-    path('billa/produkt/<int:produkt_id>/', views_billa.billa_produkt_detail, name='billa_produkt_detail'),
-    path('billa/produkte/', views_billa.billa_produkte_liste, name='billa_produkte_liste'),
     path('billa/preisentwicklung/', views_billa.billa_preisentwicklung, name='billa_preisentwicklung'),
     path('billa/statistiken/', views_billa.billa_statistiken, name='billa_statistiken'),
 
@@ -87,4 +83,15 @@ urlpatterns = [
     path('billa/produktgruppen-mapper/', views_billa.produktgruppen_mapper, name='produktgruppen_mapper'),
     path('billa/produktgruppen-speichern/', views_billa.produktgruppen_speichern, name='produktgruppen_speichern'),
 
+    # Billa URLs (erweitert)
+    path('billa/', views_billa.billa_dashboard, name='billa_dashboard'),
+    path('billa/einkauf/<int:einkauf_id>/', views_billa.billa_einkauf_detail, name='billa_einkauf_detail'),
+    path('billa/produkt/<int:produkt_id>/', views_billa.billa_produkt_detail, name='billa_produkt_detail'),
+
+    # NEU: Produktgruppen-Ansichten
+    path('billa/produktgruppen/', views_billa.billa_produktgruppen_liste, name='billa_produktgruppen_liste'),
+    path('billa/produktgruppe/<str:produktgruppe>/', views_billa.billa_produktgruppe_detail, name='billa_produktgruppe_detail'),
+
+    # Alte Produkte-Liste (jetzt als Alternative)
+    path('billa/produkte/', views_billa.billa_produkte_liste, name='billa_produkte_liste'),
 ]

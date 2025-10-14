@@ -1,0 +1,326 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Produktgruppen - Billa{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .gruppe-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    
+    .gruppe-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        border-color: #667eea;
+    }
+    
+    .gruppe-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .gruppe-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 28px;
+        color: white;
+        flex-shrink: 0;
+    }
+    
+    .gruppe-info {
+        flex: 1;
+    }
+    
+    .gruppe-name {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0 0 5px 0;
+    }
+    
+    .gruppe-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .meta-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .meta-badge i {
+        font-size: 0.9rem;
+    }
+    
+    .gruppe-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .stat-box {
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #667eea;
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    .preis-range {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="bi bi-grid-3x3-gap"></i> Produktgruppen</h1>
+            <p class="text-muted mb-0">{{ gesamt_gruppen }} Produktgruppen gefunden</p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="btn btn-primary">
+                <i class="bi bi-grid-3x3-gap"></i> Gruppen
+            </a>
+            <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-list-ul"></i> Einzelprodukte
+            </a>
+            <a href="{% url 'finance:produktgruppen_mapper' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-list-ul"></i> Produktgruppen zuordnen
+            </a>
+            <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="get" id="filter-form">
+            <div class="row g-3">
+                <!-- Suche -->
+                <div class="col-md-4">
+                    <label for="suche" class="form-label">
+                        <i class="bi bi-search"></i> Produktgruppe suchen
+                    </label>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="suche" 
+                        name="suche" 
+                        placeholder="z.B. Paprika, Milch..."
+                        value="{{ suche }}"
+                    >
+                </div>
+
+                <!-- Filter nach Überkategorie -->
+                <div class="col-md-3">
+                    <label for="ueberkategorie" class="form-label">
+                        <i class="bi bi-tag"></i> Überkategorie
+                    </label>
+                    <select class="form-select" id="ueberkategorie" name="ueberkategorie">
+                        <option value="alle" {% if selected_ueberkategorie == 'alle' %}selected{% endif %}>
+                            Alle Kategorien
+                        </option>
+                        {% for kat in ueberkategorien %}
+                        <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
+                            {{ kat }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Sortierung -->
+                <div class="col-md-3">
+                    <label for="sort" class="form-label">
+                        <i class="bi bi-sort-down"></i> Sortierung
+                    </label>
+                    <select class="form-select" id="sort" name="sort">
+                        <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
+                            Häufigste zuerst
+                        </option>
+                        <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
+                            Seltenste zuerst
+                        </option>
+                        <option value="-durchschnittspreis" {% if sortierung == '-durchschnittspreis' %}selected{% endif %}>
+                            Teuerste zuerst
+                        </option>
+                        <option value="durchschnittspreis" {% if sortierung == 'durchschnittspreis' %}selected{% endif %}>
+                            Günstigste zuerst
+                        </option>
+                        <option value="-anzahl_produkte" {% if sortierung == '-anzahl_produkte' %}selected{% endif %}>
+                            Meiste Varianten
+                        </option>
+                        <option value="produktgruppe" {% if sortierung == 'produktgruppe' %}selected{% endif %}>
+                            Name A-Z
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Filter Button -->
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Filtern
+                    </button>
+                </div>
+            </div>
+
+            <!-- Aktive Filter -->
+            {% if suche or selected_ueberkategorie != 'alle' %}
+            <div class="mt-3">
+                <small class="text-muted">Aktive Filter:</small>
+                {% if suche %}
+                <span class="badge bg-info ms-2">Suche: "{{ suche }}"</span>
+                {% endif %}
+                {% if selected_ueberkategorie != 'alle' %}
+                <span class="badge bg-info ms-2">Kategorie: {{ selected_ueberkategorie }}</span>
+                {% endif %}
+                <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="btn btn-sm btn-outline-secondary ms-2">
+                    <i class="bi bi-x"></i> Zurücksetzen
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Produktgruppen -->
+    {% if produktgruppen %}
+    <div class="row">
+        {% for gruppe in produktgruppen %}
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_produktgruppe_detail' gruppe.produktgruppe %}" class="text-decoration-none">
+                <div class="gruppe-card">
+                    <div class="gruppe-header">
+                        <div class="gruppe-icon">
+                            <i class="{{ gruppe.icon }}"></i>
+                        </div>
+                        <div class="gruppe-info">
+                            <h3 class="gruppe-name">{{ gruppe.produktgruppe|title }}</h3>
+                            <div class="gruppe-meta">
+                                {% if gruppe.ueberkategorie %}
+                                <span class="meta-badge">
+                                    <i class="bi bi-tag"></i>
+                                    {{ gruppe.ueberkategorie }}
+                                </span>
+                                {% endif %}
+                                <span class="meta-badge">
+                                    <i class="bi bi-boxes"></i>
+                                    {{ gruppe.anzahl_produkte }} Produkt{{ gruppe.anzahl_produkte|pluralize:"e" }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gruppe-stats">
+                        <div class="stat-box">
+                            <span class="stat-value">{{ gruppe.anzahl_kaeufe|default:0 }}</span>
+                            <span class="stat-label">Käufe</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">
+                                {% if gruppe.aktueller_preis %}
+                                    €{{ gruppe.aktueller_preis|floatformat:2 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
+                            <span class="stat-label">Aktuell Ø</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">
+                                {% if gruppe.durchschnittspreis %}
+                                    €{{ gruppe.durchschnittspreis|floatformat:2 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
+                            <span class="stat-label">Ø Preis</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <h3>Keine Produktgruppen gefunden</h3>
+        <p class="text-muted">
+            {% if suche or selected_ueberkategorie != 'alle' %}
+            Versuche andere Filter oder 
+            <a href="{% url 'finance:billa_produktgruppen_liste' %}">setze die Suche zurück</a>.
+            {% else %}
+            Es sind noch keine Produktgruppen zugeordnet.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-Submit bei Sortierungsänderung
+document.getElementById('sort').addEventListener('change', function() {
+    document.getElementById('filter-form').submit();
+});
+</script>
+{% endblock %}
