@@ -73,30 +73,41 @@ urlpatterns = [
     path('api/supermarket-transactions-detail/', views.api_supermarket_transactions_detail, name='api_supermarket_transactions_detail'),
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 
-
-    # Billa API Endpoints
-    path('billa/api/preisverlauf/<int:produkt_id>/', views_billa.billa_api_preisverlauf, name='billa_api_preisverlauf'),
-    path('billa/api/stats/', views_billa.billa_api_stats, name='billa_api_stats'),
-    path('billa/produktgruppen-mapper/', views_billa.produktgruppen_mapper, name='produktgruppen_mapper'),
-    path('billa/produktgruppen-speichern/', views_billa.produktgruppen_speichern, name='produktgruppen_speichern'),
-
     # Billa URLs (erweitert)
     path('billa/', views_billa.billa_dashboard, name='billa_dashboard'),
     path('billa/einkauf/<int:einkauf_id>/', views_billa.billa_einkauf_detail, name='billa_einkauf_detail'),
     path('billa/produkt/<int:produkt_id>/', views_billa.billa_produkt_detail, name='billa_produkt_detail'),
 
-    # NEU: Produktgruppen-Ansichten
+    # Produktgruppen-Ansichten
     path('billa/produktgruppen/', views_billa.billa_produktgruppen_liste, name='billa_produktgruppen_liste'),
-    path('billa/produktgruppe/<str:produktgruppe>/', views_billa.billa_produktgruppe_detail, name='billa_produktgruppe_detail'),
+    path('billa/produktgruppe/<str:produktgruppe>/', views_billa.billa_produktgruppe_detail,
+         name='billa_produktgruppe_detail'),
 
-    # Alte Produkte-Liste (jetzt als Alternative)
+    # Marken-Ansichten (NEU!)
+    path('billa/marken/', views_billa.billa_marken_liste, name='billa_marken_liste'),
+    path('billa/marke/<str:marke>/', views_billa.billa_marke_detail, name='billa_marke_detail'),
+
+    # Produkte-Liste
     path('billa/produkte/', views_billa.billa_produkte_liste, name='billa_produkte_liste'),
 
-
     # Preisentwicklung auf verschiedenen Ebenen
-    path('billa/preisentwicklung/', views_billa.billa_preisentwicklung_uebersicht, name='billa_preisentwicklung_uebersicht'),
-    path('billa/preisentwicklung/ueberkategorien/', views_billa.billa_preisentwicklung_ueberkategorien, name='billa_preisentwicklung_ueberkategorien'),
-    path('billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/', views_billa.billa_preisentwicklung_ueberkategorie, name='billa_preisentwicklung_ueberkategorie'),
-    path('billa/preisentwicklung/produktgruppe/<str:produktgruppe>/', views_billa.billa_preisentwicklung_produktgruppe, name='billa_preisentwicklung_produktgruppe'),
+    path('billa/preisentwicklung/', views_billa.billa_preisentwicklung_uebersicht,
+         name='billa_preisentwicklung_uebersicht'),
+    path('billa/preisentwicklung/ueberkategorien/', views_billa.billa_preisentwicklung_ueberkategorien,
+         name='billa_preisentwicklung_ueberkategorien'),
+    path('billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/',
+         views_billa.billa_preisentwicklung_ueberkategorie, name='billa_preisentwicklung_ueberkategorie'),
+    path('billa/preisentwicklung/produktgruppe/<str:produktgruppe>/', views_billa.billa_preisentwicklung_produktgruppe,
+         name='billa_preisentwicklung_produktgruppe'),
+    path('billa/preisentwicklung/marke/<str:marke>/', views_billa.billa_preisentwicklung_marke,
+         name='billa_preisentwicklung_marke'),  # NEU!
+
+    # Mapper & Speichern
+    path('billa/produktgruppen-mapper/', views_billa.produktgruppen_mapper, name='produktgruppen_mapper'),
+    path('billa/produktgruppen-speichern/', views_billa.produktgruppen_speichern, name='produktgruppen_speichern'),
+
+    # Billa API Endpoints
+    path('billa/api/preisverlauf/<int:produkt_id>/', views_billa.billa_api_preisverlauf, name='billa_api_preisverlauf'),
+    path('billa/api/stats/', views_billa.billa_api_stats, name='billa_api_stats'),
 
 ]

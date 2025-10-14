@@ -1,0 +1,212 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Billa - {{ marke }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-tag-fill text-primary"></i> {{ marke }}</h2>
+            <p class="text-muted mb-0">
+                {{ stats.gesamt_produkte }} Produkte | {{ stats.gesamt_kaeufe }} Käufe
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'finance:billa_preisentwicklung_marke' marke %}" class="btn btn-outline-info me-2">
+                <i class="bi bi-graph-up"></i> Preisentwicklung
+            </a>
+            <a href="{% url 'finance:billa_marken_liste' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Zurück
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistiken -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Produkte</h6>
+                    <h3 class="mb-0">{{ stats.gesamt_produkte }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Käufe</h6>
+                    <h3 class="mb-0">{{ stats.gesamt_kaeufe }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">⌀ Preis</h6>
+                    <h3 class="mb-0">€ {{ stats.durchschnittspreis|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Gesamtausgaben</h6>
+                    <h3 class="mb-0">€ {{ stats.gesamtausgaben|floatformat:2|default:"0.00" }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Produktgruppen dieser Marke -->
+    {% if produktgruppen %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-collection"></i> Produktgruppen</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for gruppe in produktgruppen %}
+                <div class="col-md-4 mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="{{ gruppe.icon }} fs-4 me-3 text-primary"></i>
+                        <div class="flex-grow-1">
+                            <a href="{% url 'finance:billa_produktgruppe_detail' gruppe.produktgruppe %}"
+                               class="text-decoration-none">
+                                <strong>{{ gruppe.produktgruppe }}</strong>
+                            </a>
+                            <small class="d-block text-muted">
+                                {{ gruppe.anzahl_produkte }} Produkte | {{ gruppe.anzahl_kaeufe }} Käufe
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Überkategorie</label>
+                    <select name="ueberkategorie" class="form-select">
+                        <option value="alle" {% if selected_ueberkategorie == 'alle' %}selected{% endif %}>
+                            Alle Kategorien
+                        </option>
+                        {% for ukat in ueberkategorien %}
+                        <option value="{{ ukat }}" {% if selected_ueberkategorie == ukat %}selected{% endif %}>
+                            {{ ukat }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Produktgruppe</label>
+                    <select name="produktgruppe" class="form-select">
+                        <option value="alle" {% if selected_produktgruppe == 'alle' %}selected{% endif %}>
+                            Alle Produktgruppen
+                        </option>
+                        {% for pgruppe in alle_produktgruppen %}
+                        <option value="{{ pgruppe }}" {% if selected_produktgruppe == pgruppe %}selected{% endif %}>
+                            {{ pgruppe }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Sortierung</label>
+                    <select name="sort" class="form-select">
+                        <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
+                            Meiste Käufe
+                        </option>
+                        <option value="name_normalisiert" {% if sortierung == 'name_normalisiert' %}selected{% endif %}>
+                            Name A-Z
+                        </option>
+                        <option value="-name_normalisiert" {% if sortierung == '-name_normalisiert' %}selected{% endif %}>
+                            Name Z-A
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> Filter anwenden
+                    </button>
+                    <a href="{% url 'finance:billa_marke_detail' marke %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Zurücksetzen
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Produkte Liste -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-box-seam"></i> Produkte ({{ produkte.count }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Produkt</th>
+                            <th>Produktgruppe</th>
+                            <th class="text-end">Käufe</th>
+                            <th class="text-end">⌀ Preis</th>
+                            <th class="text-end">Letzter Preis</th>
+                            <th class="text-end">Ausgaben</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for produkt in produkte %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'finance:billa_produkt_detail' produkt.id %}"
+                                   class="text-decoration-none">
+                                    {{ produkt.name_normalisiert }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ produkt.produktgruppe|default:"-" }}
+                                </span>
+                            </td>
+                            <td class="text-end">{{ produkt.anzahl_kaeufe }}</td>
+                            <td class="text-end">€ {{ produkt.durchschnittspreis|floatformat:2 }}</td>
+                            <td class="text-end">€ {{ produkt.letzter_preis|floatformat:2 }}</td>
+                            <td class="text-end">
+                                {% if produkt.gesamtausgaben %}
+                                    € {{ produkt.gesamtausgaben|floatformat:2 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'finance:billa_produkt_detail' produkt.id %}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">
+                                Keine Produkte gefunden
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

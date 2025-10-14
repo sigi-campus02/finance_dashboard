@@ -247,6 +247,20 @@ def billa_dashboard(request):
         'filiale', flat=True
     ).distinct().order_by('filiale')
 
+    # In der billa_dashboard View:
+    # Marken-Statistiken
+    anzahl_marken = BillaProdukt.objects.exclude(
+        Q(marke__isnull=True) | Q(marke='')
+    ).values('marke').distinct().count()
+
+    # Top 5 Marken nach Käufen
+    top_marken = BillaProdukt.objects.exclude(
+        Q(marke__isnull=True) | Q(marke='')
+    ).values('marke').annotate(
+        anzahl_kaeufe=Sum('anzahl_kaeufe')
+    ).order_by('-anzahl_kaeufe')[:5]
+
+
     context = {
         'stats': stats,
         'daily_spending': json.dumps(daily_spending),
@@ -260,6 +274,8 @@ def billa_dashboard(request):
         'selected_filiale': filiale or 'alle',
         'start_date': start_date,
         'end_date': end_date,
+        'anzahl_marken': anzahl_marken,
+        'top_marken': top_marken,
     }
 
     return render(request, 'finance/billa_dashboard.html', context)
@@ -1079,3 +1095,285 @@ def calculate_price_change(queryset):
         }
 
     return {'has_data': False}
+
+
+
+# ============================================================================
+# MARKEN - ÜBERSICHT
+# ============================================================================
+
+@login_required
+def billa_marken_liste(request):
+    """
+    Zeigt alle Marken mit Statistiken (analog zu Produktgruppen-Liste)
+    """
+    ueberkategorie_filter = request.GET.get('ueberkategorie', 'alle')
+    produktgruppe_filter = request.GET.get('produktgruppe', 'alle')
+    suche = request.GET.get('suche', '')
+    sortierung = request.GET.get('sort', '-anzahl_kaeufe')
+
+    # Aggregiere Daten nach Marke
+    marken = BillaProdukt.objects.exclude(
+        Q(marke__isnull=True) | Q(marke='')
+    ).values(
+        'marke'
+    ).annotate(
+        anzahl_produkte=Count('id'),
+        anzahl_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis'),
+        aktueller_preis=Avg('letzter_preis')
+    )
+
+    # Filter nach Überkategorie
+    if ueberkategorie_filter and ueberkategorie_filter != 'alle':
+        marken = marken.filter(
+            id__in=BillaProdukt.objects.filter(
+                ueberkategorie=ueberkategorie_filter
+            ).values_list('id', flat=True)
+        )
+
+    # Filter nach Produktgruppe
+    if produktgruppe_filter and produktgruppe_filter != 'alle':
+        marken = marken.filter(
+            id__in=BillaProdukt.objects.filter(
+                produktgruppe=produktgruppe_filter
+            ).values_list('id', flat=True)
+        )
+
+    # Suche
+    if suche:
+        marken = marken.filter(marke__icontains=suche)
+
+    # Sortierung
+    sortierung_map = {
+        '-anzahl_kaeufe': '-anzahl_kaeufe',
+        'anzahl_kaeufe': 'anzahl_kaeufe',
+        '-durchschnittspreis': '-durchschnittspreis',
+        'durchschnittspreis': 'durchschnittspreis',
+        'marke': 'marke',
+        '-marke': '-marke',
+        '-anzahl_produkte': '-anzahl_produkte',
+        'anzahl_produkte': 'anzahl_produkte'
+    }
+    marken = marken.order_by(sortierung_map.get(sortierung, '-anzahl_kaeufe'))
+
+    # Alle Überkategorien für Filter
+    alle_ueberkategorien = BillaProdukt.objects.exclude(
+        Q(marke__isnull=True) | Q(marke='')
+    ).values_list('ueberkategorie', flat=True).distinct().exclude(
+        ueberkategorie__isnull=True
+    ).exclude(
+        ueberkategorie=''
+    ).order_by('ueberkategorie')
+
+    # Alle Produktgruppen für Filter
+    alle_produktgruppen = BillaProdukt.objects.exclude(
+        Q(marke__isnull=True) | Q(marke='')
+    ).values_list('produktgruppe', flat=True).distinct().exclude(
+        produktgruppe__isnull=True
+    ).exclude(
+        produktgruppe=''
+    ).order_by('produktgruppe')
+
+    context = {
+        'marken': list(marken),
+        'ueberkategorien': list(alle_ueberkategorien),
+        'produktgruppen': list(alle_produktgruppen),
+        'selected_ueberkategorie': ueberkategorie_filter or 'alle',
+        'selected_produktgruppe': produktgruppe_filter or 'alle',
+        'suche': suche or '',
+        'sortierung': sortierung,
+        'gesamt_marken': marken.count()
+    }
+
+    return render(request, 'finance/billa_marken_liste.html', context)
+
+
+# ============================================================================
+# MARKEN - DETAIL
+# ============================================================================
+
+@login_required
+def billa_marke_detail(request, marke):
+    """
+    Detailansicht einer spezifischen Marke
+    Zeigt alle Produkte dieser Marke gruppiert nach Produktgruppe
+    """
+    # Prüfe ob Marke existiert
+    if not BillaProdukt.objects.filter(marke=marke).exists():
+        from django.http import Http404
+        raise Http404("Marke nicht gefunden")
+
+    # Filter-Parameter
+    ueberkategorie_filter = request.GET.get('ueberkategorie', 'alle')
+    produktgruppe_filter = request.GET.get('produktgruppe', 'alle')
+    sortierung = request.GET.get('sort', '-anzahl_kaeufe')
+
+    # Basis-Queryset für diese Marke
+    produkte_base = BillaProdukt.objects.filter(marke=marke)
+
+    # Filter anwenden
+    if ueberkategorie_filter and ueberkategorie_filter != 'alle':
+        produkte_base = produkte_base.filter(ueberkategorie=ueberkategorie_filter)
+
+    if produktgruppe_filter and produktgruppe_filter != 'alle':
+        produkte_base = produkte_base.filter(produktgruppe=produktgruppe_filter)
+
+    # Alle Produkte dieser Marke mit Sortierung
+    produkte = produkte_base.annotate(
+        gesamtausgaben=Sum('artikel__gesamtpreis')
+    ).order_by(sortierung if sortierung in ['name_normalisiert', '-name_normalisiert'] else '-anzahl_kaeufe')
+
+    # Statistiken
+    stats = produkte_base.aggregate(
+        gesamt_produkte=Count('id'),
+        gesamt_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis'),
+        gesamtausgaben=Sum('artikel__gesamtpreis')
+    )
+
+    # Gruppiere Produkte nach Produktgruppe
+    produktgruppen = produkte_base.values(
+        'produktgruppe', 'ueberkategorie'
+    ).annotate(
+        anzahl_produkte=Count('id'),
+        anzahl_kaeufe=Sum('anzahl_kaeufe')
+    ).exclude(
+        Q(produktgruppe__isnull=True) | Q(produktgruppe='')
+    ).order_by('-anzahl_kaeufe')
+
+    # Icons für Kategorien (wiederverwendbar aus den anderen Views)
+    KATEGORIE_ICONS = {
+        'Gemüse': 'bi-basket',
+        'Obst': 'bi-apple',
+        'Milchprodukte': 'bi-cup-straw',
+        'Fleisch & Wurst': 'bi-shop',
+        'Getränke': 'bi-cup',
+        'Brot & Gebäck': 'bi-bread-slice',
+        'Tiefkühl': 'bi-snow',
+        'Süßigkeiten & Snacks': 'bi-candy',
+        'Konserven & Fertiggerichte': 'bi-archive',
+        'Haushalt & Reinigung': 'bi-house',
+        'Hygiene & Kosmetik': 'bi-droplet',
+        'Nudeln & Reis': 'bi-box-seam',
+        'Sonstiges': 'bi-three-dots'
+    }
+
+    # Icons zu Produktgruppen hinzufügen
+    produktgruppen_list = []
+    for gruppe in produktgruppen:
+        gruppe['icon'] = KATEGORIE_ICONS.get(gruppe['ueberkategorie'], 'bi-tag')
+        produktgruppen_list.append(gruppe)
+
+    # Filter-Optionen
+    alle_ueberkategorien = produkte_base.values_list(
+        'ueberkategorie', flat=True
+    ).distinct().exclude(
+        ueberkategorie__isnull=True
+    ).exclude(
+        ueberkategorie=''
+    ).order_by('ueberkategorie')
+
+    alle_produktgruppen = produkte_base.values_list(
+        'produktgruppe', flat=True
+    ).distinct().exclude(
+        produktgruppe__isnull=True
+    ).exclude(
+        produktgruppe=''
+    ).order_by('produktgruppe')
+
+    context = {
+        'marke': marke,
+        'produkte': produkte,
+        'stats': stats,
+        'produktgruppen': produktgruppen_list,
+        'ueberkategorien': list(alle_ueberkategorien),
+        'alle_produktgruppen': list(alle_produktgruppen),
+        'selected_ueberkategorie': ueberkategorie_filter or 'alle',
+        'selected_produktgruppe': produktgruppe_filter or 'alle',
+        'sortierung': sortierung
+    }
+
+    return render(request, 'finance/billa_marke_detail.html', context)
+
+
+# ============================================================================
+# MARKEN - PREISENTWICKLUNG
+# ============================================================================
+
+@login_required
+def billa_preisentwicklung_marke(request, marke):
+    """
+    Zeigt die Preisentwicklung aller Produkte einer Marke
+    """
+    # Prüfe ob Marke existiert
+    produkte_queryset = BillaProdukt.objects.filter(marke=marke)
+
+    if not produkte_queryset.exists():
+        from django.http import Http404
+        raise Http404("Marke nicht gefunden")
+
+    # === Berechne Preisänderungen für jedes Produkt ===
+    produkte_mit_aenderungen = []
+
+    for produkt in produkte_queryset.prefetch_related('preishistorie'):
+        preis_stats = produkt.preishistorie.aggregate(
+            min_preis=Min('preis'),
+            max_preis=Max('preis'),
+            count=Count('id')
+        )
+
+        if preis_stats['count'] >= 2 and preis_stats['min_preis']:
+            min_preis = preis_stats['min_preis']
+            max_preis = preis_stats['max_preis']
+            diff = max_preis - min_preis
+
+            if min_preis > 0:
+                diff_pct = (diff / min_preis * 100)
+                produkte_mit_aenderungen.append({
+                    'produkt': produkt,
+                    'min_preis': float(min_preis),
+                    'max_preis': float(max_preis),
+                    'diff': float(diff),
+                    'diff_pct': float(diff_pct),
+                    'produktgruppe': produkt.produktgruppe,
+                    'ueberkategorie': produkt.ueberkategorie
+                })
+
+    # Sortiere nach Preisänderung
+    produkte_mit_aenderungen.sort(key=lambda x: x['diff_pct'], reverse=True)
+
+    # === Preisentwicklung der gesamten Marke (Durchschnitt) ===
+    preis_historie_marke = BillaPreisHistorie.objects.filter(
+        produkt__marke=marke
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis'),
+        min_preis=Min('preis'),
+        max_preis=Max('preis')
+    ).order_by('datum')
+
+    # Konvertiere zu Liste mit Float-Werten
+    preis_historie_converted = []
+    for eintrag in preis_historie_marke:
+        preis_historie_converted.append({
+            'datum': eintrag['datum'].isoformat(),
+            'durchschnitt': float(eintrag['durchschnitt']) if eintrag['durchschnitt'] else 0.0,
+            'min_preis': float(eintrag['min_preis']) if eintrag['min_preis'] else 0.0,
+            'max_preis': float(eintrag['max_preis']) if eintrag['max_preis'] else 0.0
+        })
+
+    # === Statistiken ===
+    stats = produkte_queryset.aggregate(
+        gesamt_produkte=Count('id'),
+        gesamt_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis')
+    )
+
+    context = {
+        'marke': marke,
+        'produkte': produkte_mit_aenderungen,
+        'preis_historie_marke': preis_historie_converted,
+        'stats': stats
+    }
+
+    return render(request, 'finance/billa_preisentwicklung_marke.html', context)

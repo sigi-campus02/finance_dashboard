@@ -252,6 +252,51 @@
     </div>
 </div>
 
+    <!-- Füge diesen Card-Block zu deinem billa_dashboard.html hinzu -->
+<!-- Am besten neben oder unter die Produktgruppen-Card -->
+
+<div class="col-md-6 col-lg-4">
+    <div class="card h-100 hover-card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tag-fill text-primary"></i> Marken
+                </h5>
+                <span class="badge bg-primary">{{ anzahl_marken }}</span>
+            </div>
+            
+            <p class="text-muted small mb-3">
+                Übersicht aller erkannten Marken in deinen Einkäufen
+            </p>
+
+            <div class="d-grid gap-2">
+                <a href="{% url 'finance:billa_marken_liste' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-list-ul"></i> Alle Marken
+                </a>
+            </div>
+
+            <!-- Optional: Top 5 Marken anzeigen -->
+            {% if top_marken %}
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-block mb-2">Top Marken:</small>
+                {% for marke in top_marken %}
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small>
+                        <a href="{% url 'finance:billa_marke_detail' marke.marke %}" 
+                           class="text-decoration-none">
+                            {{ marke.marke }}
+                        </a>
+                    </small>
+                    <small class="text-muted">{{ marke.anzahl_kaeufe }} Käufe</small>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+    
 {% endblock %}
 
 {% block extra_js %}
