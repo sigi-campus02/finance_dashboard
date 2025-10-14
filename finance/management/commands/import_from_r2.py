@@ -49,11 +49,10 @@ class Command(BaseCommand):
             self.stdout.write(f'\n📦 Bucket: {storage.bucket_name}')
             self.stdout.write(f'📁 Prefix: {prefix or "(root)"}')
 
-            # Liste alle PDFs
-            self.stdout.write(f'\n🔍 Suche PDFs...')
+            # Liste alle PDFs (REKURSIV!)
+            self.stdout.write(f'\n🔍 Suche PDFs (rekursiv)...')
 
-            directories, files = storage.listdir(prefix)
-            pdf_files = [f for f in files if f.lower().endswith('.pdf')]
+            pdf_files = self._find_all_pdfs(storage, prefix)
 
             if limit:
                 pdf_files = pdf_files[:limit]
@@ -62,7 +61,21 @@ class Command(BaseCommand):
             self.stdout.write(f'✓ Gefunden: {len(pdf_files)} PDFs\n')
 
             if not pdf_files:
-                self.stdout.write(self.style.WARNING('Keine PDFs gefunden!'))
+                self.stdout.write(self.style.WARNING('\nKeine PDFs gefunden!'))
+
+                # Zeige verfügbare Ordner
+                self.stdout.write('\n💡 Verfügbare Ordner:')
+                try:
+                    directories, _ = storage.listdir(prefix)
+                    if directories:
+                        for dir_name in sorted(directories):
+                            self.stdout.write(f'   📁 {dir_name}/')
+                        self.stdout.write('\n   Versuche: python manage.py import_from_r2 --prefix 2024/10/')
+                    else:
+                        self.stdout.write('   (Keine Ordner gefunden)')
+                except:
+                    pass
+
                 return
 
             # Import-Statistiken
@@ -76,16 +89,13 @@ class Command(BaseCommand):
             parser = BillaReceiptParser()
 
             # Importiere jedes PDF
-            for idx, filename in enumerate(pdf_files, 1):
+            for idx, (r2_path, filename) in enumerate(pdf_files, 1):
                 self.stdout.write(
-                    f'[{idx:3d}/{len(pdf_files)}] {filename}',
+                    f'[{idx:3d}/{len(pdf_files)}] {r2_path}',
                     ending=''
                 )
 
                 try:
-                    # Konstruiere vollständigen Pfad
-                    r2_path = os.path.join(prefix, filename) if prefix else filename
-
                     # Download zu temp file
                     with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
                         # Lese von R2
@@ -124,7 +134,7 @@ class Command(BaseCommand):
                 except Exception as e:
                     stats['errors'] += 1
                     stats['error_details'].append({
-                        'file': filename,
+                        'file': r2_path,
                         'error': str(e)
                     })
                     self.stdout.write(self.style.ERROR(f' ✗ {str(e)[:50]}'))
@@ -153,3 +163,32 @@ class Command(BaseCommand):
                 self.stdout.write('   R2_ENDPOINT_URL')
 
             raise
+
+    def _find_all_pdfs(self, storage, prefix=''):
+        """
+        Findet rekursiv alle PDFs im Bucket.
+        Gibt Liste von Tuples zurück: [(full_path, filename), ...]
+        """
+        pdf_files = []
+
+        def scan_directory(current_prefix):
+            try:
+                directories, files = storage.listdir(current_prefix)
+
+                # Sammle PDFs in diesem Ordner
+                for file in files:
+                    if file.lower().endswith('.pdf'):
+                        full_path = os.path.join(current_prefix, file) if current_prefix else file
+                        pdf_files.append((full_path, file))
+
+                # Rekursiv in Unterordner
+                for directory in directories:
+                    subdir = os.path.join(current_prefix, directory) if current_prefix else directory
+                    scan_directory(subdir)
+
+            except Exception as e:
+                # Ignoriere Fehler bei einzelnen Ordnern
+                pass
+
+        scan_directory(prefix)
+        return pdf_files
