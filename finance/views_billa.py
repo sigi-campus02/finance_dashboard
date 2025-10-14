@@ -323,7 +323,9 @@ def billa_produkt_detail(request, produkt_id):
 
 @login_required
 def billa_produkte_liste(request):
-    """Liste aller Produkte"""
+    """Liste aller Produkte mit Inline-Bearbeitung"""
+
+    import json
 
     # Filter
     ueberkategorie = request.GET.get('ueberkategorie')
@@ -332,9 +334,9 @@ def billa_produkte_liste(request):
 
     produkte = BillaProdukt.objects.all()
 
-    # Filter nach Überkategorie - GEÄNDERT
+    # Filter nach Überkategorie
     if ueberkategorie and ueberkategorie != 'alle':
-        produkte = produkte.filter(ueberkategorie=ueberkategorie)  # ← GEÄNDERT
+        produkte = produkte.filter(ueberkategorie=ueberkategorie)
 
     if suche:
         produkte = produkte.filter(
@@ -344,12 +346,35 @@ def billa_produkte_liste(request):
 
     produkte = produkte.order_by(sortierung)
 
-    # Alle Überkategorien für Filter - NEU
+    # Alle Überkategorien für Filter und Dropdowns
     alle_ueberkategorien = BillaProdukt.objects.values_list(
         'ueberkategorie', flat=True
     ).distinct().exclude(
         ueberkategorie__isnull=True
+    ).exclude(
+        ueberkategorie=''
     ).order_by('ueberkategorie')
+
+    # Alle Produktgruppen für Dropdowns (gruppiert nach Überkategorie)
+    produktgruppen_raw = BillaProdukt.objects.exclude(
+        produktgruppe__isnull=True
+    ).exclude(
+        produktgruppe=''
+    ).exclude(
+        ueberkategorie__isnull=True
+    ).exclude(
+        ueberkategorie=''
+    ).values('ueberkategorie', 'produktgruppe').distinct().order_by('ueberkategorie', 'produktgruppe')
+
+    # Gruppiere Produktgruppen nach Überkategorie
+    produktgruppen_by_ueberkategorie = {}
+    for item in produktgruppen_raw:
+        ukat = item['ueberkategorie']
+        pgruppe = item['produktgruppe']
+        if ukat not in produktgruppen_by_ueberkategorie:
+            produktgruppen_by_ueberkategorie[ukat] = []
+        if pgruppe not in produktgruppen_by_ueberkategorie[ukat]:
+            produktgruppen_by_ueberkategorie[ukat].append(pgruppe)
 
     # Display-Name für ausgewählte Überkategorie
     selected_kategorie_display = 'Alle Kategorien'
@@ -358,8 +383,9 @@ def billa_produkte_liste(request):
 
     context = {
         'produkte': produkte,
-        'ueberkategorien': list(alle_ueberkategorien),  # ← NEU
-        'selected_ueberkategorie': ueberkategorie or 'alle',  # ← GEÄNDERT
+        'ueberkategorien': list(alle_ueberkategorien),
+        'produktgruppen_by_ueberkategorie': json.dumps(produktgruppen_by_ueberkategorie),  # Als JSON
+        'selected_ueberkategorie': ueberkategorie or 'alle',
         'selected_kategorie_display': selected_kategorie_display,
         'suche': suche or '',
         'sortierung': sortierung
