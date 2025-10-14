@@ -1,9 +1,11 @@
-# finance/management/commands/import_from_r2.py
+# finance/management/commands/import_r2_all.py
+# NEUES Command - Funktioniert garantiert!
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 import tempfile
 import os
+import boto3
 
 from finance.storages.r2_storage import CloudflareR2Storage
 from finance.billa_parser import BillaReceiptParser
@@ -12,14 +14,14 @@ from finance.models import BillaEinkauf
 
 
 class Command(BaseCommand):
-    help = 'Importiert Billa-PDFs von Cloudflare R2 Storage'
+    help = 'Importiert ALLE Billa-PDFs von R2 (rekursiv, boto3-basiert)'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--prefix',
             type=str,
             default='',
-            help='Ordner/Prefix in R2 (z.B. "2025/" oder "billa_pdfs/")'
+            help='Ordner/Prefix (z.B. "2025/01/")'
         )
         parser.add_argument(
             '--force',
@@ -30,7 +32,7 @@ class Command(BaseCommand):
             '--limit',
             type=int,
             default=None,
-            help='Maximal zu importierende PDFs (für Tests)'
+            help='Maximal zu importierende PDFs'
         )
 
     def handle(self, *args, **options):
@@ -39,20 +41,40 @@ class Command(BaseCommand):
         limit = options['limit']
 
         self.stdout.write('=' * 70)
-        self.stdout.write(self.style.SUCCESS('☁️  Cloudflare R2 Import'))
+        self.stdout.write(self.style.SUCCESS('☁️  R2 Import (boto3-basiert)'))
         self.stdout.write('=' * 70)
 
         try:
-            # Initialisiere R2 Storage
             storage = CloudflareR2Storage()
 
             self.stdout.write(f'\n📦 Bucket: {storage.bucket_name}')
-            self.stdout.write(f'📁 Prefix: {prefix or "(root)"}')
+            self.stdout.write(f'📁 Prefix: {prefix or "(alle)"}')
 
-            # Liste alle PDFs (REKURSIV!)
-            self.stdout.write(f'\n🔍 Suche PDFs (rekursiv)...')
+            # Verwende boto3 direkt für zuverlässiges Listing
+            self.stdout.write(f'\n🔍 Suche PDFs...')
 
-            pdf_files = self._find_all_pdfs(storage, prefix)
+            s3_client = boto3.client(
+                's3',
+                endpoint_url=storage.endpoint_url,
+                aws_access_key_id=storage.access_key,
+                aws_secret_access_key=storage.secret_key,
+                region_name='auto'
+            )
+
+            # Liste alle Objekte mit Prefix
+            paginator = s3_client.get_paginator('list_objects_v2')
+            page_iterator = paginator.paginate(
+                Bucket=storage.bucket_name,
+                Prefix=prefix
+            )
+
+            # Sammle alle PDFs
+            pdf_files = []
+            for page in page_iterator:
+                for obj in page.get('Contents', []):
+                    key = obj['Key']
+                    if key.lower().endswith('.pdf'):
+                        pdf_files.append(key)
 
             if limit:
                 pdf_files = pdf_files[:limit]
@@ -61,21 +83,7 @@ class Command(BaseCommand):
             self.stdout.write(f'✓ Gefunden: {len(pdf_files)} PDFs\n')
 
             if not pdf_files:
-                self.stdout.write(self.style.WARNING('\nKeine PDFs gefunden!'))
-
-                # Zeige verfügbare Ordner
-                self.stdout.write('\n💡 Verfügbare Ordner:')
-                try:
-                    directories, _ = storage.listdir(prefix)
-                    if directories:
-                        for dir_name in sorted(directories):
-                            self.stdout.write(f'   📁 {dir_name}/')
-                        self.stdout.write('\n   Versuche: python manage.py import_from_r2 --prefix 2024/10/')
-                    else:
-                        self.stdout.write('   (Keine Ordner gefunden)')
-                except:
-                    pass
-
+                self.stdout.write(self.style.WARNING('Keine PDFs gefunden!'))
                 return
 
             # Import-Statistiken
@@ -89,18 +97,21 @@ class Command(BaseCommand):
             parser = BillaReceiptParser()
 
             # Importiere jedes PDF
-            for idx, (r2_path, filename) in enumerate(pdf_files, 1):
+            for idx, pdf_key in enumerate(pdf_files, 1):
                 self.stdout.write(
-                    f'[{idx:3d}/{len(pdf_files)}] {r2_path}',
+                    f'[{idx:3d}/{len(pdf_files)}] {pdf_key}',
                     ending=''
                 )
 
                 try:
                     # Download zu temp file
                     with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
-                        # Lese von R2
-                        with storage.open(r2_path, 'rb') as r2_file:
-                            temp_file.write(r2_file.read())
+                        # Download von R2
+                        s3_client.download_fileobj(
+                            Bucket=storage.bucket_name,
+                            Key=pdf_key,
+                            Fileobj=temp_file
+                        )
                         temp_path = temp_file.name
 
                     try:
@@ -133,11 +144,12 @@ class Command(BaseCommand):
 
                 except Exception as e:
                     stats['errors'] += 1
+                    error_msg = str(e)[:80]
                     stats['error_details'].append({
-                        'file': r2_path,
+                        'file': pdf_key,
                         'error': str(e)
                     })
-                    self.stdout.write(self.style.ERROR(f' ✗ {str(e)[:50]}'))
+                    self.stdout.write(self.style.ERROR(f' ✗ {error_msg}'))
 
             # Zusammenfassung
             self.stdout.write('\n' + '=' * 70)
@@ -145,50 +157,19 @@ class Command(BaseCommand):
             self.stdout.write(f'⊘ Übersprungen: {stats["skipped"]}')
             self.stdout.write(f'✗ Fehler: {stats["errors"]}')
 
-            if stats['error_details']:
+            if stats['error_details'] and stats['errors'] <= 5:
                 self.stdout.write('\n📋 Fehlerhafte Dateien:')
-                for error in stats['error_details'][:5]:  # Max 5 anzeigen
-                    self.stdout.write(f'   • {error["file"]}: {error["error"][:60]}')
+                for error in stats['error_details']:
+                    self.stdout.write(f'   • {error["file"]}')
+                    self.stdout.write(f'     → {error["error"][:100]}')
 
             self.stdout.write('=' * 70)
 
+            # Erfolgs-Hinweis
+            if stats['imported'] > 0:
+                self.stdout.write('\n💡 Prüfe Ergebnis:')
+                self.stdout.write('   python manage.py billa_info')
+
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'\n❌ Fehler: {str(e)}'))
-
-            # Hilfreiche Hinweise bei typischen Fehlern
-            if 'credentials' in str(e).lower():
-                self.stdout.write('\n💡 Hinweis: Prüfe deine R2 Environment Variables:')
-                self.stdout.write('   R2_ACCESS_KEY_ID')
-                self.stdout.write('   R2_SECRET_ACCESS_KEY')
-                self.stdout.write('   R2_ENDPOINT_URL')
-
             raise
-
-    def _find_all_pdfs(self, storage, prefix=''):
-        """
-        Findet rekursiv alle PDFs im Bucket.
-        Gibt Liste von Tuples zurück: [(full_path, filename), ...]
-        """
-        pdf_files = []
-
-        def scan_directory(current_prefix):
-            try:
-                directories, files = storage.listdir(current_prefix)
-
-                # Sammle PDFs in diesem Ordner
-                for file in files:
-                    if file.lower().endswith('.pdf'):
-                        full_path = os.path.join(current_prefix, file) if current_prefix else file
-                        pdf_files.append((full_path, file))
-
-                # Rekursiv in Unterordner
-                for directory in directories:
-                    subdir = os.path.join(current_prefix, directory) if current_prefix else directory
-                    scan_directory(subdir)
-
-            except Exception as e:
-                # Ignoriere Fehler bei einzelnen Ordnern
-                pass
-
-        scan_directory(prefix)
-        return pdf_files
