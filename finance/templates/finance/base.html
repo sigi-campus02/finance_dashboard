@@ -17,8 +17,9 @@
     <link rel="manifest" href="/static/manifest.json">
     
     <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/icons/icons8-euro-money-ios-17-outlined-96.png">
+    <link rel="apple-touch-icon" href="/static/icons/icons8-euro-money-ios-17-outlined-96.png">
+    <link rel="shortcut icon" href="/static/icons/icons8-euro-money-ios-17-outlined-96.png">
     <link rel="shortcut icon" href="/static/icons/icon-192x192.png">
     
     <!-- Bootstrap 5 CSS -->
@@ -133,9 +134,17 @@
     </div>
 
     <!-- PWA Install Banner -->
-    <div id="installBanner" class="alert alert-info alert-dismissible fade show m-3" role="alert" style="display: none;">
-        <strong>📱 App installieren!</strong> Installiere Finance Dashboard als App auf deinem Gerät.
-        <button type="button" id="installButton" class="btn btn-sm btn-primary ms-2">Installieren</button>
+    <div id="installBanner" style="display: none;" class="alert alert-info alert-dismissible fade show position-fixed bottom-0 start-50 translate-middle-x mb-3 shadow-lg" style="z-index: 9999; max-width: 500px;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-download me-3 fs-4"></i>
+            <div class="flex-grow-1">
+                <strong>App installieren</strong>
+                <p class="mb-0 small">Installiere Finance Dashboard für schnelleren Zugriff!</p>
+            </div>
+            <button id="installButton" class="btn btn-primary btn-sm ms-3">
+                Installieren
+            </button>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
