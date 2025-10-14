@@ -21,153 +21,237 @@ const ProduktgruppenMapper = () => {
 
   // Produktgruppen-Definitionen
 const produktGruppen = {
-  // ========== GEMÜSE ==========
-  'Paprika': ['paprika', 'spitzpaprika'],
-  'Tomaten': ['tomat', 'paradeiser', 'cherry', 'rispenparadeiser'],
-  'Gurken': ['gurke', 'gurk'],
-  'Salat': ['salat', 'rucola', 'eisberg', 'lollo', 'vogerlsalat'],
-  'Zwiebeln': ['zwiebel', 'schalott'],
-  'Kartoffeln': ['kartoffel', 'erdäpfel', 'erdapfel', 'süßkartoffel'],
-  'Karotten': ['karott', 'möhre', 'wurzel'],
-  'Knoblauch': ['knoblauch'],
-  'Kräuter': ['petersilie', 'schnittlauch', 'basilikum', 'koriander', 'dill', 'thymian', 'rosmarin', 'salbei'],
-  'Radieschen': ['radieschen'],
-  'Zucchini': ['zucchini'],
-  'Auberginen': ['aubergine', 'melanzani'],
-  'Brokkoli': ['brokkoli', 'brocoli'],
-  'Blumenkohl': ['blumenkohl', 'karfiol'],
-  'Mais': ['mais', 'zuckermais'],
-  'Erbsen': ['erbse', 'kichererbse'],
-  'Bohnen': ['bohne', 'sojabohne', 'kidneybohne', 'riesenbohne'],
-  'Spinat': ['spinat', 'jungspinat', 'blattspinat'],
-  'Lauch': ['lauch', 'porree'],
-  'Kürbis': ['kürbis', 'hokkaido', 'butternuss'],
-  'Ingwer': ['ingwer'],
-  'Chili': ['chili', 'chiliwurzerl', 'peperoni'],
-  
-  // ========== OBST ==========
-  'Äpfel': ['apfel', 'äpfel'],
-  'Bananen': ['banane'],
-  'Orangen': ['orange', 'apfelsine'],
-  'Zitronen': ['zitrone', 'limette', 'lime'],
-  'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
-  'Trauben': ['traube', 'weintraube'],
-  'Birnen': ['birne'],
-  'Kiwi': ['kiwi'],
-  'Mango': ['mango'],
-  'Ananas': ['ananas'],
-  'Pfirsich': ['pfirsich', 'nektarine'],
-  'Melone': ['melone', 'wassermelone', 'honigmelone'],
-  'Avocado': ['avocado'],
-  'Granatapfel': ['granatapfel'],
-  
-  // ========== MILCHPRODUKTE ==========
-  'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
-  'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt'],
-  'Käse': ['käse', 'gouda', 'emmentaler', 'parmesan', 'mozzarella', 'cheddar', 'grana', 'padano', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse', 'bergkäse'],
-  'Butter': ['butter', 'kräuterbutter'],
-  'Margarine': ['margarine'],
-  'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche'],
-  'Topfen': ['topfen', 'quark', 'magertopfen'],
-  'Frischkäse': ['frischkäse'],
-  
-  // ========== BACKWAREN ==========
-  'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot'],
-  'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
-  'Toast': ['toast', 'toastbrot', 'mehrkorntoast'],
-  'Gebäck': ['gebäck', 'croissant'],
-  
-  // ========== EIER ==========
-  'Eier': ['eier', 'ei '],
-  
-  // ========== FLEISCH & WURST ==========
-  'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks'],
-  'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
-  'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl'],
-  'Putenfleisch': ['puten', 'pute'],
-  'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker'],
-  'Schinken': ['schinken', 'speck', 'bratl'],
-  'Faschiertes': ['faschiert', 'hackfleisch'],
-  
-  // ========== FISCH ==========
-  'Lachs': ['lachs'],
-  'Thunfisch': ['thunfisch'],
-  'Forelle': ['forelle'],
-  'Garnelen': ['garnele', 'shrimp', 'crevette'],
-  'Fisch': ['fisch', 'scholle'],
-  
-  // ========== NUDELN & REIS ==========
-  'Nudeln': ['nudel', 'pasta', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'rigatoni', 'farfalle', 'tortellini', 'ravioli'],
-  'Gnocchi': ['gnocchi', 'schupfnudeln'],
-  'Reis': ['reis', 'basmati', 'risotto', 'reisfleisch'],
-  'Quinoa': ['quinoa'],
-  'Couscous': ['couscous'],
-  
-  // ========== BACKEN ==========
-  'Mehl': ['mehl'],
-  'Backpulver': ['backpulver'],
-  'Hefe': ['hefe', 'backhefe'],
-  'Vanille': ['vanille'],
-  'Pudding': ['pudding'],
-  
-  // ========== SÜSSES ==========
-  'Zucker': ['zucker', 'puderzucker'],
-  'Honig': ['honig'],
-  
-  // ========== GEWÜRZE ==========
-  'Salz': ['salz'],
-  'Pfeffer': ['pfeffer'],
-  'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'koriander'],
-  
-  // ========== ÖLE & ESSIG ==========
-  'Olivenöl': ['olivenöl'],
-  'Sonnenblumenöl': ['sonnenblumenöl'],
-  'Kürbisöl': ['kürbisöl'],
-  'Essig': ['essig', 'balsamico'],
-  
-  // ========== SOSSEN ==========
-  'Ketchup': ['ketchup'],
-  'Mayonnaise': ['mayonnaise', 'mayo'],
-  'Soßen': ['soße', 'sauce', 'hollandaise', 'pizzasauce'],
-  
-  // ========== FRÜHSTÜCK ==========
-  'Müsli': ['müsli', 'knusperli'],
-  'Cornflakes': ['cornflakes'],
-  'Haferflocken': ['haferflocken', 'hafer'],
-  
-  // ========== SÜSSIGKEITEN & SNACKS ==========
-  'Schokolade': ['schokolade', 'schoko', 'nutella'],
-  'Kekse': ['keks', 'biskuit', 'cookie'],
-  'Chips': ['chips'],
-  'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'cashew', 'pistazie', 'erdnuss'],
-  'Trockenfrüchte': ['rosine', 'dattel'],
-  
-  // ========== GETRÄNKE ==========
-  'Wasser': ['wasser', 'mineralwasser'],
-  'Saft': ['saft', 'nektar', 'rübensaft'],
-  'Limonade': ['cola', 'sprite', 'fanta', 'limo'],
-  'Bier': ['bier', 'radler'],
-  'Wein': ['wein', 'rotwein', 'weißwein', 'weisswein'],
-  'Energy Drinks': ['red bull', 'energy'],
-  'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista'],
-  'Sojamilch': ['sojamilch', 'sojadrink'],
-  
-  // ========== HYGIENE ==========
-  'Shampoo': ['shampoo'],
-  'Duschgel': ['duschgel'],
-  'Deo': ['deo'],
-  
-  // ========== HAUSHALT ==========
-  'Reiniger': ['reiniger', 'frosch'],
-  'Spülmittel': ['spülmittel'],
-  
-  // ========== TIEFKÜHL ==========
-  'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
-  'Pizza': ['pizza', 'pizzamehl'],
-  
-  // ========== AUFSTRICHE ==========
-  'Marmelade': ['marmelade', 'konfitüre'],
-  'Aufstrich': ['aufstrich']
+    // ========== GEMÜSE ==========
+    'Paprika': ['paprika', 'spitzpaprika'],
+    'Tomaten': ['tomat', 'paradeiser', 'cherry', 'rispenparadeiser', 'markttomaten', 'rispenpara'],
+    'Gurken': ['gurke', 'gurk'],
+    'Salat': ['salat', 'rucola', 'eisberg', 'lollo', 'vogerlsalat', 'krauthäuptel'],
+    'Zwiebeln': ['zwiebel', 'schalott', 'zwieb'],
+    'Kartoffeln': ['kartoffel', 'erdäpfel', 'erdapfel', 'süßkartoffel', 'heurige'],
+    'Karotten': ['karott', 'möhre', 'wurzel'],
+    'Knoblauch': ['knoblauch'],
+    'Kräuter': ['petersilie', 'schnittlauch', 'basilikum', 'koriander', 'dill', 'thymian', 'rosmarin', 'salbei', 'kerbel', 'lorbeerbl', '8 kräutermix'],
+    'Radieschen': ['radieschen'],
+    'Zucchini': ['zucchini'],
+    'Auberginen': ['aubergine', 'melanzani'],
+    'Brokkoli': ['brokkoli', 'brocoli'],
+    'Blumenkohl': ['blumenkohl', 'karfiol'],
+    'Mais': ['mais', 'zuckermais'],
+    'Erbsen': ['erbse', 'kichererbse'],
+    'Bohnen': ['bohne', 'bohn', 'sojabohne', 'kidneybohne', 'riesenbohne', 'fisolen', 'edamame'],
+    'Spinat': ['spinat', 'jungspinat', 'blattspinat'],
+    'Lauch': ['lauch', 'porree'],
+    'Kürbis': ['kürbis', 'hokkaido', 'butternuss'],
+    'Ingwer': ['ingwer'],
+    'Chili': ['chili', 'chiliwurzerl', 'peperoni'],
+    'Spargel': ['spargel'],
+    'Rüben': ['rübe', 'rote rübe', 'rote bete'],
+    'Fenchel': ['fenchel'],
+    'Kohl': ['kohl', 'kohlrabi', 'weißkohl', 'rotkohl', 'blumenkohl', 'rosenkohl', 'grünkohl', 'chinakohl', 'pak choi'],
+    'Sellerie': ['sellerie', 'stangensellerie'],
+    'Gemüse Allgemein': ['gemüse', 'suppengemüse'],
+    'Sprossen': ['sprossen', 'sprossengarten', 'kresse'],
+    'Linsen': ['linsen', 'berglinsen'],
+    'Polenta': ['polenta'],
+
+    // ========== OBST ==========
+    'Äpfel': ['apfel', 'äpfel'],
+    'Bananen': ['banane'],
+    'Orangen': ['orange', 'apfelsine'],
+    'Zitronen': ['zitrone', 'limette', 'lime'],
+    'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
+    'Trauben': ['traube', 'weintraube'],
+    'Birnen': ['birne'],
+    'Kiwi': ['kiwi'],
+    'Mango': ['mango'],
+    'Ananas': ['ananas'],
+    'Pfirsich': ['pfirsich', 'nektarine'],
+    'Melone': ['melone', 'wassermelone', 'honigmelone'],
+    'Avocado': ['avocado'],
+    'Granatapfel': ['granatapfel'],
+    'Zwetschken': ['zwetschke', 'zwetsch', 'pflaume'],
+    'Pomelo': ['pomelo'],
+
+    // ========== MILCHPRODUKTE ==========
+    'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
+    'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt', 'fruchtjoghu', 'billa bio fairtrade kokos'],
+    'Käse': ['käse', 'baron', 'schlossdamer', 'brie', 'jerome', 'moosbacher', 'schärd.', 'dachsteiner', 'halloumi','baronesse', 'gouda', 'emmentaler','mozzarella', 'burrata', 'cheddar', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse', 'bergkäse', 'edamer', 'tilsiter', 'parm.', 'regg.', 'almkönig', 'goudette'],
+    'Butter': ['butter', 'kräuterbutter', 'rama', 'lätta', 'margarine', 'viospread'],
+    'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche', 'cremefine', 'kochcreme'],
+    'Topfen': ['topfen', 'quark', 'magertopfen'],
+    'Frischkäse': ['frischkäse', 'cottage'],
+    'Mascarpone': ['mascarpone'],
+    'Parmesan': ['parmesan', 'parmigiano', 'grana', 'padano'],
+    'Ricotta': ['ricotta'],
+    'Babybel': ['babybel'],
+
+    // ========== BACKWAREN ==========
+    'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot', 'baguette', 'ciabatta', 'fladenbrot', 'dinkel sandwich', 'sonntagsb'],
+    'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
+    'Toast': ['toast', 'toastbrot', 'mehrkorntoast', 'wasa'],
+    'Gebäck': ['gebäck', 'croissant', 'plunder', 'krapfen', 'nougattasche', 'clever kräuter bag'],
+    'Knäckebrot': ['knäcke', 'leicht cross', 'leicht & cross'],
+    'Blätterteig': ['blätterteig'],
+
+    // ========== EIER ==========
+    'Eier': ['eier', 'ei '],
+
+    // ========== FLEISCH & WURST ==========
+    'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks', 'tafelspitz', 'gulasch', 'grillmix'],
+    'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
+    'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl', 'h-filet', 'geflügel', 'unterkeulen'],
+    'Putenfleisch': ['puten', 'pute'],
+    'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker', 'debreziner', 'frankfurter', 'kabanossi', 'griller', 'kaminwurzerl'],
+    'Schinken': ['schinken', 'speck', 'bratl', 'bratenaufschnitt'],
+    'Faschiertes': ['faschiert', 'hackfleisch', 'burger', 'beefburger'],
+    'Würstchen': ['neuburger', 'braunschweiger','chorizo', 'salsiccia', 'cevapcici'],
+
+    // ========== FISCH ==========
+    'Lachs': ['lachs'],
+    'Thunfisch': ['thunfisch'],
+    'Forelle': ['forelle'],
+    'Garnelen': ['garnele', 'shrimp', 'crevette'],
+    'Fisch': ['fisch', 'scholle'],
+    'Makrelen': ['makrel'],
+
+    // ========== NUDELN & REIS ==========
+    'Nudeln': ['nudel', 'pasta', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'rigatoni', 'farfalle', 'tortellini', 'ravioli', 'parpadelle', 'fleckerl', 'bucati', 'girandole', 'lasagne'],
+    'Gnocchi': ['gnocchi', 'schupfnudeln'],
+    'Tortelloni': ['tortelloni'],
+    'Reis': ['reis', 'basmati', 'risotto', 'reisfleisch'],
+    'Quinoa': ['quinoa'],
+    'Couscous': ['couscous'],
+
+    // ========== BACKEN ==========
+    'Mehl': ['mehl'],
+    'Backpulver': ['backpulver'],
+    'Hefe': ['hefe', 'backhefe', 'germ'],
+    'Vanille': ['vanille', 'bourbon'],
+    'Pudding': ['pudding'],
+    'Gelatine': ['blattgelat'],
+    'Panier': ['panko', 'panier', 'crumbs'],
+
+    // ========== SÜSSES ==========
+    'Zucker': ['zucker', 'puderzucker', 'normalkristallz'],
+    'Honig': ['honig'],
+
+    // ========== GEWÜRZE ==========
+    'Salz': ['salz'],
+    'Pfeffer': ['pfeffer', 'cayennepf'],
+    'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'koriander', 'kotanyi'],
+
+    // ========== ÖLE & ESSIG ==========
+    'Olivenöl': ['olivenöl'],
+    'Sonnenblumenöl': ['sonnenblumenöl'],
+    'Kürbisöl': ['kürbisöl'],
+    'Essig': ['essig', 'balsamico'],
+    'Natron': ['natron'],
+
+    // ========== SOSSEN & AUFSTRICHE ==========
+    'Ketchup': ['ketchup'],
+    'Mayonnaise': ['mayonnaise', 'mayo'],
+    'Soßen': ['soße', 'sauce', 'hollandaise', 'pizzasauce'],
+    'Dips': ['dip', 'tahin', 'sesam'],
+    'Fond': ['fond'],
+    'Letscho': ['letscho'],
+    'Kren': ['kren', 'meerrettich'],
+
+    // ========== FRÜHSTÜCK ==========
+    'Müsli': ['müsli', 'knusperli'],
+    'Cornflakes': ['cornflakes', 'color loops'],
+    'Haferflocken': ['haferflocken', 'hafer'],
+    'Kaffee': ['kaffee', 'nescafé', 'nescafe', 'crema intenso', 'hornig'],
+    'Porridge': ['porridge'],
+
+    // ========== SÜSSIGKEITEN & SNACKS ==========
+    'Schokolade': ['schokolade', 'schoko', 'nutella', 'kinder-pingui', 'manner'],
+    'Kekse': ['keks', 'biskuit', 'cookie', 'biskotten', 'leibniz', 'pick up'],
+    'Chips': ['chips', 'snips', 'best foodies bio bunte'],
+    'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'cashew', 'pistazie', 'erdnuss', 'studentenfutter', 'studentenfutt', 'pinienkerne', 'sonnenblumenkerne', 'chiasamen'],
+    'Trockenfrüchte': ['rosine', 'dattel', 'maroni'],
+    'Süßigkeiten': ['tiramisu', 'duplo', 'suchard', 'celebrations', 'corny', 'trüffeltortenstück'],
+    'Proteinriegel': ['proteinriegel', 'barebells', 'neoh'],
+    'Mohn': ['mohn'],
+
+    // ========== GETRÄNKE ==========
+    'Wasser': ['wasser', 'mineralwasser', 'sicheldorfer', 'vöslauer'],
+    'Saft': ['saft', 'nektar', 'rübensaft', 'fruchtik', 'innocent'],
+    'Limonade': ['cola', 'sprite', 'fanta', 'limo'],
+    'Bier': ['bier', 'radler', 'puntigamer'],
+    'Wein': ['wein', 'rotwein', 'weißwein', 'weisswein', 'kremser', 'veltl', 'sandgrube', 'sauvignon', 'les fumees', 'drautaler'],
+    'Energy Drinks': ['red bull', 'energy'],
+    'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista', 'natrue coco'],
+    'Sojamilch': ['sojamilch', 'sojadrink'],
+    'Tee': ['tee', 'halsfreund', 'kamille'],
+    'Milchdrinks': ['lattella', 'nöm mix'],
+    'Vegane Milch': ['vegavita no muuh'],
+
+    // ========== HYGIENE & KOSMETIK ==========
+    'Shampoo': ['shampoo'],
+    'Duschgel': ['duschgel', 'dusche'],
+    'Deo': ['deo'],
+    'Lippenpflege': ['lippenpflege'],
+    'Zahnpflege': ['zahncreme', 'zahnspül', 'zahnpasta', 'colgate', 'blend-a-med', 'elmex', 'sensodyne', 'corega'],
+    'Wattestäbchen': ['wattestäbch', 'wattepads'],
+    'Haargummis': ['haargummi', 'zopfhalter'],
+    'Seife': ['seife', 'cremeseife'],
+    'Desinfektionsmittel': ['desinfektions', 'dettol', 'lysoform'],
+    'Haarspray': ['haarspray', 'taft'],
+    'Sonnenschutz': ['sonnenspray', 'sonnenschutz', 'apres spray', 'nivea'],
+    'Gel Pads': ['gel pads'],
+    'Wachsstreifen': ['kaltwachs', 'veet'],
+    'Waschgel': ['waschgel', 'gänseb'],
+
+    // ========== HAUSHALT ==========
+    'Reiniger': ['reiniger', 'frosch', 'dr. beckmann', 'rorax', 'clean&clear', 'bihome', 'lysofrom'],
+    'Spülmittel': ['spülmittel'],
+    'Toilettenpapier': ['toilettenpapier', 'klopapier'],
+    'Küchenrolle': ['küchenrolle', 'kitchen towel'],
+    'Backpapier': ['backpapier'],
+    'Alufolie': ['alufolie', 'aluminiumfolie'],
+    'Gefrierbeutel': ['gefrierbeutel', 'frischhaltebeutel', 'knotenbeutel'],
+    'Müllbeutel': ['müllbeutel', 'mülltüte', 'swirl active frische', 'swirl aktive frische'],
+    'Taschentücher': ['taschentuch', 'papiertaschentuch', 'tempo', 'feh taschentücher'],
+    'Frischhaltefolie': ['toppits', 'frischhalte', 'swiffer'],
+    'Weichspüler': ['silan'],
+    'Brillenreiniger': ['brillenputz', 'brillenputztücher'],
+    'Ohrstöpsel': ['ohropax'],
+    'Waschmittel': ['persil', 'ariel', 'pulver', 'megapearls', 'dr. beck.gardinen'],
+    'Entkalker': ['durgol', 'calgon'],
+    'Geschirrspüler': ['finish', 'somat', 'klarspüler'],
+    'WC-Reiniger': ['wc ente', 'wc power'],
+    'Spülschwamm': ['spülschwamm', 'vileda'],
+    'Reinigungstücher': ['reinigungstücher', 'bi care'],
+    'Feuchttücher': ['feucht', 'topa'],
+    'Wundspray': ['wund reinigungsspr'],
+
+    // ========== TIEFKÜHL ==========
+    'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
+    'Pizza': ['pizza', 'pizzamehl'],
+    'Eis': ['eis ', 'cornetto', 'langnese', 'magnum', 'eskimo', 'cremissimo', 'mälzer&fu'],
+    'Tortillas': ['tortilla', 'wrap', 'tex mex'],
+
+    // ========== AUFSTRICHE ==========
+    'Marmelade': ['marmelade', 'konfitüre'],
+    'Aufstrich': ['aufstrich'],
+
+    // ========== FERTIGGERICHTE ==========
+    'Fertiggerichte': ['frisch gekocht', 'ready to eat'],
+    'Suppen': ['suppe', 'rindsuppe'],
+    'Cornichons': ['cornichons'],
+
+    // ========== TEXTILIEN & NON-FOOD ==========
+    'Textilien': ['thermohose', 'mütze', 'kissen'],
+    'Blumen & Pflanzen': ['palmkätzchen', 'blühplfanzen', 'adventkranz', 'markttulpen', 'blumen'],
+    'Batterien': ['batterien', 'batter', 'varta'],
+    'Geschenke & Deko': ['bon ', 'geschenk', 'neujahrsguß', 'happy birthay'],
+    'Lichterketten': ['lichterkette', 'lichter', 'magnet-lichter'],
+    'Diverses': ['non food', 'abverkauf', 'aktion', 'mailing', 'limited edition', 'bonus'],
+
+    // ========== SONSTIGES ==========
+    'Pfandartikel': ['pfand', 'einwegpfand', 'pfandartikel', 'leergut', 'leergut-ret', 'leerflasche'],
+    'Tragetaschen': ['tragetasche'],
+    'Sonstiges': ['sonstiges', 'äpp-only', 'unsere besten 6er', '8 x nimm mehr', 'stifterl', 'schütt-streubehälter', 'tatü box', 'koro', 'bi good', 'gärtnerbund', 'lieblingsprodukt', 'bio gourmet', 'landfr. natur', 'billa bon', 'alpenprinz', 'finis bio', 'sorger', 'traungold', 'wd natürl', 'machland', 'simply good', 'wolf', 'oetker', 'verival', 'aln', 'sm']
 };
 
   const findeProduktGruppe = (produktName) => {
