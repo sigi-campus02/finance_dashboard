@@ -11,7 +11,7 @@ from finance.models import (
     BillaEinkauf, BillaArtikel, BillaProdukt,
     BillaPreisHistorie
 )
-
+from finance.brand_mapper import BrandMapper
 
 class Command(BaseCommand):
     help = 'Importiert Billa-Rechnungen aus PDF-Dateien'
@@ -99,12 +99,17 @@ class Command(BaseCommand):
 
             # ✅ GEÄNDERT: get_or_create jetzt mit name_normalisiert
             produkt, created = BillaProdukt.objects.get_or_create(
-                name_normalisiert=produkt_name_norm,  # ← FIX: normalisiert statt original
+                name_normalisiert=produkt_name_norm,
                 defaults={
                     'name_original': produkt_name_original,
-                    'letzter_preis': artikel_data['gesamtpreis']
+                    'letzter_preis': artikel_data['gesamtpreis'],
+                    'marke': BrandMapper.extract_brand(produkt_name_original)  # ← NEU!
                 }
             )
+
+            if not created and not produkt.marke:
+                produkt.marke = BrandMapper.extract_brand(produkt_name_original)
+                produkt.save(update_fields=['marke'])
 
             # Falls das Produkt bereits existiert, aber unter anderem Original-Namen,
             # aktualisiere den Original-Namen auf die häufigste Variante
