@@ -1,0 +1,212 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Preisentwicklung - Übersicht{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-graph-up"></i> Preisentwicklung</h1>
+        <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück
+        </a>
+    </div>
+
+    <!-- Navigation zwischen Ebenen -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-layers-fill display-4 text-primary mb-3"></i>
+                    <h3>Überkategorien</h3>
+                    <p class="text-muted">Preisentwicklung auf höchster Ebene</p>
+                    <a href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}" 
+                       class="btn btn-primary">
+                        {{ ueberkategorien|length }} Kategorien anzeigen
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-tags-fill display-4 text-success mb-3"></i>
+                    <h3>Produktgruppen</h3>
+                    <p class="text-muted">Detaillierte Gruppenanalyse</p>
+                    <a href="{% url 'finance:billa_produktgruppen_liste' %}" 
+                       class="btn btn-success">
+                        Alle Gruppen anzeigen
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-box-seam-fill display-4 text-warning mb-3"></i>
+                    <h3>Einzelprodukte</h3>
+                    <p class="text-muted">Spezifische Produktpreise</p>
+                    <a href="{% url 'finance:billa_produkte_liste' %}" 
+                       class="btn btn-warning">
+                        Alle Produkte anzeigen
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Überkategorien mit größten Preisänderungen -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-arrow-up-circle"></i> 
+                        Top Überkategorien nach Preisänderung
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for kat in ueberkategorien|slice:":6" %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' kat.ueberkategorie %}" 
+                               class="text-decoration-none">
+                                <div class="border rounded p-3 h-100 hover-shadow">
+                                    <h5 class="mb-2">{{ kat.ueberkategorie }}</h5>
+                                    <div class="d-flex justify-content-between text-muted small mb-2">
+                                        <span>
+                                            <i class="bi bi-box"></i> 
+                                            {{ kat.anzahl_produkte }} Produkte
+                                        </span>
+                                        <span>
+                                            <i class="bi bi-cart"></i> 
+                                            {{ kat.anzahl_kaeufe }} Käufe
+                                        </span>
+                                    </div>
+                                    <div class="text-center">
+                                        <span class="badge bg-light text-dark">
+                                            Ø €{{ kat.avg_preis|floatformat:2 }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Produktgruppen -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-graph-up-arrow"></i> 
+                        Top Produktgruppen nach Aktivität
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Produktgruppe</th>
+                                    <th>Überkategorie</th>
+                                    <th class="text-end">Produkte</th>
+                                    <th class="text-end">Käufe</th>
+                                    <th class="text-end">Ø Preis</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for gruppe in produktgruppen %}
+                                <tr>
+                                    <td><strong>{{ gruppe.produktgruppe }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ gruppe.ueberkategorie }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">{{ gruppe.anzahl_produkte }}</td>
+                                    <td class="text-end">{{ gruppe.anzahl_kaeufe }}</td>
+                                    <td class="text-end">
+                                        {% if gruppe.avg_preis %}
+                                        €{{ gruppe.avg_preis|floatformat:2 }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'finance:billa_preisentwicklung_produktgruppe' gruppe.produktgruppe %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-graph-up"></i> Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Produkte mit größten Preisänderungen -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Top Produkte mit größten Preisänderungen
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for item in top_produkte %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <a href="{% url 'finance:billa_preisentwicklung_produkt' item.produkt.id %}" 
+                               class="text-decoration-none">
+                                <div class="border rounded p-3 h-100 hover-shadow">
+                                    <h6 class="mb-2">{{ item.produkt.name_normalisiert|truncatewords:8 }}</h6>
+                                    <div class="d-flex justify-content-between text-muted small mb-2">
+                                        <span>{{ item.produkt.produktgruppe }}</span>
+                                        <span class="badge bg-danger">
+                                            +{{ item.diff_pct|floatformat:1 }}%
+                                        </span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+.hover-shadow {
+    transition: box-shadow 0.2s;
+}
+.hover-shadow:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+</style>
+
+{% endblock %}

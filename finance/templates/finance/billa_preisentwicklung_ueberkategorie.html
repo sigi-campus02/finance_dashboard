@@ -1,0 +1,229 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Preisentwicklung - {{ ueberkategorie }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_dashboard' %}">Billa</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">Preisentwicklung</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}">Überkategorien</a>
+            </li>
+            <li class="breadcrumb-item active">{{ ueberkategorie }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-tag-fill"></i> {{ ueberkategorie }}</h1>
+        <a href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück
+        </a>
+    </div>
+
+    <!-- Statistiken -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-box-seam text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.gesamt_produkte }}</h3>
+                    <p class="text-muted mb-0">Produkte</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-cart text-success" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.gesamt_kaeufe }}</h3>
+                    <p class="text-muted mb-0">Käufe gesamt</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-currency-euro text-warning" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">
+                        {% if stats.durchschnittspreis %}
+                        €{{ stats.durchschnittspreis|floatformat:2 }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </h3>
+                    <p class="text-muted mb-0">Ø Preis</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Produktgruppen mit Preisentwicklung -->
+    {% if produktgruppen %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h4 class="mb-0">
+                <i class="bi bi-graph-up-arrow"></i> 
+                Produktgruppen nach Preisänderung
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Produktgruppe</th>
+                            <th class="text-center">Produkte</th>
+                            <th class="text-center">Käufe</th>
+                            <th class="text-end">Min. Preis</th>
+                            <th class="text-end">Max. Preis</th>
+                            <th class="text-end">Differenz</th>
+                            <th class="text-end">Änderung</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gruppe in produktgruppen %}
+                        <tr>
+                            <td>
+                                <strong>{{ gruppe.name }}</strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark">
+                                    {{ gruppe.anzahl_produkte }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark">
+                                    {{ gruppe.anzahl_kaeufe }}
+                                </span>
+                            </td>
+                            <td class="text-end text-success">
+                                €{{ gruppe.min_preis|floatformat:2 }}
+                            </td>
+                            <td class="text-end text-danger">
+                                €{{ gruppe.max_preis|floatformat:2 }}
+                            </td>
+                            <td class="text-end">
+                                €{{ gruppe.diff|floatformat:2 }}
+                            </td>
+                            <td class="text-end">
+                                <span class="badge {% if gruppe.diff_pct > 10 %}bg-danger{% elif gruppe.diff_pct > 5 %}bg-warning{% else %}bg-info{% endif %}">
+                                    +{{ gruppe.diff_pct|floatformat:1 }}%
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'finance:billa_preisentwicklung_produktgruppe' gruppe.name %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-graph-up"></i> Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts für Top 6 Produktgruppen -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h4 class="mb-0">
+                <i class="bi bi-bar-chart-line"></i> 
+                Preisentwicklung Top Produktgruppen
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for gruppe in produktgruppen|slice:":6" %}
+                <div class="col-md-6 mb-4">
+                    <h6 class="text-center">{{ gruppe.name }}</h6>
+                    <canvas id="chart-{{ forloop.counter }}" height="200"></canvas>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Keine Produktgruppen mit Preisentwicklung gefunden.
+    </div>
+    {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const produktgruppen = {{ produktgruppen|safe }};
+    
+    produktgruppen.slice(0, 6).forEach((gruppe, index) => {
+        const ctx = document.getElementById('chart-' + (index + 1));
+        if (!ctx) return;
+        
+        const dates = gruppe.preis_historie.map(h => h.datum);
+        const prices = gruppe.preis_historie.map(h => h.durchschnitt);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Ø Preis',
+                    data: prices,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '€' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return '€' + value.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

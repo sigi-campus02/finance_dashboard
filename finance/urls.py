@@ -74,7 +74,6 @@ urlpatterns = [
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 
     # Billa URLs
-    path('billa/preisentwicklung/', views_billa.billa_preisentwicklung, name='billa_preisentwicklung'),
     path('billa/statistiken/', views_billa.billa_statistiken, name='billa_statistiken'),
 
     # Billa API Endpoints
@@ -94,4 +93,13 @@ urlpatterns = [
 
     # Alte Produkte-Liste (jetzt als Alternative)
     path('billa/produkte/', views_billa.billa_produkte_liste, name='billa_produkte_liste'),
+
+
+    # Preisentwicklung auf verschiedenen Ebenen
+    path('billa/preisentwicklung/', views_billa.billa_preisentwicklung_uebersicht, name='billa_preisentwicklung_uebersicht'),
+    path('billa/preisentwicklung/ueberkategorien/', views_billa.billa_preisentwicklung_ueberkategorien, name='billa_preisentwicklung_ueberkategorien'),
+    path('billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/', views_billa.billa_preisentwicklung_ueberkategorie, name='billa_preisentwicklung_ueberkategorie'),
+    path('billa/preisentwicklung/produktgruppe/<str:produktgruppe>/', views_billa.billa_preisentwicklung_produktgruppe, name='billa_preisentwicklung_produktgruppe'),
+    path('billa/preisentwicklung/produkt/<int:produkt_id>/', views_billa.billa_preisentwicklung_produkt, name='billa_preisentwicklung_produkt'),
+
 ]
