@@ -811,3 +811,62 @@ class BillaPreisHistorie(models.Model):
     def __str__(self):
         return f"{self.produkt.name_normalisiert} - {self.datum}: € {self.preis}"
 
+
+class BillaFiliale(models.Model):
+    """Billa Filiale - Informationen zu den einzelnen Filialen"""
+
+    filial_nr = models.CharField(
+        max_length=10,
+        primary_key=True,
+        verbose_name="Filial-Nummer"
+    )
+
+    name = models.CharField(
+        max_length=200,
+        verbose_name="Filialname"
+    )
+
+    typ = models.CharField(
+        max_length=20,
+        choices=[
+            ('billa', 'Billa'),
+            ('billa_plus', 'Billa Plus'),
+        ],
+        verbose_name="Filialtyp"
+    )
+
+    # Optional: Weitere Felder für zukünftige Erweiterungen
+    adresse = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        verbose_name="Adresse"
+    )
+
+    plz = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        verbose_name="Postleitzahl"
+    )
+
+    ort = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Ort"
+    )
+
+    aktiv = models.BooleanField(
+        default=True,
+        verbose_name="Aktiv"
+    )
+
+    class Meta:
+        db_table = 'billa_filialen'
+        verbose_name = "Billa Filiale"
+        verbose_name_plural = "Billa Filialen"
+        ordering = ['filial_nr']
+
+    def __str__(self):
+        return f"{self.filial_nr} - {self.name}"
