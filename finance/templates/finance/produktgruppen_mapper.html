@@ -49,48 +49,60 @@ const ProduktgruppenMapper = () => {
         'Spargel': ['spargel'],
         'Rüben': ['rübe', 'rote rübe', 'rote bete'],
         'Fenchel': ['fenchel'],
-        'Kohl': ['kohl', 'kohlrabi', 'weißkohl', 'rotkohl', 'rosenkohl', 'grünkohl', 'chinakohl', 'pak choi'],
-        'Sellerie': ['sellerie'],
+        'Kohl': ['kohl', 'kohlrabi', 'weißkohl', 'rotkohl', 'blumenkohl', 'rosenkohl', 'grünkohl', 'chinakohl', 'pak choi'],
+        'Sellerie': ['sellerie', 'stangensellerie'],
+        'Gemüse Allgemein': ['gemüse', 'suppengemüse'],
+        'Sprossen': ['sprossen', 'sprossengarten', 'kresse'],
+        'Linsen': ['linsen', 'berglinsen'],
+        'Polenta': ['polenta'],
       },
     
       // ========== OBST ==========
       'Obst': {
         'Äpfel': ['apfel', 'äpfel'],
         'Bananen': ['banane'],
-        'Beeren': ['beeren', 'erdbeere', 'himbeere', 'blaubeere', 'brombeere'],
-        'Zitrusfrüchte': ['zitrone', 'limette', 'orange', 'mandarine', 'grapefruit'],
+        'Orangen': ['orange', 'apfelsine'],
+        'Zitronen': ['zitrone', 'limette', 'lime'],
+        'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
         'Trauben': ['traube', 'weintraube'],
         'Birnen': ['birne'],
-        'Kiwis': ['kiwi'],
-        'Melonen': ['melone', 'wassermelone'],
-        'Pfirsiche': ['pfirsich', 'nektarine'],
-        'Pflaumen': ['pflaume', 'zwetschke'],
-        'Ananas': ['ananas'],
+        'Kiwi': ['kiwi'],
         'Mango': ['mango'],
+        'Ananas': ['ananas'],
+        'Pfirsich': ['pfirsich', 'nektarine'],
+        'Melone': ['melone', 'wassermelone', 'honigmelone'],
         'Avocado': ['avocado'],
+        'Granatapfel': ['granatapfel'],
+        'Zwetschken': ['zwetschke', 'zwetsch', 'pflaume'],
+        'Pomelo': ['pomelo'],
       },
     
       // ========== MILCHPRODUKTE ==========
       'Milchprodukte': {
-        'Milch': ['milch', 'frischmilch', 'vollmilch', 'haltbare'],
-        'Joghurt': ['joghurt', 'jogurt'],
-        'Käse': ['käse', 'gouda', 'emmental', 'mozzarella', 'parmesan', 'feta', 'camembert', 'bergkäse', 'schnittkäse'],
-        'Butter': ['butter'],
-        'Sahne': ['sahne', 'schlag', 'obers'],
-        'Quark': ['quark', 'topfen'],
-        'Frischkäse': ['frischkäse', 'philadelphia'],
-        'Eier': ['ei ', 'eier', 'freiland'],
+        'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
+        'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt', 'fruchtjoghu', 'billa bio fairtrade kokos'],
+        'Käse': ['traungold', 'alpenprinz', 'käse', 'baron', 'schlossdamer', 'brie', 'jerome', 'moosbacher', 'schärd.', 'dachsteiner', 'halloumi','baronesse', 'gouda', 'emmentaler','mozzarella', 'burrata', 'cheddar', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse', 'bergkäse', 'edamer', 'tilsiter', 'parm.', 'regg.', 'almkönig', 'goudette'],
+        'Butter': ['butter', 'kräuterbutter', 'rama', 'lätta', 'margarine', 'viospread'],
+        'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche', 'cremefine', 'kochcreme'],
+        'Topfen': ['topfen', 'quark', 'magertopfen'],
+        'Frischkäse': ['frischkäse', 'cottage'],
+        'Mascarpone': ['mascarpone'],
+        'Parmesan': ['parmesan', 'parmigiano', 'grana', 'padano'],
+        'Ricotta': ['ricotta'],
+        'Babybel': ['babybel'],
       },
     
       // ========== FLEISCH & WURST ==========
       'Fleisch & Wurst': {
-        'Rind': ['rind', 'beef', 'steak'],
-        'Schwein': ['schwein', 'schnitzel', 'filet'],
-        'Geflügel': ['huhn', 'hähnchen', 'pute', 'ente'],
-        'Wurst': ['wurst', 'salami', 'debreziner', 'frankfurter', 'kabanossi', 'griller', 'kaminwurzerl'],
+        'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks', 'tafelspitz', 'gulasch', 'grillmix'],
+        'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
+        'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl', 'h-filet', 'geflügel', 'unterkeulen'],
+        'Putenfleisch': ['puten', 'pute'],
+        'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker', 'debreziner', 'frankfurter', 'kabanossi', 'griller', 'kaminwurzerl'],
         'Schinken': ['schinken', 'speck', 'bratl', 'bratenaufschnitt'],
         'Faschiertes': ['faschiert', 'hackfleisch', 'burger', 'beefburger'],
         'Würstchen': ['neuburger', 'braunschweiger','chorizo', 'salsiccia', 'cevapcici'],
+
       },
     
       // ========== FISCH ==========
@@ -105,9 +117,12 @@ const ProduktgruppenMapper = () => {
     
       // ========== BROT & BACKWAREN ==========
       'Brot & Backwaren': {
-        'Brot': ['brot', 'vollkornbrot', 'weißbrot'],
-        'Brötchen': ['semmel', 'brötchen', 'weckerl'],
-        'Gebäck': ['croissant', 'kipferl'],
+        'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot', 'baguette', 'ciabatta', 'fladenbrot', 'dinkel sandwich', 'sonntagsb'],
+        'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
+        'Toast': ['toast', 'toastbrot', 'mehrkorntoast', 'wasa'],
+        'Gebäck': ['gebäck', 'croissant', 'plunder', 'krapfen', 'nougattasche', 'clever kräuter bag'],
+        'Knäckebrot': ['knäcke', 'leicht cross', 'leicht & cross'],
+        'Blätterteig': ['blätterteig'],
       },
     
       // ========== NUDELN & REIS ==========
@@ -124,7 +139,7 @@ const ProduktgruppenMapper = () => {
       'Backen': {
         'Mehl': ['mehl'],
         'Backpulver': ['backpulver'],
-        'Hefe': ['hefe', 'backhefe', 'germ'],
+        'Hefe': ['hefe', 'backhefe', 'germ', 'keimkraft'],
         'Vanille': ['vanille', 'bourbon'],
         'Pudding': ['pudding'],
         'Gelatine': ['blattgelat'],
@@ -141,7 +156,8 @@ const ProduktgruppenMapper = () => {
       'Gewürze & Würzmittel': {
         'Salz': ['salz'],
         'Pfeffer': ['pfeffer', 'cayennepf'],
-        'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'kotanyi'],
+        'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'koriander', 'kotanyi'],
+
       },
     
       // ========== ÖLE & ESSIG ==========
@@ -151,6 +167,7 @@ const ProduktgruppenMapper = () => {
         'Kürbisöl': ['kürbisöl'],
         'Essig': ['essig', 'balsamico'],
         'Natron': ['natron'],
+        'Kokosöl': ['kokosöl'],
       },
     
       // ========== SOSSEN & AUFSTRICHE ==========
@@ -162,13 +179,11 @@ const ProduktgruppenMapper = () => {
         'Fond': ['fond'],
         'Letscho': ['letscho'],
         'Kren': ['kren', 'meerrettich'],
-        'Marmelade': ['marmelade', 'konfitüre'],
-        'Aufstrich': ['aufstrich'],
       },
     
       // ========== FRÜHSTÜCK ==========
       'Frühstück': {
-        'Müsli': ['müsli', 'knusperli'],
+        'Müsli': ['müsli', 'knusperli', 'knusper pur', 'oetker knusper'],
         'Cornflakes': ['cornflakes', 'color loops'],
         'Haferflocken': ['haferflocken', 'hafer'],
         'Kaffee': ['kaffee', 'nescafé', 'nescafe', 'crema intenso', 'hornig'],
@@ -180,11 +195,12 @@ const ProduktgruppenMapper = () => {
         'Schokolade': ['schokolade', 'schoko', 'nutella', 'kinder-pingui', 'manner'],
         'Kekse': ['keks', 'biskuit', 'cookie', 'biskotten', 'leibniz', 'pick up'],
         'Chips': ['chips', 'snips', 'best foodies bio bunte'],
-        'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'cashew', 'pistazie', 'erdnuss', 'studentenfutter', 'studentenfutt', 'pinienkerne', 'sonnenblumenkerne', 'chiasamen'],
+        'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'walnüsse', 'cashew', 'pistazie', 'erdnuss', 'studentenfutter', 'studentenfutt', 'pinienkerne', 'sonnenblumenkerne', 'chiasamen'],
         'Trockenfrüchte': ['rosine', 'dattel', 'maroni'],
-        'Süßigkeiten': ['tiramisu', 'duplo', 'suchard', 'celebrations', 'corny', 'trüffeltortenstück'],
+        'Süßigkeiten': ['tiramisu', 'duplo', 'suchard', 'celebrations', 'corny', 'trüffeltortenstück', 'sorger schwarzwälder'],
         'Proteinriegel': ['proteinriegel', 'barebells', 'neoh'],
         'Mohn': ['mohn'],
+
       },
     
       // ========== GETRÄNKE ==========
@@ -197,7 +213,7 @@ const ProduktgruppenMapper = () => {
         'Energy Drinks': ['red bull', 'energy'],
         'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista', 'natrue coco'],
         'Sojamilch': ['sojamilch', 'sojadrink'],
-        'Tee': ['tee', 'halsfreund', 'kamille'],
+        'Tee': ['tee', 'halsfreund', 'kamille', 'immun bio'],
         'Milchdrinks': ['lattella', 'nöm mix'],
         'Vegane Milch': ['vegavita no muuh'],
       },
@@ -235,7 +251,7 @@ const ProduktgruppenMapper = () => {
         'Weichspüler': ['silan'],
         'Brillenreiniger': ['brillenputz', 'brillenputztücher'],
         'Ohrstöpsel': ['ohropax'],
-        'Waschmittel': ['persil', 'ariel', 'pulver', 'megapearls', 'dr.beck.gardinen'],
+        'Waschmittel': ['persil', 'ariel', 'pulver', 'megapearls', 'dr. beck.gardinen'],
         'Entkalker': ['durgol', 'calgon'],
         'Geschirrspüler': ['finish', 'somat', 'klarspüler'],
         'WC-Reiniger': ['wc ente', 'wc power'],
@@ -250,7 +266,7 @@ const ProduktgruppenMapper = () => {
         'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
         'Pizza': ['pizza', 'pizzamehl'],
         'Eis': ['eis ', 'cornetto', 'langnese', 'magnum', 'eskimo', 'cremissimo', 'mälzer&fu'],
-        'Tortillas': ['tortilla', 'wrap', 'tex mex'],
+        'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat'],
       },
     
       // ========== FERTIGGERICHTE ==========
@@ -274,7 +290,7 @@ const ProduktgruppenMapper = () => {
       'Sonstiges': {
         'Pfandartikel': ['pfand', 'einwegpfand', 'pfandartikel', 'leergut', 'leergut-ret', 'leerflasche'],
         'Tragetaschen': ['tragetasche'],
-        'Sonstiges': ['sonstiges', 'äpp-only', 'unsere besten 6er', '8 x nimm mehr', 'stifterl', 'schütt-streubehälter', 'tatü box', 'koro', 'bi good', 'gärtnerbund', 'lieblingsprodukt', 'bio gourmet', 'landfr'],
+        'Sonstiges': ['sonstiges', 'billa bon', 'äpp-only', 'unsere besten 6er', '8 x nimm mehr', 'stifterl', 'schütt-streubehälter', 'tatü box', 'koro', 'bi good', 'gärtnerbund', 'lieblingsprodukt', 'bio gourmet', 'landfr'],
       },
     };
 

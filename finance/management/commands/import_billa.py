@@ -114,13 +114,6 @@ class Command(BaseCommand):
                     produkt.name_original = produkt_name_original
                     produkt.save(update_fields=['name_original'])
 
-            # Automatische Kategorisierung
-            if created or not produkt.kategorie:
-                kategorie = self.auto_kategorisieren(produkt_name_norm)
-                if kategorie:
-                    produkt.kategorie = kategorie
-                    produkt.save()
-
             artikel_data['produkt'] = produkt
             artikel = BillaArtikel.objects.create(**artikel_data)
 

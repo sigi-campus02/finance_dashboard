@@ -87,7 +87,7 @@ def billa_dashboard(request):
     # Top Produkte nach Häufigkeit - JSON-serialisierbar machen
     top_produkte_anzahl_raw = artikel.values(
         'produkt__name_normalisiert',
-        'produkt__kategorie'
+        'produkt__ueberkategorie'  # ← GEÄNDERT von kategorie
     ).annotate(
         anzahl=Count('id'),
         ausgaben=Sum('gesamtpreis')
@@ -96,7 +96,7 @@ def billa_dashboard(request):
     top_produkte_anzahl = [
         {
             'produkt__name_normalisiert': item['produkt__name_normalisiert'],
-            'produkt__kategorie': item['produkt__kategorie'],
+            'produkt__ueberkategorie': item['produkt__ueberkategorie'],  # ← GEÄNDERT
             'anzahl': item['anzahl'],
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
         }
@@ -106,7 +106,7 @@ def billa_dashboard(request):
     # Top Produkte nach Ausgaben - JSON-serialisierbar machen
     top_produkte_ausgaben_raw = artikel.values(
         'produkt__name_normalisiert',
-        'produkt__kategorie'
+        'produkt__ueberkategorie'  # ← GEÄNDERT von kategorie
     ).annotate(
         ausgaben=Sum('gesamtpreis'),
         anzahl=Count('id')
@@ -115,7 +115,7 @@ def billa_dashboard(request):
     top_produkte_ausgaben = [
         {
             'produkt__name_normalisiert': item['produkt__name_normalisiert'],
-            'produkt__kategorie': item['produkt__kategorie'],
+            'produkt__ueberkategorie': item['produkt__ueberkategorie'],  # ← GEÄNDERT
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0,
             'anzahl': item['anzahl']
         }
@@ -405,7 +405,6 @@ def produktgruppen_mapper(request):
         'id',
         'name_original',
         'name_normalisiert',
-        'kategorie',
         'ueberkategorie',
         'produktgruppe'
     )

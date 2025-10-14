@@ -263,7 +263,7 @@ class Command(BaseCommand):
         with open(filename, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
-                'Datum', 'Filiale', 'Produktname', 'Kategorie',
+                'Datum', 'Filiale', 'Produktname', 'Überkategorie',  # ← GEÄNDERT
                 'Menge', 'Einheit', 'Einzelpreis', 'Gesamtpreis',
                 'Rabatt', 'Rabatt-Typ'
             ])
@@ -271,13 +271,13 @@ class Command(BaseCommand):
             for artikel in BillaArtikel.objects.select_related(
                     'einkauf', 'produkt'
             ).order_by('-einkauf__datum'):
-                kategorie = artikel.produkt.get_kategorie_display() if artikel.produkt else ''
+                ueberkategorie = artikel.produkt.ueberkategorie if artikel.produkt else ''
 
                 writer.writerow([
                     artikel.einkauf.datum,
                     artikel.einkauf.filiale,
                     artikel.produkt_name,
-                    kategorie,
+                    ueberkategorie,  # ← GEÄNDERT
                     artikel.menge,
                     artikel.einheit,
                     artikel.einzelpreis or '',

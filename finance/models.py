@@ -811,6 +811,3 @@ class BillaPreisHistorie(models.Model):
     def __str__(self):
         return f"{self.produkt.name_normalisiert} - {self.datum}: € {self.preis}"
 
-
-
-
