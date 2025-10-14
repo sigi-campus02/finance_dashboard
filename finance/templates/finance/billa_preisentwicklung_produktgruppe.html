@@ -86,96 +86,184 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-const preis_historie = {{ preis_historie_gruppe|safe }};
+// DEBUG: Ausgabe der Daten
+console.log('=== DEBUG START ===');
+console.log('preis_historie_produkte:', {{ preis_historie_produkte|safe }});
+console.log('produkte:', {{ produkte|safe }});
+
+const preis_historie_produkte = {{ preis_historie_produkte|safe }};
 const produkte = {{ produkte|safe }};
 
-// Chart: Durchschnittliche Preisentwicklung
-if (preis_historie && preis_historie.length > 0) {
+console.log('Anzahl Produkte mit Historie:', preis_historie_produkte ? preis_historie_produkte.length : 0);
+
+// Chart: Preisentwicklung pro Produkt
+if (preis_historie_produkte && preis_historie_produkte.length > 0) {
+    console.log('Erstelle Chart mit', preis_historie_produkte.length, 'Produkten');
+    
     const ctx = document.getElementById('chart-gruppe');
     
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: preis_historie.map(h => {
-                const d = new Date(h.datum);
-                return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-            }),
-            datasets: [{
-                label: 'Ø Preis',
-                data: preis_historie.map(h => h.durchschnitt),
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+    if (!ctx) {
+        console.error('Canvas Element "chart-gruppe" nicht gefunden!');
+    } else {
+        console.log('Canvas gefunden, erstelle Chart...');
+        
+        // Definiere verschiedene Farben für die Linien
+        const colors = [
+            '#0d6efd', // Blau
+            '#198754', // Grün
+            '#dc3545', // Rot
+            '#ffc107', // Gelb
+            '#6f42c1', // Lila
+            '#fd7e14', // Orange
+            '#20c997', // Türkis
+            '#d63384'  // Pink
+        ];
+        
+        // Sammle alle einzigartigen Daten für die X-Achse
+        const allDates = new Set();
+        preis_historie_produkte.forEach(prod => {
+            console.log('Produkt:', prod.produkt_name, 'Historie Einträge:', prod.historie.length);
+            prod.historie.forEach(h => allDates.add(h.datum));
+        });
+        const sortedDates = Array.from(allDates).sort();
+        console.log('Alle Daten:', sortedDates);
+        
+        // Erstelle ein Dataset für jedes Produkt
+        const datasets = preis_historie_produkte.map((prod, index) => {
+            // Erstelle ein Datum-zu-Preis Mapping für dieses Produkt
+            const priceMap = {};
+            prod.historie.forEach(h => {
+                priceMap[h.datum] = h.preis;
+            });
+            
+            // Erstelle Daten-Array mit null für fehlende Daten
+            const data = sortedDates.map(date => priceMap[date] || null);
+            
+            console.log('Dataset für', prod.produkt_name, ':', data);
+            
+            return {
+                label: prod.produkt_name,
+                data: data,
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length] + '20',
                 tension: 0.4,
-                fill: true,
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => '€' + ctx.parsed.y.toFixed(2)
-                    }
-                }
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                spanGaps: true
+            };
+        });
+        
+        console.log('Erstelle Chart mit', datasets.length, 'Datasets');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedDates.map(datum => {
+                    const d = new Date(datum);
+                    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                }),
+                datasets: datasets
             },
-            scales: {
-                x: {
-                    ticks: { 
-                        maxTicksLimit: 10,
-                        maxRotation: 45,
-                        minRotation: 45
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                return context.dataset.label + ': €' + context.parsed.y.toFixed(2);
+                            }
+                        }
                     }
                 },
-                y: {
-                    beginAtZero: false,
-                    ticks: {
-                        callback: (value) => '€' + value.toFixed(2)
+                scales: {
+                    x: {
+                        ticks: { 
+                            maxTicksLimit: 10,
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: (value) => '€' + value.toFixed(2)
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+        
+        console.log('Chart erfolgreich erstellt!');
+    }
 } else {
-    document.getElementById('chart-gruppe').parentElement.innerHTML = 
-        '<div class="alert alert-info">Keine Preisentwicklungsdaten verfügbar.</div>';
+    console.warn('Keine Preisentwicklung verfügbar');
+    const chartContainer = document.getElementById('chart-gruppe');
+    if (chartContainer && chartContainer.parentElement) {
+        chartContainer.parentElement.innerHTML = 
+            '<div class="alert alert-info">Keine Preisentwicklung verfügbar.</div>';
+    }
 }
 
-// Produkte anzeigen
+// Produkte-Karten erstellen
 const container = document.getElementById('produkte-container');
-
-if (produkte && produkte.length > 0) {
-    produkte.forEach(p => {
-        const col = document.createElement('div');
-        col.className = 'col-md-4 mb-3';
-        
-        let badgeClass = 'bg-info';
-        if (p.diff_pct > 50) badgeClass = 'bg-danger';
-        else if (p.diff_pct > 20) badgeClass = 'bg-warning';
-        
-        col.innerHTML = `
-            <div class="card h-100">
-                <div class="card-body">
-                    <h6 class="card-title">${p.produkt_name}</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-success small">Min: €${p.min_preis.toFixed(2)}</span>
-                        <i class="bi bi-arrow-right"></i>
-                        <span class="text-danger small">Max: €${p.max_preis.toFixed(2)}</span>
-                    </div>
-                    <div class="text-center">
-                        <span class="badge ${badgeClass}">+${p.diff_pct.toFixed(1)}%</span>
-                        <div class="text-muted small mt-1">€${p.diff.toFixed(2)} Differenz</div>
-                        <div class="text-muted small"><i class="bi bi-cart"></i> ${p.anzahl_kaeufe} Käufe</div>
+if (container) {
+    if (produkte && produkte.length > 0) {
+        console.log('Erstelle', produkte.length, 'Produkt-Karten');
+        produkte.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'col-md-4 mb-3';
+            
+            const badgeClass = p.diff_pct > 100 ? 'bg-danger' : (p.diff_pct > 50 ? 'bg-warning' : 'bg-info');
+            
+            card.innerHTML = `
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title">${p.produkt.name_normalisiert}</h6>
+                        <p class="text-muted small mb-2">${p.produkt.marke || 'N/A'}</p>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-success">Min: €${p.min_preis.toFixed(2)}</span>
+                            <span class="text-danger">Max: €${p.max_preis.toFixed(2)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>€${p.diff.toFixed(2)} Differenz</span>
+                            <span class="badge ${badgeClass}">+${p.diff_pct.toFixed(1)}%</span>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="bi bi-cart"></i> ${p.produkt.anzahl_kaeufe || 0} Käufe
+                            </small>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        container.appendChild(col);
-    });
+            `;
+            container.appendChild(card);
+        });
+    } else {
+        console.warn('Keine Produkte gefunden');
+        container.innerHTML = '<div class="col-12"><div class="alert alert-info">Keine Produkte gefunden.</div></div>';
+    }
 } else {
-    container.innerHTML = '<div class="col-12"><div class="alert alert-info">Keine Produkte mit Preisänderungen gefunden.</div></div>';
+    console.error('produkte-container Element nicht gefunden!');
 }
+
+console.log('=== DEBUG END ===');
 </script>
 {% endblock %}
