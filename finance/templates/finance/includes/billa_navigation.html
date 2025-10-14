@@ -1,0 +1,54 @@
+{% load static %}
+{% with current=request.resolver_match.url_name %}
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="row gy-4">
+            <div class="col-md-4">
+                <h6 class="text-uppercase text-muted small fw-semibold mb-2">Dashboards &amp; Analysen</h6>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'finance:billa_dashboard' %}"
+                       class="btn btn-sm {% if current == 'billa_dashboard' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        <i class="bi bi-graph-up"></i> Gesamtübersicht
+                    </a>
+                    <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}"
+                       class="btn btn-sm {% if current == 'billa_preisentwicklung_uebersicht' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        <i class="bi bi-graph-up-arrow"></i> Preisentwicklung
+                    </a>
+                    <a href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}"
+                       class="btn btn-sm {% if current == 'billa_preisentwicklung_ueberkategorien' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        <i class="bi bi-diagram-3"></i> Überkategorien
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-uppercase text-muted small fw-semibold mb-2">Produkte &amp; Gruppen</h6>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'finance:billa_produktgruppen_liste' %}"
+                       class="btn btn-sm {% if current == 'billa_produktgruppen_liste' or current == 'billa_produktgruppe_detail' %}btn-success{% else %}btn-outline-success{% endif %}">
+                        <i class="bi bi-tags"></i> Produktgruppen
+                    </a>
+                    <a href="{% url 'finance:billa_produkte_liste' %}"
+                       class="btn btn-sm {% if current == 'billa_produkte_liste' or current == 'billa_produkt_detail' %}btn-success{% else %}btn-outline-success{% endif %}">
+                        <i class="bi bi-box-seam"></i> Produkte
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-uppercase text-muted small fw-semibold mb-2">Datenpflege &amp; Werkzeuge</h6>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'finance:produktgruppen_mapper' %}"
+                       class="btn btn-sm {% if current == 'produktgruppen_mapper' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+                        <i class="bi bi-tools"></i> Produktgruppen-Mapping
+                    </a>
+                    <a href="{% url 'finance:billa_api_stats' %}"
+                       target="_blank"
+                       rel="noopener"
+                       class="btn btn-sm {% if current == 'billa_api_stats' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+                        <i class="bi bi-activity"></i> API-Statistiken (JSON)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endwith %}

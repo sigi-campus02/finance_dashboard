@@ -194,35 +194,66 @@
                         </ul>
                     </li>
 
-                    <!-- Billa Dropdown in der Sidebar -->
+                    <!-- Billa Navigation (Mobile) -->
+                    {% with current=request.resolver_match.url_name %}
                     <li class="nav-item">
-                        <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
+                        <a class="nav-link dropdown-toggle {% if current and ('billa' in current or current == 'produktgruppen_mapper') %}active{% endif %}"
                            href="#"
-                           id="billaDropdown"
+                           id="billaMobileDropdown"
                            role="button"
                            data-bs-toggle="collapse"
-                           data-bs-target="#billaSubmenu"
+                           data-bs-target="#billaMobileSubmenu"
                            aria-expanded="false">
                             <i class="bi bi-cart3"></i> Billa
                         </a>
-                        <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}"
-                             id="billaSubmenu">
-                            <ul class="nav flex-column ms-3">
+                        <div class="collapse {% if current and ('billa' in current or current == 'produktgruppen_mapper') %}show{% endif %}"
+                             id="billaMobileSubmenu">
+                            <ul class="nav flex-column ms-3 small">
+                                <li class="nav-item mt-2 text-uppercase text-muted fw-semibold">Dashboards & Analysen</li>
                                 <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
+                                    <a class="nav-link {% if current == 'billa_dashboard' %}active fw-semibold{% endif %}"
                                        href="{% url 'finance:billa_dashboard' %}">
-                                        <i class="bi bi-graph-up"></i> Dashboard
+                                        <i class="bi bi-graph-up"></i> Gesamtübersicht
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'produktgruppen_mapper' %}active{% endif %}"
+                                    <a class="nav-link {% if current == 'billa_preisentwicklung_uebersicht' %}active fw-semibold{% endif %}"
+                                       href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">
+                                        <i class="bi bi-graph-up-arrow"></i> Preisentwicklung
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if current == 'billa_preisentwicklung_ueberkategorien' %}active fw-semibold{% endif %}"
+                                       href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}">
+                                        <i class="bi bi-diagram-3"></i> Überkategorien
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="nav-item text-uppercase text-muted fw-semibold">Produkte & Gruppen</li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if current == 'billa_produktgruppen_liste' %}active fw-semibold{% endif %}"
+                                       href="{% url 'finance:billa_produktgruppen_liste' %}">
+                                        <i class="bi bi-tags"></i> Produktgruppen
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if current == 'billa_produkte_liste' %}active fw-semibold{% endif %}"
+                                       href="{% url 'finance:billa_produkte_liste' %}">
+                                        <i class="bi bi-box-seam"></i> Produkte
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="nav-item text-uppercase text-muted fw-semibold">Datenpflege</li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if current == 'produktgruppen_mapper' %}active fw-semibold{% endif %}"
                                        href="{% url 'finance:produktgruppen_mapper' %}">
-                                        <i class="bi bi-tag"></i> Produktgruppen
+                                        <i class="bi bi-tools"></i> Produktgruppen-Mapping
                                     </a>
                                 </li>
                             </ul>
                         </div>
                     </li>
+                    {% endwith %}
 
                     {% if user.username != 'robert' %}
                     <li class="nav-item">
@@ -336,34 +367,63 @@
                             </a>
                         </li>
                         <!-- Billa Dropdown in der Sidebar -->
+                        {% with current=request.resolver_match.url_name %}
                         <li class="nav-item">
-                            <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
+                            <a class="nav-link dropdown-toggle {% if current and ('billa' in current or current == 'produktgruppen_mapper') %}active{% endif %}"
                                href="#"
-                               id="billaDropdown"
+                               id="billaSidebarDropdown"
                                role="button"
                                data-bs-toggle="collapse"
-                               data-bs-target="#billaSubmenu"
+                               data-bs-target="#billaSidebarSubmenu"
                                aria-expanded="false">
                                 <i class="bi bi-cart3"></i> Billa
                             </a>
-                            <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}"
-                                 id="billaSubmenu">
-                                <ul class="nav flex-column ms-3">
+                            <div class="collapse {% if current and ('billa' in current or current == 'produktgruppen_mapper') %}show{% endif %}"
+                                 id="billaSidebarSubmenu">
+                                <ul class="nav flex-column ms-3 small">
+                                    <li class="nav-item mt-2 text-uppercase text-muted fw-semibold">Dashboards & Analysen</li>
                                     <li class="nav-item">
-                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
+                                        <a class="nav-link {% if current == 'billa_dashboard' %}active fw-semibold{% endif %}"
                                            href="{% url 'finance:billa_dashboard' %}">
-                                            <i class="bi bi-graph-up"></i> Dashboard
+                                            <i class="bi bi-graph-up"></i> Gesamtübersicht
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
+                                        <a class="nav-link {% if current == 'billa_preisentwicklung_uebersicht' %}active fw-semibold{% endif %}"
+                                           href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">
+                                            <i class="bi bi-graph-up-arrow"></i> Preisentwicklung
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if current == 'billa_preisentwicklung_ueberkategorien' %}active fw-semibold{% endif %}"
+                                           href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}">
+                                            <i class="bi bi-diagram-3"></i> Überkategorien
+                                        </a>
+                                    </li>
+                                    <li class="mt-3 nav-item text-uppercase text-muted fw-semibold">Produkte & Gruppen</li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if current == 'billa_produktgruppen_liste' %}active fw-semibold{% endif %}"
                                            href="{% url 'finance:billa_produktgruppen_liste' %}">
-                                            <i class="bi bi-tag"></i> Produktgruppen
+                                            <i class="bi bi-tags"></i> Produktgruppen
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if current == 'billa_produkte_liste' %}active fw-semibold{% endif %}"
+                                           href="{% url 'finance:billa_produkte_liste' %}">
+                                            <i class="bi bi-box-seam"></i> Produkte
+                                        </a>
+                                    </li>
+                                    <li class="mt-3 nav-item text-uppercase text-muted fw-semibold">Datenpflege</li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if current == 'produktgruppen_mapper' %}active fw-semibold{% endif %}"
+                                           href="{% url 'finance:produktgruppen_mapper' %}">
+                                            <i class="bi bi-tools"></i> Produktgruppen-Mapping
                                         </a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
+                        {% endwith %}
                         {% else %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
