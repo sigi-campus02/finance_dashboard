@@ -194,8 +194,18 @@ def billa_produkt_detail(request, produkt_id):
     """Detail-Ansicht eines Produkts mit Preisentwicklung"""
     produkt = get_object_or_404(BillaProdukt, pk=produkt_id)
 
-    # Preisentwicklung
-    preis_historie = produkt.preishistorie.order_by('datum')
+    # ✅ Preisentwicklung als JSON
+    preis_historie_raw = produkt.preishistorie.order_by('datum')
+
+    preis_historie_json = [
+        {
+            'datum': h.datum.strftime('%Y-%m-%d'),
+            'preis': float(h.preis),
+            'menge': float(h.menge),
+            'filiale': h.filiale
+        }
+        for h in preis_historie_raw
+    ]
 
     # Statistiken
     stats = produkt.artikel.aggregate(
@@ -213,7 +223,7 @@ def billa_produkt_detail(request, produkt_id):
 
     context = {
         'produkt': produkt,
-        'preis_historie': preis_historie,
+        'preis_historie': json.dumps(preis_historie_json),  # ✅ JSON
         'stats': stats,
         'letzte_kaeufe': letzte_kaeufe
     }
