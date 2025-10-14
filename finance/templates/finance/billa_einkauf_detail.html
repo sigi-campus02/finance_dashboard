@@ -55,16 +55,11 @@
 {% block content %}
 <div class="container-fluid">
     <!-- Zurück-Button -->
-    <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="mb-3">
         <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Zurück zum Dashboard
         </a>
-        <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-box-seam"></i> Produkte anzeigen
-        </a>
     </div>
-
-    {% include 'finance/includes/billa_navigation.html' %}
 
     <!-- Receipt Header -->
     <div class="receipt-header">
