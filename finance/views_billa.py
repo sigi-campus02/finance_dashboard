@@ -838,23 +838,21 @@ def billa_preisentwicklung_ueberkategorie(request, ueberkategorie):
 
 @login_required
 def billa_preisentwicklung_produktgruppe(request, produktgruppe):
-    """
-    Zeigt eine spezifische Produktgruppe mit allen Produkten.
-    """
+    """Produktgruppe Detail mit Preisentwicklung"""
 
-    # Finde Überkategorie dieser Produktgruppe
+    # Finde Überkategorie
     beispiel_produkt = BillaProdukt.objects.filter(
         produktgruppe=produktgruppe
     ).first()
 
     ueberkategorie = beispiel_produkt.ueberkategorie if beispiel_produkt else None
 
-    # === Alle Produkte dieser Gruppe ===
+    # Alle Produkte
     produkte_queryset = BillaProdukt.objects.filter(
         produktgruppe=produktgruppe
     ).prefetch_related('preishistorie')
 
-    # === Berechne Preisänderungen für jedes Produkt ===
+    # Berechne Preisänderungen
     produkte_mit_aenderungen = []
 
     for produkt in produkte_queryset:
@@ -865,33 +863,40 @@ def billa_preisentwicklung_produktgruppe(request, produktgruppe):
         )
 
         if preis_stats['count'] >= 2 and preis_stats['min_preis']:
-            min_preis = preis_stats['min_preis']
-            max_preis = preis_stats['max_preis']
+            min_preis = float(preis_stats['min_preis'])
+            max_preis = float(preis_stats['max_preis'])
             diff = max_preis - min_preis
+            diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
 
-            if min_preis > 0:
-                diff_pct = (diff / min_preis * 100)
-                produkte_mit_aenderungen.append({
-                    'produkt': produkt,
-                    'min_preis': min_preis,
-                    'max_preis': max_preis,
-                    'diff': diff,
-                    'diff_pct': diff_pct
-                })
+            produkte_mit_aenderungen.append({
+                'produkt_id': produkt.id,
+                'produkt_name': produkt.name_normalisiert,
+                'anzahl_kaeufe': produkt.anzahl_kaeufe,
+                'min_preis': min_preis,
+                'max_preis': max_preis,
+                'diff': diff,
+                'diff_pct': diff_pct
+            })
 
-    # Sortiere nach Preisänderung
     produkte_mit_aenderungen.sort(key=lambda x: x['diff_pct'], reverse=True)
 
-    # === Preisentwicklung der gesamten Gruppe (Durchschnitt) ===
-    preis_historie_gruppe = BillaPreisHistorie.objects.filter(
+    # Preisentwicklung der Gruppe
+    preis_historie_raw = BillaPreisHistorie.objects.filter(
         produkt__produktgruppe=produktgruppe
     ).values('datum').annotate(
-        durchschnitt=Avg('preis'),
-        min_preis=Min('preis'),
-        max_preis=Max('preis')
+        durchschnitt=Avg('preis')
     ).order_by('datum')
 
-    # === Statistiken ===
+    # ✅ Konvertiere zu JSON-Format
+    preis_historie_gruppe = [
+        {
+            'datum': h['datum'].strftime('%Y-%m-%d'),
+            'durchschnitt': float(h['durchschnitt'])
+        }
+        for h in preis_historie_raw
+    ]
+
+    # Stats
     stats = produkte_queryset.aggregate(
         gesamt_produkte=Count('id'),
         gesamt_kaeufe=Sum('anzahl_kaeufe'),
@@ -901,8 +906,8 @@ def billa_preisentwicklung_produktgruppe(request, produktgruppe):
     context = {
         'produktgruppe': produktgruppe,
         'ueberkategorie': ueberkategorie,
-        'produkte': produkte_mit_aenderungen,
-        'preis_historie_gruppe': list(preis_historie_gruppe),
+        'produkte': json.dumps(produkte_mit_aenderungen),  # ✅ JSON
+        'preis_historie_gruppe': json.dumps(preis_historie_gruppe),  # ✅ JSON
         'stats': stats
     }
 
@@ -915,16 +920,25 @@ def billa_preisentwicklung_produktgruppe(request, produktgruppe):
 
 @login_required
 def billa_preisentwicklung_produkt(request, produkt_id):
-    """
-    Zeigt detaillierte Preisentwicklung eines einzelnen Produkts.
-    """
+    """Einzelprodukt Detail mit Preisentwicklung"""
 
     produkt = get_object_or_404(BillaProdukt, pk=produkt_id)
 
-    # === Preisentwicklung über Zeit ===
-    preis_historie = produkt.preishistorie.order_by('datum')
+    # Preisentwicklung
+    preis_historie_raw = produkt.preishistorie.order_by('datum')
 
-    # === Statistiken ===
+    # ✅ Konvertiere zu JSON
+    preis_historie = [
+        {
+            'datum': h.datum.strftime('%Y-%m-%d'),
+            'preis': float(h.preis),
+            'menge': float(h.menge),
+            'filiale': h.filiale
+        }
+        for h in preis_historie_raw
+    ]
+
+    # Statistiken
     stats = produkt.preishistorie.aggregate(
         anzahl_datenpunkte=Count('id'),
         min_preis=Min('preis'),
@@ -932,30 +946,29 @@ def billa_preisentwicklung_produkt(request, produkt_id):
         avg_preis=Avg('preis')
     )
 
-    # Kaufstatistiken aus Artikeln
+    # Kaufstatistiken
     kauf_stats = produkt.artikel.aggregate(
         anzahl_kaeufe=Count('id'),
         gesamt_ausgaben=Sum('gesamtpreis'),
         gesamt_menge=Sum('menge')
     )
 
+    if stats['min_preis']:
+        stats['min_preis'] = float(stats['min_preis'])
+        stats['max_preis'] = float(stats['max_preis'])
+        stats['avg_preis'] = float(stats['avg_preis'])
+        diff = stats['max_preis'] - stats['min_preis']
+        stats['diff'] = diff
+        stats['diff_pct'] = (diff / stats['min_preis'] * 100) if stats['min_preis'] > 0 else 0
+
     stats.update(kauf_stats)
 
-    # Berechne Preisänderung
-    if stats['anzahl_datenpunkte'] >= 2 and stats['min_preis']:
-        diff = stats['max_preis'] - stats['min_preis']
-        diff_pct = (diff / stats['min_preis'] * 100) if stats['min_preis'] > 0 else 0
-        stats['diff'] = diff
-        stats['diff_pct'] = diff_pct
-
-    # === Letzte Käufe ===
-    letzte_kaeufe = produkt.artikel.select_related(
-        'einkauf'
-    ).order_by('-einkauf__datum')[:30]
+    # Letzte Käufe
+    letzte_kaeufe = produkt.artikel.select_related('einkauf').order_by('-einkauf__datum')[:20]
 
     context = {
         'produkt': produkt,
-        'preis_historie': preis_historie,
+        'preis_historie': json.dumps(preis_historie),
         'stats': stats,
         'letzte_kaeufe': letzte_kaeufe
     }

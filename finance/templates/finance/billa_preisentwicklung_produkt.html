@@ -1,172 +1,108 @@
 {% extends 'finance/base.html' %}
 {% load static %}
 
-{% block title %}Preisentwicklung - {{ produkt.name_normalisiert }}{% endblock %}
+{% block title %}{{ produkt.name_normalisiert }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     
-    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-                <a href="{% url 'finance:billa_dashboard' %}">Billa</a>
-            </li>
-            <li class="breadcrumb-item">
-                <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">Preisentwicklung</a>
-            </li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_dashboard' %}">Billa</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">Preisentwicklung</a></li>
             {% if produkt.ueberkategorie %}
-            <li class="breadcrumb-item">
-                <a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' produkt.ueberkategorie %}">
-                    {{ produkt.ueberkategorie }}
-                </a>
-            </li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' produkt.ueberkategorie %}">{{ produkt.ueberkategorie }}</a></li>
             {% endif %}
             {% if produkt.produktgruppe %}
-            <li class="breadcrumb-item">
-                <a href="{% url 'finance:billa_preisentwicklung_produktgruppe' produkt.produktgruppe %}">
-                    {{ produkt.produktgruppe }}
-                </a>
-            </li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_produktgruppe' produkt.produktgruppe %}">{{ produkt.produktgruppe }}</a></li>
             {% endif %}
-            <li class="breadcrumb-item active">{{ produkt.name_normalisiert|truncatewords:5 }}</li>
+            <li class="breadcrumb-item active">{{ produkt.name_normalisiert }}</li>
         </ol>
     </nav>
 
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-box"></i> {{ produkt.name_normalisiert }}</h1>
         <div>
-            <h1><i class="bi bi-box-seam"></i> {{ produkt.name_normalisiert }}</h1>
-            <div class="mt-2">
-                {% if produkt.ueberkategorie %}
-                <span class="badge bg-primary me-2">
-                    <i class="bi bi-tag"></i> {{ produkt.ueberkategorie }}
-                </span>
-                {% endif %}
-                {% if produkt.produktgruppe %}
-                <span class="badge bg-secondary me-2">
-                    <i class="bi bi-tags"></i> {{ produkt.produktgruppe }}
-                </span>
-                {% endif %}
-                {% if produkt.marke %}
-                <span class="badge bg-light text-dark">
-                    <i class="bi bi-bookmark"></i> {{ produkt.marke }}
-                </span>
-                {% endif %}
-            </div>
-        </div>
-        <div>
-            {% if produkt.produktgruppe %}
-            <a href="{% url 'finance:billa_preisentwicklung_produktgruppe' produkt.produktgruppe %}" 
-               class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Zur Gruppe
-            </a>
+            {% if produkt.ueberkategorie %}
+            <span class="badge bg-secondary me-2"><i class="bi bi-tag-fill"></i> {{ produkt.ueberkategorie }}</span>
             {% endif %}
-            <a href="{% url 'finance:billa_produkt_detail' produkt.id %}" 
-               class="btn btn-primary">
+            {% if produkt.produktgruppe %}
+            <span class="badge bg-info me-2"><i class="bi bi-tag"></i> {{ produkt.produktgruppe }}</span>
+            {% endif %}
+            <a href="{% url 'finance:billa_produkt_detail' produkt.id %}" class="btn btn-outline-primary">
                 <i class="bi bi-info-circle"></i> Produktdetails
             </a>
         </div>
     </div>
 
-    <!-- Statistiken -->
+    <!-- Preisänderungs-Info -->
+    {% if stats.diff %}
+    <div class="alert {% if stats.diff_pct > 50 %}alert-danger{% elif stats.diff_pct > 20 %}alert-warning{% else %}alert-info{% endif %} mb-4">
+        <i class="bi bi-info-circle"></i>
+        <strong>Preisänderung:</strong> Dieses Produkt hatte eine Preisspanne von 
+        <span class="text-success">€{{ stats.min_preis|floatformat:2 }}</span> bis 
+        <span class="text-danger">€{{ stats.max_preis|floatformat:2 }}</span>, 
+        was einer Änderung von <strong>+{{ stats.diff_pct|floatformat:1 }}%</strong> 
+        (€{{ stats.diff|floatformat:2 }}) entspricht.
+    </div>
+    {% endif %}
+
+    <!-- Stats -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
-                    <i class="bi bi-cart text-primary" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">{{ stats.anzahl_kaeufe|default:0 }}</h3>
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-cart text-success" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.anzahl_kaeufe }}</h3>
                     <p class="text-muted mb-0">Käufe</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
                     <i class="bi bi-arrow-down-circle text-success" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">
-                        {% if stats.min_preis %}
-                        €{{ stats.min_preis|floatformat:2 }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </h3>
+                    <h3 class="mt-2">€{{ stats.min_preis|floatformat:2 }}</h3>
                     <p class="text-muted mb-0">Min. Preis</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
                     <i class="bi bi-arrow-up-circle text-danger" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">
-                        {% if stats.max_preis %}
-                        €{{ stats.max_preis|floatformat:2 }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </h3>
+                    <h3 class="mt-2">€{{ stats.max_preis|floatformat:2 }}</h3>
                     <p class="text-muted mb-0">Max. Preis</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
-                    <i class="bi bi-currency-euro text-warning" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">
-                        {% if stats.avg_preis %}
-                        €{{ stats.avg_preis|floatformat:2 }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </h3>
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-graph-up text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">€{{ stats.avg_preis|floatformat:2 }}</h3>
                     <p class="text-muted mb-0">Ø Preis</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Preisänderung -->
-    {% if stats.diff %}
-    <div class="alert alert-info d-flex align-items-center mb-4">
-        <i class="bi bi-info-circle fs-4 me-3"></i>
-        <div>
-            <strong>Preisänderung:</strong> 
-            Dieses Produkt hatte eine Preisspanne von 
-            <span class="badge bg-success">€{{ stats.min_preis|floatformat:2 }}</span> 
-            bis 
-            <span class="badge bg-danger">€{{ stats.max_preis|floatformat:2 }}</span>,
-            was einer Änderung von 
-            <strong class="text-danger">+{{ stats.diff_pct|floatformat:1 }}%</strong> 
-            (€{{ stats.diff|floatformat:2 }}) entspricht.
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Preisentwicklung Chart -->
-    {% if preis_historie %}
+    <!-- Chart -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
-            <h4 class="mb-0">
-                <i class="bi bi-graph-up"></i> 
-                Preisentwicklung
-            </h4>
+            <h4 class="mb-0"><i class="bi bi-graph-up"></i> Preisentwicklung</h4>
         </div>
         <div class="card-body">
-            <canvas id="chartPreis" height="80"></canvas>
+            <div style="height: 400px; position: relative;">
+                <canvas id="chart-preis"></canvas>
+            </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Letzte Käufe -->
-    {% if letzte_kaeufe %}
     <div class="card shadow-sm">
         <div class="card-header bg-white">
-            <h4 class="mb-0">
-                <i class="bi bi-clock-history"></i> 
-                Letzte Käufe
-            </h4>
+            <h4 class="mb-0"><i class="bi bi-clock-history"></i> Letzte Käufe</h4>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -178,31 +114,16 @@
                             <th class="text-end">Menge</th>
                             <th class="text-end">Preis/Einheit</th>
                             <th class="text-end">Gesamt</th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for kauf in letzte_kaeufe %}
                         <tr>
                             <td>{{ kauf.einkauf.datum|date:"d.m.Y" }}</td>
-                            <td>
-                                <small class="text-muted">{{ kauf.einkauf.filiale }}</small>
-                            </td>
-                            <td class="text-end">{{ kauf.menge|floatformat:2 }}</td>
-                            <td class="text-end">
-                                <span class="badge bg-light text-dark">
-                                    €{{ kauf.preis_pro_einheit|floatformat:2 }}
-                                </span>
-                            </td>
-                            <td class="text-end">
-                                <strong>€{{ kauf.gesamtpreis|floatformat:2 }}</strong>
-                            </td>
-                            <td class="text-end">
-                                <a href="{% url 'finance:billa_einkauf_detail' kauf.einkauf.id %}" 
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                            </td>
+                            <td>{{ kauf.einkauf.filiale }}</td>
+                            <td class="text-end">{{ kauf.menge }} {{ kauf.einheit }}</td>
+                            <td class="text-end">€{{ kauf.preis_pro_einheit|floatformat:2 }}</td>
+                            <td class="text-end"><strong>€{{ kauf.gesamtpreis|floatformat:2 }}</strong></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -210,90 +131,70 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    {% if preis_historie %}
-    const ctx = document.getElementById('chartPreis');
-    if (ctx) {
-        const preisHistorie = [
-            {% for ph in preis_historie %}
-            {
-                datum: '{{ ph.datum|date:"Y-m-d" }}',
-                preis: {{ ph.preis }},
-                filiale: '{{ ph.filiale|default:"Unbekannt" }}'
-            }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
-        
-        const dates = preisHistorie.map(h => h.datum);
-        const prices = preisHistorie.map(h => h.preis);
-        
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: dates,
-                datasets: [{
-                    label: 'Preis',
-                    data: prices,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    pointBackgroundColor: '#0d6efd',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: function(context) {
-                                const index = context[0].dataIndex;
-                                return preisHistorie[index].datum;
-                            },
-                            label: function(context) {
-                                const index = context.dataIndex;
-                                return [
-                                    'Preis: €' + context.parsed.y.toFixed(2),
-                                    'Filiale: ' + preisHistorie[index].filiale
-                                ];
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        beginAtZero: false,
-                        ticks: {
-                            callback: function(value) {
-                                return '€' + value.toFixed(2);
-                            }
+const preis_historie = {{ preis_historie|safe }};
+
+if (preis_historie && preis_historie.length > 0) {
+    const ctx = document.getElementById('chart-preis');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: preis_historie.map(h => {
+                const d = new Date(h.datum);
+                return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            }),
+            datasets: [{
+                label: 'Preis',
+                data: preis_historie.map(h => h.preis),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => 'Preis: €' + ctx.parsed.y.toFixed(2),
+                        afterLabel: (ctx) => {
+                            const h = preis_historie[ctx.dataIndex];
+                            return 'Menge: ' + h.menge + '\nFiliale: ' + h.filiale;
                         }
                     }
                 }
+            },
+            scales: {
+                x: {
+                    ticks: { 
+                        maxTicksLimit: 15,
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: (value) => '€' + value.toFixed(2)
+                    }
+                }
             }
-        });
-    }
-    {% endif %}
-});
+        }
+    });
+} else {
+    document.getElementById('chart-preis').parentElement.innerHTML = 
+        '<div class="alert alert-info">Keine Preisentwicklungsdaten verfügbar.</div>';
+}
 </script>
-
 {% endblock %}
