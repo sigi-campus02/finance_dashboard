@@ -282,6 +282,23 @@ class BrandMapper:
         (r'(Kremser|Gr\.\s*Veltl\.)\s*.*Sandgrube', 'Winzer Krems (Sandgrube 13)'),
         (r'^@?\s*WS\s+Stifterl\b', 'Wein – Stifterl (bitte Winzer definieren)'),
         (r'^@?\s*Noemi\b', 'Noemi (Wein)'),
+        # Marken (spezifisch → oben)
+        (r'^@?\s*Mascarpone\s+Marca\s*Italia\b|^@?\s*Marca\s*Italia\b', 'Marca Italia'),
+        (r'^@?\s*Steirerkren\b', 'Steirerkren'),
+        (r'^@?\s*TC\b', 'Tchibo'),
+        (r'^@?\s*\*?Sos\b', 'SOS'),
+        (r'^@?\s*Fruchtik', 'NÖM Fruchtikus'),
+        (r'^@?\s*Cremix\b', 'NÖM Cremix'),
+        (r'^@?\s*K(?:ü|u)rbiskernbrie\b|^@?\s*Walnussbrie\b', 'Schärdinger'),
+
+        # Theken-/Hausheuristiken (niedriger priorisieren als echte Marken)
+        (r'\b(Krapfen|Plunder|Nusstasche|Langsemmel|Baguette\b|Baguette\s+Tomate|Krustenbrot|Toskanabrot|Topfenkornweckerl|Speckstangerl)\b',
+         'BILLA Marktbäckerei'),
+        (r'\b(Venezia\s*Salat|Rucola\s*Salat|Couscoussalat|Salat mit Mozzarella)\b',
+         'BILLA Feinkost'),
+
+        # Optional (nur verwenden, wenn gewünscht)
+        (r'(?i)\b(tex\s*mex\s*wrap|wrap\s*tort)', 'Santa Maria'),
     ]
 
     # Generische Produkte (Obst/Gemüse ohne Marke)
