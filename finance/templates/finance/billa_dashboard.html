@@ -156,12 +156,17 @@
                 <label for="end_date" class="form-label">Bis:</label>
                 <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
             </div>
-            <div class="col-md-3">
-                <label for="filiale" class="form-label">Filiale:</label>
-                <select class="form-select" id="filiale" name="filiale">
-                    <option value="alle" {% if selected_filiale == 'alle' %}selected{% endif %}>Alle Filialen</option>
-                    {% for f in filialen %}
-                    <option value="{{ f }}" {% if selected_filiale == f %}selected{% endif %}>{{ f }}</option>
+            <div class="filter-group">
+                <label for="filiale">Filiale:</label>
+                <select name="filiale" id="filiale" class="filter-select">
+                    <option value="alle" {% if selected_filiale == 'alle' %}selected{% endif %}>
+                        Alle Filialen
+                    </option>
+                    {% for filiale in filialen %}
+                    <option value="{{ filiale.filial_nr }}" 
+                            {% if selected_filiale == filiale.filial_nr %}selected{% endif %}>
+                        {{ filiale }}  <!-- Zeigt jetzt automatisch "Billa Plus - Josef-Pock-Straße" -->
+                    </option>
                     {% endfor %}
                 </select>
             </div>

@@ -527,7 +527,12 @@ class BillaEinkauf(models.Model):
     """Billa Einkauf - Haupt-Rechnung"""
     datum = models.DateField(db_index=True, verbose_name="Einkaufsdatum")
     zeit = models.TimeField(null=True, blank=True, verbose_name="Uhrzeit")
-    filiale = models.CharField(max_length=20, db_index=True, verbose_name="Filiale")
+    filiale = models.ForeignKey(
+        'BillaFiliale',
+        on_delete=models.PROTECT,
+        verbose_name="Filiale",
+        related_name='einkauefe'
+    )
     kassa = models.IntegerField(null=True, blank=True, verbose_name="Kassa-Nr")
     bon_nr = models.CharField(max_length=50, null=True, blank=True, verbose_name="Bon-Nummer")
     re_nr = models.CharField(max_length=100, unique=True, verbose_name="Rechnungsnummer")
@@ -796,7 +801,12 @@ class BillaPreisHistorie(models.Model):
     preis = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preis")
     menge = models.DecimalField(max_digits=10, decimal_places=3, verbose_name="Menge")
     einheit = models.CharField(max_length=20, verbose_name="Einheit")
-    filiale = models.CharField(max_length=20, verbose_name="Filiale")
+    filiale = models.ForeignKey(
+        'BillaFiliale',
+        on_delete=models.PROTECT,
+        verbose_name="Filiale",
+        related_name='preishistorie'
+    )
 
     class Meta:
         db_table = 'billa_preis_historie'
@@ -806,10 +816,11 @@ class BillaPreisHistorie(models.Model):
         indexes = [
             models.Index(fields=['produkt', 'datum']),
             models.Index(fields=['datum']),
+            models.Index(fields=['filiale']),
         ]
 
     def __str__(self):
-        return f"{self.produkt.name_normalisiert} - {self.datum}: € {self.preis}"
+        return f"{self.produkt.name_normalisiert} - {self.datum} ({self.filiale}): € {self.preis}"
 
 
 class BillaFiliale(models.Model):
@@ -869,4 +880,11 @@ class BillaFiliale(models.Model):
         ordering = ['filial_nr']
 
     def __str__(self):
-        return f"{self.filial_nr} - {self.name}"
+        typ_name = "Billa Plus" if self.typ == 'billa_plus' else "Billa"
+        return f"{typ_name} - {self.name}"
+
+    @property
+    def vollstaendiger_name(self):
+        """Gibt den vollen Namen mit Filialnummer zurück"""
+        typ_name = "Billa Plus" if self.typ == 'billa_plus' else "Billa"
+        return f"{self.filial_nr} - {typ_name} - {self.name}"

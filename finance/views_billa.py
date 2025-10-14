@@ -13,7 +13,7 @@ from decimal import Decimal
 import json
 from .models import (
     BillaEinkauf, BillaArtikel, BillaProdukt,
-    BillaPreisHistorie
+    BillaPreisHistorie, BillaFiliale
 )
 from django.views.decorators.http import require_POST
 import pdfplumber
@@ -27,11 +27,11 @@ def billa_dashboard(request):
     # Filter aus GET-Parametern
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
-    filiale = request.GET.get('filiale')
+    filiale_id = request.GET.get('filiale')
 
     # Basis-Queryset
-    einkaufe = BillaEinkauf.objects.all()
-    artikel = BillaArtikel.objects.select_related('einkauf', 'produkt')
+    einkaufe = BillaEinkauf.objects.select_related('filiale')
+    artikel = BillaArtikel.objects.select_related('einkauf__filiale', 'produkt')
 
     # Datum-Filter
     if start_date:
@@ -42,9 +42,9 @@ def billa_dashboard(request):
         artikel = artikel.filter(einkauf__datum__lte=end_date)
 
     # Filialen-Filter
-    if filiale and filiale != 'alle':
-        einkaufe = einkaufe.filter(filiale=filiale)
-        artikel = artikel.filter(einkauf__filiale=filiale)
+    if filiale_id and filiale_id != 'alle':
+        einkaufe = einkaufe.filter(filiale__filial_nr=filiale_id)
+        artikel = artikel.filter(einkauf__filiale__filial_nr=filiale_id)
 
     # Kennzahlen
     stats = einkaufe.aggregate(
@@ -248,9 +248,7 @@ def billa_dashboard(request):
     ]
 
     # Filialen für Filter
-    filialen = BillaEinkauf.objects.values_list(
-        'filiale', flat=True
-    ).distinct().order_by('filiale')
+    filialen = BillaFiliale.objects.filter(aktiv=True).order_by('filial_nr')
 
     # In der billa_dashboard View:
     # Marken-Statistiken
@@ -275,8 +273,8 @@ def billa_dashboard(request):
         'top_produkte_ausgaben': json.dumps(top_produkte_ausgaben),
         'ausgaben_kategorie': json.dumps(ausgaben_kategorie),
         'rabatte': json.dumps(rabatte),
-        'filialen': list(filialen),
-        'selected_filiale': filiale or 'alle',
+        'filialen': filialen,
+        'selected_filiale': filiale_id or 'alle',
         'start_date': start_date,
         'end_date': end_date,
         'anzahl_marken': anzahl_marken,
@@ -1785,10 +1783,10 @@ def billa_einkauefe_uebersicht(request):
     # Filter aus GET-Parametern
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
-    filiale = request.GET.get('filiale')
+    filiale_id = request.GET.get('filiale')
 
     # Basis-Queryset
-    einkaufe = BillaEinkauf.objects.all()
+    einkaufe = BillaEinkauf.objects.select_related('filiale')
 
     # Datum-Filter
     if start_date:
@@ -1797,8 +1795,8 @@ def billa_einkauefe_uebersicht(request):
         einkaufe = einkaufe.filter(datum__lte=end_date)
 
     # Filialen-Filter
-    if filiale and filiale != 'alle':
-        einkaufe = einkaufe.filter(filiale=filiale)
+    if filiale_id and filiale_id != 'alle':
+        einkaufe = einkaufe.filter(filiale__filial_nr=filiale_id)
 
     # Sortierung
     einkaufe = einkaufe.order_by('-datum', '-zeit')
@@ -1812,15 +1810,13 @@ def billa_einkauefe_uebersicht(request):
     )
 
     # Filialen für Filter
-    filialen = BillaEinkauf.objects.values_list(
-        'filiale', flat=True
-    ).distinct().order_by('filiale')
+    filialen = BillaFiliale.objects.filter(aktiv=True).order_by('filial_nr')
 
     context = {
         'einkaufe': einkaufe,
         'stats': stats,
-        'filialen': list(filialen),
-        'selected_filiale': filiale or 'alle',
+        'filialen': filialen,
+        'selected_filiale': filiale_id or 'alle',
         'start_date': start_date,
         'end_date': end_date,
     }
