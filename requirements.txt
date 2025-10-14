@@ -13,3 +13,6 @@ Pillow>=10.0.0
 numpy>=1.24.0
 pdfplumber>=0.10.0
 plotly>=5.18.0
+# Cloud Storage (NEU!)
+django-storages>=1.14.0
+boto3>=1.28.0

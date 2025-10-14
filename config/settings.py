@@ -255,3 +255,30 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # File Upload Settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+
+# ========================================
+# CLOUDFLARE R2 STORAGE
+# ========================================
+
+# R2 als Default Storage (optional - siehe unten)
+USE_R2_STORAGE = os.environ.get('USE_R2_STORAGE', 'False') == 'True'
+
+if USE_R2_STORAGE:
+    # R2 Credentials
+    AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', 'billa-rechnungen')
+    AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
+
+    # R2-spezifische Settings
+    AWS_S3_REGION_NAME = 'auto'  # R2 nutzt 'auto'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+    # Security & Performance
+    AWS_DEFAULT_ACL = None  # Bucket-Default nutzen
+    AWS_S3_FILE_OVERWRITE = False  # Keine Überschreibungen
+    AWS_QUERYSTRING_AUTH = True  # Signierte URLs
+    AWS_S3_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
+
+    # Storage Backend
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
