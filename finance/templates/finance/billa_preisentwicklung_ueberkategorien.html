@@ -31,14 +31,17 @@
     <div class="alert alert-info mb-4">
         <i class="bi bi-info-circle"></i>
         Diese Ansicht zeigt die durchschnittliche Preisentwicklung aller Produkte pro Überkategorie.
+        <strong>Jede Kategorie wird nur einmal angezeigt.</strong>
     </div>
 
-    <!-- Überkategorien Grid -->
-    <div class="row">
+    {% if ueberkategorien %}
+    
+    <!-- Überkategorien als Cards -->
+    <div class="row mb-4">
         {% for kat in ueberkategorien %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm h-100 hover-card">
-                <div class="card-header bg-primary bg-gradient text-white">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="bi bi-tag-fill"></i> {{ kat.name }}
                     </h5>
@@ -47,106 +50,156 @@
                     <!-- Statistiken -->
                     <div class="row text-center mb-3">
                         <div class="col-4">
-                            <div class="stat-mini">
-                                <div class="stat-value">{{ kat.anzahl_produkte }}</div>
-                                <div class="stat-label">Produkte</div>
-                            </div>
+                            <div class="text-muted small">Produkte</div>
+                            <div class="h5">{{ kat.anzahl_produkte }}</div>
                         </div>
                         <div class="col-4">
-                            <div class="stat-mini">
-                                <div class="stat-value">{{ kat.anzahl_kaeufe }}</div>
-                                <div class="stat-label">Käufe</div>
-                            </div>
+                            <div class="text-muted small">Käufe</div>
+                            <div class="h5">{{ kat.anzahl_kaeufe }}</div>
                         </div>
                         <div class="col-4">
-                            <div class="stat-mini">
-                                <div class="stat-value text-danger">
-                                    {{ kat.diff_pct|floatformat:1 }}%
-                                </div>
-                                <div class="stat-label">Änderung</div>
+                            <div class="text-muted small">Ø Preis</div>
+                            <div class="h5">€{{ kat.avg_preis|floatformat:2 }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Preisspanne -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-success">
+                                Min: €{{ kat.min_preis|floatformat:2 }}
+                            </span>
+                            <span class="text-danger">
+                                Max: €{{ kat.max_preis|floatformat:2 }}
+                            </span>
+                        </div>
+                        
+                        <!-- Preisänderung Badge -->
+                        <div class="text-center">
+                            <span class="badge {% if kat.diff_pct > 20 %}bg-danger{% elif kat.diff_pct > 10 %}bg-warning{% else %}bg-info{% endif %} fs-6">
+                                +{{ kat.diff_pct|floatformat:1 }}%
+                            </span>
+                            <div class="text-muted small mt-1">
+                                (€{{ kat.diff|floatformat:2 }} Differenz)
                             </div>
                         </div>
                     </div>
 
-                    <!-- Mini Chart -->
-                    <canvas id="chart-{{ forloop.counter }}" height="150"></canvas>
-
-                    <!-- Preis-Info -->
-                    <div class="d-flex justify-content-between mt-3 pt-3 border-top">
-                        <div class="text-center">
-                            <small class="text-muted">Min. Preis</small>
-                            <div class="fw-bold text-success">€{{ kat.min_preis|floatformat:2 }}</div>
-                        </div>
-                        <div class="text-center">
-                            <small class="text-muted">Max. Preis</small>
-                            <div class="fw-bold text-danger">€{{ kat.max_preis|floatformat:2 }}</div>
-                        </div>
-                        <div class="text-center">
-                            <small class="text-muted">Differenz</small>
-                            <div class="fw-bold">€{{ kat.diff|floatformat:2 }}</div>
-                        </div>
+                    <!-- Mini-Chart (optional - mit Chart.js) -->
+                    {% if kat.preis_historie %}
+                    <div class="mb-3">
+                        <canvas id="chart-{{ forloop.counter }}" height="100"></canvas>
                     </div>
+                    {% endif %}
 
-                    <!-- Link -->
-                    <div class="mt-3">
-                        <a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' kat.name %}" 
-                           class="btn btn-primary w-100">
-                            <i class="bi bi-arrow-right-circle"></i> Details anzeigen
-                        </a>
-                    </div>
+                    <!-- Details-Button -->
+                    <a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' kat.name %}" 
+                       class="btn btn-primary w-100">
+                        <i class="bi bi-graph-up"></i> Produktgruppen anzeigen
+                    </a>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
 
+    <!-- Tabelle als Alternative -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h4 class="mb-0">
+                <i class="bi bi-table"></i> Tabellenansicht
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Überkategorie</th>
+                            <th class="text-center">Produkte</th>
+                            <th class="text-center">Käufe</th>
+                            <th class="text-end">Ø Preis</th>
+                            <th class="text-end">Min. Preis</th>
+                            <th class="text-end">Max. Preis</th>
+                            <th class="text-end">Änderung</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kat in ueberkategorien %}
+                        <tr>
+                            <td>
+                                <strong><i class="bi bi-tag-fill text-primary"></i> {{ kat.name }}</strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark">{{ kat.anzahl_produkte }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark">{{ kat.anzahl_kaeufe }}</span>
+                            </td>
+                            <td class="text-end">
+                                €{{ kat.avg_preis|floatformat:2 }}
+                            </td>
+                            <td class="text-end text-success">
+                                €{{ kat.min_preis|floatformat:2 }}
+                            </td>
+                            <td class="text-end text-danger">
+                                €{{ kat.max_preis|floatformat:2 }}
+                            </td>
+                            <td class="text-end">
+                                <span class="badge {% if kat.diff_pct > 20 %}bg-danger{% elif kat.diff_pct > 10 %}bg-warning{% else %}bg-info{% endif %}">
+                                    +{{ kat.diff_pct|floatformat:1 }}%
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' kat.name %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-graph-up"></i> Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Keine Überkategorien mit Preisentwicklung gefunden.
+    </div>
+    {% endif %}
 </div>
 
-<style>
-.hover-card {
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.hover-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-.stat-mini {
-    padding: 10px;
-}
-.stat-mini .stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
-}
-.stat-mini .stat-label {
-    font-size: 0.75rem;
-    color: #6c757d;
-    text-transform: uppercase;
-}
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js für Mini-Charts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const ueberkategorien = {{ ueberkategorien|safe }};
-    
-    ueberkategorien.forEach((kat, index) => {
-        const ctx = document.getElementById('chart-' + (index + 1));
-        if (!ctx) return;
-        
-        const dates = kat.preis_historie.map(h => h.datum);
-        const prices = kat.preis_historie.map(h => h.durchschnitt);
-        
-        new Chart(ctx, {
+    {% for kat in ueberkategorien %}
+    {% if kat.preis_historie %}
+    // Chart für {{ kat.name }}
+    var ctx{{ forloop.counter }} = document.getElementById('chart-{{ forloop.counter }}');
+    if (ctx{{ forloop.counter }}) {
+        new Chart(ctx{{ forloop.counter }}, {
             type: 'line',
             data: {
-                labels: dates,
+                labels: [
+                    {% for h in kat.preis_historie %}
+                    '{{ h.datum|date:"d.m.Y" }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
                 datasets: [{
                     label: 'Ø Preis',
-                    data: prices,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    tension: 0.4,
+                    data: [
+                        {% for h in kat.preis_historie %}
+                        {{ h.durchschnitt }}{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1,
                     fill: true
                 }]
             },
@@ -156,31 +209,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: {
                     legend: {
                         display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return '€' + context.parsed.y.toFixed(2);
-                            }
-                        }
                     }
                 },
                 scales: {
-                    x: {
-                        display: false
-                    },
                     y: {
+                        beginAtZero: false,
                         ticks: {
                             callback: function(value) {
                                 return '€' + value.toFixed(2);
                             }
                         }
+                    },
+                    x: {
+                        display: false
                     }
                 }
             }
         });
-    });
+    }
+    {% endif %}
+    {% endfor %}
 });
 </script>
 
+<style>
+.hover-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
 {% endblock %}
