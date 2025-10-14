@@ -678,10 +678,10 @@ def billa_preisentwicklung_uebersicht(request):
 def billa_preisentwicklung_ueberkategorien(request):
     """
     Zeigt alle Überkategorien mit aggregierter Preisentwicklung.
-    KEINE DUPLIKATE - jede Überkategorie erscheint nur einmal.
+    ✅ FIX: Konvertiert Decimal zu Float für JavaScript Charts
     """
 
-    # === Aggregiere Überkategorien direkt in der DB ===
+    # Aggregiere Überkategorien direkt in der DB
     ueberkategorien_base = BillaProdukt.objects.exclude(
         Q(ueberkategorie__isnull=True) | Q(ueberkategorie='')
     ).values('ueberkategorie').annotate(
@@ -689,13 +689,13 @@ def billa_preisentwicklung_ueberkategorien(request):
         anzahl_kaeufe=Sum('anzahl_kaeufe')
     ).order_by('ueberkategorie')
 
-    # === Berechne Preisentwicklung für jede Kategorie ===
+    # Berechne Preisentwicklung für jede Kategorie
     ueberkategorien = []
 
     for kat in ueberkategorien_base:
         kategorie_name = kat['ueberkategorie']
 
-        # Preisentwicklung über Zeit (aggregiert)
+        # Preisentwicklung über Zeit
         preis_stats = BillaPreisHistorie.objects.filter(
             produkt__ueberkategorie=kategorie_name
         ).aggregate(
@@ -705,33 +705,42 @@ def billa_preisentwicklung_ueberkategorien(request):
             count=Count('id')
         )
 
-        # Nur Kategorien mit Preishistorie einbeziehen
+        # Nur Kategorien mit Preishistorie
         if preis_stats['count'] >= 2 and preis_stats['min_preis']:
             min_preis = preis_stats['min_preis']
             max_preis = preis_stats['max_preis']
             diff = max_preis - min_preis
             diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
 
-            # Zeitreihe für Chart (limitiert auf letzte 60 Datenpunkte)
-            preis_historie = BillaPreisHistorie.objects.filter(
+            # Zeitreihe für Chart
+            preis_historie_raw = BillaPreisHistorie.objects.filter(
                 produkt__ueberkategorie=kategorie_name
             ).values('datum').annotate(
                 durchschnitt=Avg('preis')
             ).order_by('datum')[:60]
 
+            # ✅ FIX: Konvertiere Decimal zu Float für JavaScript
+            preis_historie_converted = [
+                {
+                    'datum': h['datum'],
+                    'durchschnitt': float(h['durchschnitt']) if h['durchschnitt'] else 0.0
+                }
+                for h in preis_historie_raw
+            ]
+
             ueberkategorien.append({
                 'name': kategorie_name,
                 'anzahl_produkte': kat['anzahl_produkte'],
-                'anzahl_kaeufe': kat['anzahl_kaeufe'],
-                'min_preis': min_preis,
-                'max_preis': max_preis,
-                'avg_preis': preis_stats['avg_preis'],
-                'diff': diff,
-                'diff_pct': diff_pct,
-                'preis_historie': list(preis_historie)
+                'anzahl_kaeufe': kat['anzahl_kaeufe'] or 0,
+                'min_preis': float(min_preis),  # ✅ Float conversion
+                'max_preis': float(max_preis),  # ✅ Float conversion
+                'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0.0,  # ✅ Float conversion
+                'diff': float(diff),  # ✅ Float conversion
+                'diff_pct': float(diff_pct),  # ✅ Float conversion
+                'preis_historie': preis_historie_converted  # ✅ Alle Werte als Float
             })
 
-    # Sortiere nach Preisänderung (höchste zuerst)
+    # Sortiere nach Preisänderung
     ueberkategorien.sort(key=lambda x: x['diff_pct'], reverse=True)
 
     context = {
