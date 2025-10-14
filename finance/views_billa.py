@@ -1649,6 +1649,14 @@ def billa_import_upload(request):
                 # Parse PDF
                 data = parser.parse_pdf(temp_path)
 
+                # Validierung der Pflichtfelder
+                if not data.get('datum'):
+                    raise ValueError("Datum konnte nicht aus dem PDF extrahiert werden")
+                if not data.get('re_nr'):
+                    raise ValueError("Rechnungsnummer konnte nicht gefunden werden")
+                if not data.get('gesamt_preis'):
+                    raise ValueError("Gesamtpreis konnte nicht ermittelt werden")
+
                 # Prüfe ob bereits importiert
                 if not force and data['re_nr']:
                     if BillaEinkauf.objects.filter(re_nr=data['re_nr']).exists():
@@ -1705,9 +1713,22 @@ def billa_import_upload(request):
 
             except Exception as e:
                 stats['errors'] += 1
+                error_msg = str(e)
+
+                # Zusätzliche Debug-Info bei Parsing-Fehlern
+                if "konnte nicht" in error_msg or "NULL" in error_msg:
+                    try:
+                        with pdfplumber.open(temp_path) as pdf:
+                            first_page_text = pdf.pages[0].extract_text()
+                            # Erste 500 Zeichen für Debug
+                            preview = first_page_text[:500] if first_page_text else "Kein Text extrahierbar"
+                            error_msg += f"\n\nPDF-Vorschau (erste 500 Zeichen):\n{preview}"
+                    except:
+                        pass
+
                 stats['error_details'].append({
                     'file': pdf_file.name,
-                    'error': str(e)
+                    'error': error_msg
                 })
 
             finally:

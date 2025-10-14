@@ -82,7 +82,7 @@
         <div class="col-12">
             {% for message in messages %}
             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
+                <pre style="white-space: pre-wrap; margin: 0; font-family: inherit;">{{ message }}</pre>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             {% endfor %}
