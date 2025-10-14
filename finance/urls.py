@@ -73,8 +73,6 @@ urlpatterns = [
     path('api/supermarket-transactions-detail/', views.api_supermarket_transactions_detail, name='api_supermarket_transactions_detail'),
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 
-    # Billa URLs
-    path('billa/statistiken/', views_billa.billa_statistiken, name='billa_statistiken'),
 
     # Billa API Endpoints
     path('billa/api/preisverlauf/<int:produkt_id>/', views_billa.billa_api_preisverlauf, name='billa_api_preisverlauf'),

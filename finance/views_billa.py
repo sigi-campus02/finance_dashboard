@@ -14,6 +14,7 @@ from .models import (
 )
 from django.views.decorators.http import require_POST
 
+
 @login_required
 def billa_dashboard(request):
     """Haupt-Dashboard für Billa-Analysen"""
@@ -64,7 +65,95 @@ def billa_dashboard(request):
         for item in daily_spending_raw
     ]
 
-    # Ausgaben pro Monat - JSON-serialisierbar machen
+    # ========================================
+    # NEU: Monatliche Ausgaben nach Überkategorie (für gestapeltes Diagramm)
+    # ========================================
+    monthly_by_group_raw = artikel.annotate(
+        monat=TruncMonth('einkauf__datum')
+    ).values('monat', 'produkt__ueberkategorie').annotate(
+        ausgaben=Sum('gesamtpreis')
+    ).order_by('monat', 'produkt__ueberkategorie')
+
+    # Strukturiere Daten: {monat: {ueberkategorie: ausgaben}}
+    monthly_data = {}
+    all_ueberkategorien = set()
+
+    for item in monthly_by_group_raw:
+        monat_str = item['monat'].strftime('%Y-%m') if item['monat'] else 'Unbekannt'
+        ueberkategorie = item['produkt__ueberkategorie'] or 'Ohne Kategorie'
+        ausgaben = float(item['ausgaben']) if item['ausgaben'] else 0
+
+        if monat_str not in monthly_data:
+            monthly_data[monat_str] = {}
+
+        monthly_data[monat_str][ueberkategorie] = ausgaben
+        all_ueberkategorien.add(ueberkategorie)
+
+    # Berechne Gesamtausgaben pro Überkategorie
+    kategorie_totals = {}
+    for kat in all_ueberkategorien:
+        kategorie_totals[kat] = sum(
+            monthly_data.get(m, {}).get(kat, 0)
+            for m in monthly_data.keys()
+        )
+
+    # Sortiere nach Gesamtausgaben (absteigend - größte zuerst)
+    ueberkategorien_sorted = sorted(
+        all_ueberkategorien,
+        key=lambda kat: kategorie_totals[kat],
+        reverse=True  # Größte Ausgaben zuerst
+    )
+
+    # Pareto-Prinzip: Finde Top-Kategorien die ~80% ausmachen
+    gesamt_ausgaben = sum(kategorie_totals.values())
+    kumulativ = 0
+    top_kategorien = []
+
+    for kat in ueberkategorien_sorted:
+        kumulativ += kategorie_totals[kat]
+        top_kategorien.append(kat)
+        # Stoppe bei 80% ODER maximal 8 Kategorien
+        if kumulativ >= gesamt_ausgaben * 0.80 or len(top_kategorien) >= 8:
+            break
+
+    # Alle restlichen Kategorien
+    sonstige_kategorien = [k for k in ueberkategorien_sorted if k not in top_kategorien]
+
+    # Erstelle strukturierte Daten für Plotly
+    # WICHTIG: In Plotly ist der erste Trace UNTEN im gestapelten Diagramm
+    # Also: Größte Kategorie zuerst = unten, kleinste zuletzt = oben
+    alle_monate = sorted(monthly_data.keys())
+
+    # Kategorien-Reihenfolge für Plotly (größte zuerst = unten im Chart)
+    kategorien_for_chart = top_kategorien.copy()
+
+    # "Sonstiges" kommt ans Ende (= oben im Chart)
+    if sonstige_kategorien:
+        kategorien_for_chart.append('Sonstiges')
+
+    monthly_spending_stacked = {
+        'monate': alle_monate,
+        'kategorien': kategorien_for_chart,
+        'daten': {}
+    }
+
+    # Daten für Top-Kategorien
+    for kat in top_kategorien:
+        monthly_spending_stacked['daten'][kat] = [
+            monthly_data.get(monat, {}).get(kat, 0)
+            for monat in alle_monate
+        ]
+
+    # Summiere "Sonstiges" wenn vorhanden
+    if sonstige_kategorien:
+        monthly_spending_stacked['daten']['Sonstiges'] = [
+            sum(monthly_data.get(monat, {}).get(kat, 0) for kat in sonstige_kategorien)
+            for monat in alle_monate
+        ]
+
+    # ========================================
+    # Alte monatliche Ausgaben (Gesamt) - für Backup/Vergleich
+    # ========================================
     monthly_spending_raw = einkaufe.annotate(
         monat=TruncMonth('datum')
     ).values('monat').annotate(
@@ -86,7 +175,7 @@ def billa_dashboard(request):
     # Top Produkte nach Häufigkeit - JSON-serialisierbar machen
     top_produkte_anzahl_raw = artikel.values(
         'produkt__name_normalisiert',
-        'produkt__ueberkategorie'  # ← GEÄNDERT von kategorie
+        'produkt__ueberkategorie'
     ).annotate(
         anzahl=Count('id'),
         ausgaben=Sum('gesamtpreis')
@@ -95,7 +184,7 @@ def billa_dashboard(request):
     top_produkte_anzahl = [
         {
             'produkt__name_normalisiert': item['produkt__name_normalisiert'],
-            'produkt__ueberkategorie': item['produkt__ueberkategorie'],  # ← GEÄNDERT
+            'produkt__ueberkategorie': item['produkt__ueberkategorie'],
             'anzahl': item['anzahl'],
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
         }
@@ -105,7 +194,7 @@ def billa_dashboard(request):
     # Top Produkte nach Ausgaben - JSON-serialisierbar machen
     top_produkte_ausgaben_raw = artikel.values(
         'produkt__name_normalisiert',
-        'produkt__ueberkategorie'  # ← GEÄNDERT von kategorie
+        'produkt__ueberkategorie'
     ).annotate(
         ausgaben=Sum('gesamtpreis'),
         anzahl=Count('id')
@@ -114,7 +203,7 @@ def billa_dashboard(request):
     top_produkte_ausgaben = [
         {
             'produkt__name_normalisiert': item['produkt__name_normalisiert'],
-            'produkt__ueberkategorie': item['produkt__ueberkategorie'],  # ← GEÄNDERT
+            'produkt__ueberkategorie': item['produkt__ueberkategorie'],
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0,
             'anzahl': item['anzahl']
         }
@@ -160,8 +249,9 @@ def billa_dashboard(request):
 
     context = {
         'stats': stats,
-        'daily_spending': json.dumps(daily_spending),  # JSON string für Template
-        'monthly_spending': json.dumps(monthly_spending),
+        'daily_spending': json.dumps(daily_spending),
+        'monthly_spending': json.dumps(monthly_spending),  # Alte Daten (Backup)
+        'monthly_spending_stacked': json.dumps(monthly_spending_stacked),  # NEU
         'top_produkte_anzahl': json.dumps(top_produkte_anzahl),
         'top_produkte_ausgaben': json.dumps(top_produkte_ausgaben),
         'ausgaben_kategorie': json.dumps(ausgaben_kategorie),
@@ -309,64 +399,6 @@ def billa_preisentwicklung(request):
     }
 
     return render(request, 'finance/billa_preisentwicklung.html', context)
-
-
-@login_required
-def billa_statistiken(request):
-    """Erweiterte Statistiken und Analysen"""
-
-    from django.db.models.functions import ExtractWeekDay, ExtractHour
-
-    # Ausgaben nach Wochentag
-    ausgaben_wochentag = BillaEinkauf.objects.annotate(
-        wochentag=ExtractWeekDay('datum')
-    ).values('wochentag').annotate(
-        ausgaben=Sum('gesamt_preis'),
-        anzahl=Count('id')
-    ).order_by('wochentag')
-
-    wochentage = {
-        1: 'Sonntag', 2: 'Montag', 3: 'Dienstag', 4: 'Mittwoch',
-        5: 'Donnerstag', 6: 'Freitag', 7: 'Samstag'
-    }
-
-    for item in ausgaben_wochentag:
-        item['name'] = wochentage.get(item['wochentag'], '')
-
-    # Ausgaben nach Uhrzeit
-    ausgaben_stunde = BillaEinkauf.objects.filter(
-        zeit__isnull=False
-    ).annotate(
-        stunde=ExtractHour('zeit')
-    ).values('stunde').annotate(
-        ausgaben=Sum('gesamt_preis'),
-        anzahl=Count('id')
-    ).order_by('stunde')
-
-    # Durchschnittlicher Warenkorbwert nach Filiale
-    ausgaben_filiale = BillaEinkauf.objects.values(
-        'filiale'
-    ).annotate(
-        ausgaben=Sum('gesamt_preis'),
-        anzahl=Count('id'),
-        avg_warenkorb=Avg('gesamt_preis')
-    ).order_by('-ausgaben')
-
-    # Artikel pro Einkauf
-    artikel_pro_einkauf = BillaEinkauf.objects.annotate(
-        anzahl_artikel=Count('artikel')
-    ).values('anzahl_artikel').annotate(
-        anzahl_einkaufe=Count('id')
-    ).order_by('anzahl_artikel')
-
-    context = {
-        'ausgaben_wochentag': list(ausgaben_wochentag),
-        'ausgaben_stunde': list(ausgaben_stunde),
-        'ausgaben_filiale': list(ausgaben_filiale),
-        'artikel_pro_einkauf': list(artikel_pro_einkauf)
-    }
-
-    return render(request, 'finance/billa_statistiken.html', context)
 
 
 # API Endpoints für AJAX

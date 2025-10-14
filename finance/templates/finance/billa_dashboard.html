@@ -36,6 +36,84 @@
         border-radius: 8px;
         margin-bottom: 20px;
     }
+    
+    /* Neue Navigation Cards */
+    .nav-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+        transition: all 0.3s ease;
+        color: white;
+        text-decoration: none;
+        display: block;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .nav-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.1);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .nav-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .nav-card:hover::before {
+        transform: translateX(0);
+    }
+    
+    .nav-card.blue {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .nav-card.green {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+    
+    .nav-card.orange {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+    
+    .nav-card-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    .nav-card-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    
+    .nav-card-description {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+        display: inline-block;
+    }
 </style>
 {% endblock %}
 
@@ -148,39 +226,38 @@
         </div>
     </div>
 
-    <!-- Navigation zu weiteren Seiten -->
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Weitere Analysen</h5>
-                    <div class="row">
-                        <div class="col-md-4 mb-2">
-                            <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-outline-primary w-100">
-                                📦 Alle Produkte
-                            </a>
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="btn btn-outline-primary">
-                                <i class="bi bi-grid-3x3-gap"></i> Produktgruppen
-                            </a>
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}" class="btn btn-outline-primary w-100">
-                                📈 Preisentwicklung
-                            </a>
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <a href="{% url 'finance:billa_statistiken' %}" class="btn btn-outline-primary w-100">
-                                📊 Erweiterte Statistiken
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Weitere Analysen - Neue Position und Design -->
+    <div class="row mt-5 mb-4">
+        <div class="col-12">
+            <h3 class="section-title">🔍 Weitere Analysen</h3>
+        </div>
+    </div>
+    
+    <div class="row mb-5">
+        <div class="col-md-4">
+            <a href="{% url 'finance:billa_produkte_liste' %}" class="nav-card blue">
+                <span class="nav-card-icon">📦</span>
+                <div class="nav-card-title">Alle Produkte</div>
+                <div class="nav-card-description">Durchsuche alle gekauften Produkte und deren Details</div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="nav-card green">
+                <span class="nav-card-icon">🏷️</span>
+                <div class="nav-card-title">Produktgruppen</div>
+                <div class="nav-card-description">Analysiere Ausgaben nach Produktgruppen</div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}" class="nav-card orange">
+                <span class="nav-card-icon">📈</span>
+                <div class="nav-card-title">Preisentwicklung</div>
+                <div class="nav-card-description">Verfolge Preisänderungen über die Zeit</div>
+            </a>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -242,19 +319,40 @@ if (dailyData && dailyData.length > 0) {
     document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 2. Monatliche Ausgaben (Bar Chart)
-if (monthlyData && monthlyData.length > 0) {
-    const monthlyTrace = {
-        x: monthlyData.map(d => d.monat),
-        y: monthlyData.map(d => parseFloat(d.ausgaben)),
-        type: 'bar',
-        marker: { color: '#4ECDC4' },
-        hovertemplate: '<b>%{x}</b><br>€ %{y:.2f}<extra></extra>'
-    };
+// 2. Monatliche Ausgaben (Gestapeltes Balkendiagramm nach Überkategorie)
+const monthlyStackedData = JSON.parse('{{ monthly_spending_stacked|safe }}');
 
-    Plotly.newPlot('chart-monthly', [monthlyTrace], {
+if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate.length > 0) {
+    // Farbpalette für Überkategorien (farbenfrohe Töne)
+    const colorPalette = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+        '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#52BE80',
+        '#F1948A', '#F39C12', '#3498DB', '#9B59B6', '#E74C3C'
+    ];
+
+    // Erstelle Traces für jede Überkategorie
+    const traces = monthlyStackedData.kategorien.map((kategorie, index) => {
+        // "Sonstiges" bekommt eine graue Farbe
+        const farbe = kategorie === 'Sonstiges'
+            ? '#95A5A6'  // Grau
+            : colorPalette[index % colorPalette.length];
+
+        return {
+            x: monthlyStackedData.monate,
+            y: monthlyStackedData.daten[kategorie],
+            name: kategorie,
+            type: 'bar',
+            marker: {
+                color: farbe
+            },
+            hovertemplate: '<b>' + kategorie + '</b><br>€ %{y:.2f}<extra></extra>'
+        };
+    });
+
+    const layout = {
         ...layoutConfig,
-        margin: { t: 10, b: 50, l: 60, r: 20 },
+        barmode: 'stack',
+        margin: { t: 10, b: 80, l: 60, r: 20 },
         xaxis: {
             title: 'Monat',
             tickangle: -45
@@ -262,8 +360,21 @@ if (monthlyData && monthlyData.length > 0) {
         yaxis: {
             title: 'Ausgaben (€)',
             tickprefix: '€ '
-        }
-    });
+        },
+        legend: {
+            orientation: 'h',
+            yanchor: 'bottom',
+            y: -0.5,
+            xanchor: 'center',
+            x: 0.5,
+            font: {
+                size: 10
+            }
+        },
+        hovermode: 'x unified'
+    };
+
+    Plotly.newPlot('chart-monthly', traces, layout, {displayModeBar: false});
 } else {
     document.getElementById('chart-monthly').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
