@@ -392,7 +392,6 @@ def billa_api_stats(request):
 
     return JsonResponse(stats)
 
-
 @login_required
 def produktgruppen_mapper(request):
     """Produktgruppen-Mapping Tool"""
@@ -403,7 +402,8 @@ def produktgruppen_mapper(request):
         'name_original',
         'name_normalisiert',
         'kategorie',
-        'produktgruppe'  # Falls das Feld noch nicht existiert
+        'ueberkategorie',  # NEU
+        'produktgruppe'
     )
 
     context = {
@@ -417,16 +417,26 @@ def produktgruppen_mapper(request):
 @login_required
 @require_POST
 def produktgruppen_speichern(request):
-    """Speichert die Produktgruppen-Zuordnung"""
+    """Speichert die Produktgruppen-Zuordnung (inkl. Überkategorien)"""
     try:
         data = json.loads(request.body)
         produkte = data.get('produkte', [])
 
+        updated_count = 0
         for produkt_data in produkte:
-            BillaProdukt.objects.filter(id=produkt_data['id']).update(
+            result = BillaProdukt.objects.filter(id=produkt_data['id']).update(
+                ueberkategorie=produkt_data.get('ueberkategorie'),  # NEU
                 produktgruppe=produkt_data.get('produktgruppe')
             )
+            updated_count += result
 
-        return JsonResponse({'status': 'success', 'updated': len(produkte)})
+        return JsonResponse({
+            'status': 'success',
+            'updated': updated_count,
+            'message': f'{updated_count} Produkte aktualisiert'
+        })
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)

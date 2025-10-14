@@ -697,18 +697,16 @@ class BillaProdukt(models.Model):
         ('sonstiges', 'Sonstiges'),
     ]
 
-    # ✅ GEÄNDERT: name_original ist jetzt NICHT mehr unique
     name_original = models.CharField(
         max_length=500,
         verbose_name="Original-Name",
         help_text="Eine der Original-Varianten dieses Produkts"
     )
 
-    # ✅ GEÄNDERT: name_normalisiert ist jetzt unique
     name_normalisiert = models.CharField(
         max_length=500,
         db_index=True,
-        unique=True,  # ← NEU: unique constraint
+        unique=True,
         verbose_name="Normalisierter Name"
     )
 
@@ -719,7 +717,30 @@ class BillaProdukt(models.Model):
         blank=True,
         verbose_name="Kategorie"
     )
-    marke = models.CharField(max_length=200, null=True, blank=True, verbose_name="Marke")
+
+    marke = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        verbose_name="Marke"
+    )
+
+    # NEU: Überkategorie (z.B. "Gemüse", "Obst", "Milchprodukte")
+    ueberkategorie = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name='Überkategorie',
+        help_text='Übergeordnete Kategorie wie Gemüse, Obst, Milchprodukte, etc.'
+    )
+
+    # Spezifische Produktgruppe (z.B. "Paprika", "Tomaten", "Milch")
+    produktgruppe = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name='Produktgruppe'
+    )
 
     # Statistiken
     durchschnittspreis = models.DecimalField(
@@ -736,14 +757,6 @@ class BillaProdukt(models.Model):
         blank=True,
         verbose_name="Letzter Preis"
     )
-
-    produktgruppe = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        verbose_name='Produktgruppe'
-    )
-
     anzahl_kaeufe = models.IntegerField(default=0, verbose_name="Anzahl Käufe")
     letzte_aktualisierung = models.DateTimeField(auto_now=True, verbose_name="Letzte Aktualisierung")
 
@@ -755,6 +768,7 @@ class BillaProdukt(models.Model):
         indexes = [
             models.Index(fields=['name_normalisiert']),
             models.Index(fields=['kategorie']),
+            models.Index(fields=['ueberkategorie']),  # NEU
         ]
 
     def __str__(self):
@@ -782,6 +796,8 @@ class BillaProdukt(models.Model):
 
         self.anzahl_kaeufe = stats['anzahl'] or 0
         self.save(update_fields=['durchschnittspreis', 'letzter_preis', 'anzahl_kaeufe'])
+
+
 
 
 class BillaPreisHistorie(models.Model):
