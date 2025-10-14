@@ -10,7 +10,7 @@ from decimal import Decimal
 import json
 from .models import (
     BillaEinkauf, BillaArtikel, BillaProdukt,
-    BillaPreisHistorie, BillaKategorieMapping
+    BillaPreisHistorie
 )
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -124,14 +124,14 @@ def billa_dashboard(request):
 
     # Ausgaben nach Kategorie - JSON-serialisierbar machen
     ausgaben_kategorie_raw = artikel.values(
-        'produkt__kategorie'
+        'produkt__ueberkategorie'
     ).annotate(
         ausgaben=Sum('gesamtpreis')
     ).order_by('-ausgaben')
 
     ausgaben_kategorie = [
         {
-            'produkt__kategorie': item['produkt__kategorie'],
+            'produkt__ueberkategorie': item['produkt__ueberkategorie'],
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
         }
         for item in ausgaben_kategorie_raw
@@ -227,14 +227,15 @@ def billa_produkte_liste(request):
     """Liste aller Produkte"""
 
     # Filter
-    kategorie = request.GET.get('kategorie')
+    ueberkategorie = request.GET.get('ueberkategorie')
     suche = request.GET.get('suche')
     sortierung = request.GET.get('sort', '-anzahl_kaeufe')
 
     produkte = BillaProdukt.objects.all()
 
-    if kategorie and kategorie != 'alle':
-        produkte = produkte.filter(kategorie=kategorie)
+    # Filter nach Überkategorie - GEÄNDERT
+    if ueberkategorie and ueberkategorie != 'alle':
+        produkte = produkte.filter(ueberkategorie=ueberkategorie)  # ← GEÄNDERT
 
     if suche:
         produkte = produkte.filter(
@@ -244,19 +245,22 @@ def billa_produkte_liste(request):
 
     produkte = produkte.order_by(sortierung)
 
-    # Kategorien für Filter
-    kategorien = BillaProdukt.KATEGORIE_CHOICES
+    # Alle Überkategorien für Filter - NEU
+    alle_ueberkategorien = BillaProdukt.objects.values_list(
+        'ueberkategorie', flat=True
+    ).distinct().exclude(
+        ueberkategorie__isnull=True
+    ).order_by('ueberkategorie')
 
-    # Display-Name für ausgewählte Kategorie
+    # Display-Name für ausgewählte Überkategorie
     selected_kategorie_display = 'Alle Kategorien'
-    if kategorie and kategorie != 'alle':
-        kategorie_dict = dict(kategorien)
-        selected_kategorie_display = kategorie_dict.get(kategorie, kategorie)
+    if ueberkategorie and ueberkategorie != 'alle':
+        selected_kategorie_display = ueberkategorie
 
     context = {
         'produkte': produkte,
-        'kategorien': kategorien,
-        'selected_kategorie': kategorie or 'alle',
+        'ueberkategorien': list(alle_ueberkategorien),  # ← NEU
+        'selected_ueberkategorie': ueberkategorie or 'alle',  # ← GEÄNDERT
         'selected_kategorie_display': selected_kategorie_display,
         'suche': suche or '',
         'sortierung': sortierung
@@ -402,7 +406,7 @@ def produktgruppen_mapper(request):
         'name_original',
         'name_normalisiert',
         'kategorie',
-        'ueberkategorie',  # NEU
+        'ueberkategorie',
         'produktgruppe'
     )
 

@@ -107,18 +107,18 @@
                     >
                 </div>
 
-                <!-- Kategorie -->
-                <div class="col-md-3">
-                    <label for="kategorie" class="form-label">
-                        <i class="bi bi-tag"></i> Kategorie
+                <!-- Filter nach Überkategorie - GEÄNDERT -->
+                <div class="col-md-4">
+                    <label for="ueberkategorie" class="form-label">
+                        <i class="bi bi-tag"></i> Überkategorie
                     </label>
-                    <select class="form-select" id="kategorie" name="kategorie">
-                        <option value="alle" {% if selected_kategorie == 'alle' %}selected{% endif %}>
+                    <select class="form-select" id="ueberkategorie" name="ueberkategorie">
+                        <option value="alle" {% if selected_ueberkategorie == 'alle' %}selected{% endif %}>
                             Alle Kategorien
                         </option>
-                        {% for kat_code, kat_name in kategorien %}
-                        <option value="{{ kat_code }}" {% if selected_kategorie == kat_code %}selected{% endif %}>
-                            {{ kat_name }}
+                        {% for kat in ueberkategorien %}
+                        <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
+                            {{ kat }}
                         </option>
                         {% endfor %}
                     </select>
@@ -160,13 +160,13 @@
             </div>
 
             <!-- Aktive Filter anzeigen -->
-            {% if suche or selected_kategorie != 'alle' %}
+            {% if suche or selected_ueberkategorie != 'alle' %}
             <div class="mt-3">
                 <small class="text-muted">Aktive Filter:</small>
                 {% if suche %}
                 <span class="badge bg-info ms-2">Suche: "{{ suche }}"</span>
                 {% endif %}
-                {% if selected_kategorie != 'alle' %}
+                {% if selected_ueberkategorie != 'alle' %}
                 <span class="badge bg-info ms-2">Kategorie: {{ selected_kategorie_display }}</span>
                 {% endif %}
                 <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-sm btn-outline-secondary ms-2">
@@ -195,11 +195,12 @@
                         {{ produkt.name_normalisiert }}
                     </div>
 
-                    <!-- Kategorie -->
-                    {% if produkt.kategorie %}
-                    <span class="kategorie-badge kategorie-{{ produkt.kategorie }}">
-                        {{ produkt.get_kategorie_display }}
-                    </span>
+                    {% if produkt.ueberkategorie %}
+                    <span class="badge bg-secondary mb-2">{{ produkt.ueberkategorie }}</span>
+                    {% endif %}
+                    
+                    {% if produkt.produktgruppe %}
+                    <span class="badge bg-light text-dark mb-2">{{ produkt.produktgruppe }}</span>
                     {% endif %}
 
                     <!-- Statistiken -->

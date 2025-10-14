@@ -91,7 +91,7 @@ class Command(BaseCommand):
 
         top = BillaArtikel.objects.values(
             'produkt__name_normalisiert',
-            'produkt__kategorie'
+            'produkt__ueberkategorie'  # ← GEÄNDERT von kategorie
         ).annotate(
             anzahl=Count('id'),
             ausgaben=Sum('gesamtpreis'),
@@ -99,12 +99,10 @@ class Command(BaseCommand):
         ).order_by('-anzahl')[:limit]
 
         for idx, item in enumerate(top, 1):
-            kategorie = dict(BillaProdukt.KATEGORIE_CHOICES).get(
-                item['produkt__kategorie'], 'Sonstiges'
-            )
+            ueberkategorie = item['produkt__ueberkategorie'] or 'Sonstiges'  # ← GEÄNDERT
             self.stdout.write(
                 f"{idx:2d}. {item['produkt__name_normalisiert']:50s} "
-                f"[{kategorie}]"
+                f"[{ueberkategorie}]"
             )
             self.stdout.write(
                 f"    Anzahl: {item['anzahl']:3d} | "
@@ -206,13 +204,13 @@ class Command(BaseCommand):
                 )
 
     def show_categories(self):
-        """Zeigt Ausgaben nach Kategorien"""
+        """Zeigt Ausgaben nach Überkategorien"""
         self.stdout.write('=' * 70)
-        self.stdout.write(self.style.SUCCESS('🏷️  AUSGABEN NACH KATEGORIE'))
+        self.stdout.write(self.style.SUCCESS('🏷️  AUSGABEN NACH ÜBERKATEGORIE'))  # ← GEÄNDERT
         self.stdout.write('=' * 70 + '\n')
 
         kategorien = BillaArtikel.objects.values(
-            'produkt__kategorie'
+            'produkt__ueberkategorie'  # ← GEÄNDERT
         ).annotate(
             ausgaben=Sum('gesamtpreis'),
             anzahl=Count('id')
@@ -220,10 +218,8 @@ class Command(BaseCommand):
 
         gesamt = sum(k['ausgaben'] for k in kategorien if k['ausgaben'])
 
-        kategorie_labels = dict(BillaProdukt.KATEGORIE_CHOICES)
-
         for item in kategorien:
-            kat = kategorie_labels.get(item['produkt__kategorie'], 'Nicht zugeordnet')
+            kat = item['produkt__ueberkategorie'] or 'Nicht zugeordnet'  # ← GEÄNDERT
             ausgaben = item['ausgaben'] or 0
             prozent = (ausgaben / gesamt * 100) if gesamt else 0
 

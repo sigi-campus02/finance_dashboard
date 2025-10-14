@@ -683,20 +683,6 @@ class BillaArtikel(models.Model):
 class BillaProdukt(models.Model):
     """Billa Produkt - Normalisierte Produktdaten"""
 
-    KATEGORIE_CHOICES = [
-        ('obst_gemuese', 'Obst & Gemüse'),
-        ('milchprodukte', 'Milchprodukte'),
-        ('fleisch_fisch', 'Fleisch & Fisch'),
-        ('brot_backwaren', 'Brot & Backwaren'),
-        ('getraenke', 'Getränke'),
-        ('tiefkuehl', 'Tiefkühl'),
-        ('konserven', 'Konserven & Fertiggerichte'),
-        ('suesses', 'Süßigkeiten & Snacks'),
-        ('haushalt', 'Haushalt & Reinigung'),
-        ('koerperpflege', 'Körperpflege'),
-        ('sonstiges', 'Sonstiges'),
-    ]
-
     name_original = models.CharField(
         max_length=500,
         verbose_name="Original-Name",
@@ -710,12 +696,22 @@ class BillaProdukt(models.Model):
         verbose_name="Normalisierter Name"
     )
 
-    kategorie = models.CharField(
-        max_length=50,
-        choices=KATEGORIE_CHOICES,
+    # Überkategorie (ersetzt die alte kategorie)
+    ueberkategorie = models.CharField(
+        max_length=100,
         null=True,
         blank=True,
-        verbose_name="Kategorie"
+        db_index=True,
+        verbose_name='Überkategorie',
+        help_text='Übergeordnete Kategorie wie Gemüse, Obst, Milchprodukte, etc.'
+    )
+
+    # Spezifische Produktgruppe
+    produktgruppe = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name='Produktgruppe'
     )
 
     marke = models.CharField(
@@ -723,23 +719,6 @@ class BillaProdukt(models.Model):
         null=True,
         blank=True,
         verbose_name="Marke"
-    )
-
-    # NEU: Überkategorie (z.B. "Gemüse", "Obst", "Milchprodukte")
-    ueberkategorie = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        verbose_name='Überkategorie',
-        help_text='Übergeordnete Kategorie wie Gemüse, Obst, Milchprodukte, etc.'
-    )
-
-    # Spezifische Produktgruppe (z.B. "Paprika", "Tomaten", "Milch")
-    produktgruppe = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        verbose_name='Produktgruppe'
     )
 
     # Statistiken
@@ -767,8 +746,7 @@ class BillaProdukt(models.Model):
         ordering = ['name_normalisiert']
         indexes = [
             models.Index(fields=['name_normalisiert']),
-            models.Index(fields=['kategorie']),
-            models.Index(fields=['ueberkategorie']),  # NEU
+            models.Index(fields=['ueberkategorie']),
         ]
 
     def __str__(self):
@@ -796,8 +774,6 @@ class BillaProdukt(models.Model):
 
         self.anzahl_kaeufe = stats['anzahl'] or 0
         self.save(update_fields=['durchschnittspreis', 'letzter_preis', 'anzahl_kaeufe'])
-
-
 
 
 class BillaPreisHistorie(models.Model):
@@ -836,25 +812,5 @@ class BillaPreisHistorie(models.Model):
         return f"{self.produkt.name_normalisiert} - {self.datum}: € {self.preis}"
 
 
-class BillaKategorieMapping(models.Model):
-    """Billa Kategorie-Mapping - Manuelle Zuordnung von Produkten zu Kategorien"""
-
-    suchbegriff = models.CharField(max_length=200, unique=True, verbose_name="Suchbegriff")
-    kategorie = models.CharField(
-        max_length=50,
-        choices=BillaProdukt.KATEGORIE_CHOICES,
-        verbose_name="Kategorie"
-    )
-    marke = models.CharField(max_length=200, null=True, blank=True, verbose_name="Marke")
-    prioritaet = models.IntegerField(default=0, verbose_name="Priorität")
-
-    class Meta:
-        db_table = 'billa_kategorie_mapping'
-        verbose_name = "Billa Kategorie-Mapping"
-        verbose_name_plural = "Billa Kategorie-Mappings"
-        ordering = ['-prioritaet', 'suchbegriff']
-
-    def __str__(self):
-        return f"{self.suchbegriff} → {self.get_kategorie_display()}"
 
 

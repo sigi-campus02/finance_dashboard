@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from finance.models import (
     BillaEinkauf, BillaArtikel, BillaProdukt,
-    BillaPreisHistorie, BillaKategorieMapping
+    BillaPreisHistorie
 )
 
 
@@ -139,13 +139,6 @@ class Command(BaseCommand):
             produkt.update_statistiken()
 
         return True
-
-    def auto_kategorisieren(self, produkt_name):
-        """Automatische Kategorisierung basierend auf Suchbegriffen"""
-        # Prüfe manuelle Mappings
-        for mapping in BillaKategorieMapping.objects.all():
-            if mapping.suchbegriff.lower() in produkt_name.lower():
-                return mapping.kategorie
 
         # Fallback: Einfache Keyword-basierte Kategorisierung
         name_lower = produkt_name.lower()

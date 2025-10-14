@@ -190,19 +190,9 @@ const kategorieData = {{ ausgaben_kategorie|safe }};
 const rabatteData = {{ rabatte|safe }};
 
 // Kategorie Labels Mapping
-const kategorieLabels = {
-    'obst_gemuese': 'Obst & Gemüse',
-    'milchprodukte': 'Milchprodukte',
-    'fleisch_fisch': 'Fleisch & Fisch',
-    'brot_backwaren': 'Brot & Backwaren',
-    'getraenke': 'Getränke',
-    'tiefkuehl': 'Tiefkühl',
-    'konserven': 'Konserven',
-    'suesses': 'Süßigkeiten',
-    'haushalt': 'Haushalt',
-    'koerperpflege': 'Körperpflege',
-    'sonstiges': 'Sonstiges'
-};
+const kategorieLabels = kategorieData.map(item => 
+    item.produkt__ueberkategorie || 'Nicht zugeordnet'  // ← GEÄNDERT von kategorie
+);
 
 // Plotly Layout Config (responsive)
 const layoutConfig = {
