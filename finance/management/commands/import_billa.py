@@ -77,9 +77,15 @@ class Command(BaseCommand):
         data = parser.parse_pdf(pdf_path)
 
         # Prüfe ob bereits importiert
-        if not force and data['re_nr']:
+        if not force and data.get('re_nr'):
             if BillaEinkauf.objects.filter(re_nr=data['re_nr']).exists():
                 return False
+
+        # Bei force: Alte Rechnung löschen
+        if force and data.get('re_nr'):
+            alte_rechnung = BillaEinkauf.objects.filter(re_nr=data['re_nr']).first()
+            if alte_rechnung:
+                alte_rechnung.delete()
 
         # Verwende gemeinsame Logik (keine Duplizierung!)
         _create_einkauf_with_artikel(data)

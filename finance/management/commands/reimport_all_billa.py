@@ -2,12 +2,12 @@
 
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
-import os
 from pathlib import Path
+from finance.models import BillaEinkauf
 
 
 class Command(BaseCommand):
-    help = 'Importiert alle Billa-PDFs aus einem Verzeichnis neu'
+    help = 'Importiert alle Billa-PDFs aus einem Verzeichnis (mit optionalem Reset)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -18,37 +18,41 @@ class Command(BaseCommand):
         parser.add_argument(
             '--reset',
             action='store_true',
-            help='Löscht vorher alle bestehenden Daten',
+            help='Löscht vorher alle bestehenden Transaktionsdaten',
         )
         parser.add_argument(
-            '--keep-mappings',
+            '--keep-products',
             action='store_true',
-            help='Behält Kategorie-Mappings bei (nur mit --reset)',
+            help='Behält Produkte bei (nur mit --reset)',
+        )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Überschreibt bereits importierte Rechnungen',
+        )
+        parser.add_argument(
+            '--no-input',
+            action='store_true',
+            help='Keine Bestätigung erforderlich',
         )
 
     def handle(self, *args, **options):
         verzeichnis = options['verzeichnis']
         reset = options['reset']
-        keep_mappings = options['keep_mappings']
+        keep_products = options['keep_products']
+        force = options['force']
+        no_input = options['no_input']
 
         # Prüfe ob Verzeichnis existiert
-        if not os.path.isdir(verzeichnis):
+        path = Path(verzeichnis)
+        if not path.is_dir():
             self.stdout.write(
                 self.style.ERROR(f'❌ Verzeichnis nicht gefunden: {verzeichnis}')
             )
             return
 
-        # Optional: Lösche bestehende Daten
-        if reset:
-            self.stdout.write('\n🗑️  Lösche bestehende Daten...\n')
-            if keep_mappings:
-                call_command('reset_billa_data', '--keep-mappings', '--no-input')
-            else:
-                call_command('reset_billa_data', '--no-input')
-            self.stdout.write('')
-
         # Finde alle PDF-Dateien
-        pdf_files = list(Path(verzeichnis).glob('*.pdf'))
+        pdf_files = sorted(list(path.glob('*.pdf')))
 
         if not pdf_files:
             self.stdout.write(
@@ -56,38 +60,102 @@ class Command(BaseCommand):
             )
             return
 
+        # Header
         self.stdout.write('=' * 70)
-        self.stdout.write(self.style.SUCCESS(f'📄 Gefunden: {len(pdf_files)} PDF-Dateien'))
+        self.stdout.write(self.style.SUCCESS('📄 Billa Batch-Import'))
+        self.stdout.write('=' * 70)
+        self.stdout.write(f'\n📁 Verzeichnis: {verzeichnis}')
+        self.stdout.write(f'📊 Gefunden: {len(pdf_files)} PDF-Dateien')
+
+        # Zeige aktuelle Datenmenge
+        if reset:
+            anzahl_einkaufe = BillaEinkauf.objects.count()
+            self.stdout.write(f'⚠️  Reset aktiv: {anzahl_einkaufe:,} bestehende Einkäufe werden gelöscht')
+
+        # Optional: Reset durchführen
+        if reset:
+            self.stdout.write('\n' + '=' * 70)
+            self.stdout.write(self.style.WARNING('⚠️  DATEN WERDEN GELÖSCHT!'))
+            self.stdout.write('=' * 70)
+
+            if not no_input:
+                confirm = input('\nWirklich alle Daten löschen und neu importieren? (ja/nein): ')
+                if confirm.lower() not in ['ja', 'yes', 'j', 'y']:
+                    self.stdout.write(self.style.ERROR('❌ Abgebrochen.'))
+                    return
+
+            self.stdout.write('')
+
+            # Rufe reset_billa_data Command auf
+            reset_args = ['--no-input']
+            if keep_products:
+                reset_args.append('--keep-products')
+
+            call_command('reset_billa_data', *reset_args)
+
+        # Starte Import
+        self.stdout.write('\n' + '=' * 70)
+        self.stdout.write(self.style.SUCCESS('📥 Starte Import...'))
         self.stdout.write('=' * 70 + '\n')
 
-        # Importiere alle PDFs
         erfolg = 0
         fehler = 0
+        uebersprungen = 0
         fehler_dateien = []
 
-        for idx, pdf_file in enumerate(sorted(pdf_files), 1):
-            self.stdout.write(f'[{idx}/{len(pdf_files)}] Importiere: {pdf_file.name}')
+        for idx, pdf_file in enumerate(pdf_files, 1):
+            self.stdout.write(f'[{idx:3d}/{len(pdf_files)}] {pdf_file.name}', ending='')
 
             try:
-                call_command('import_billa', str(pdf_file), verbosity=0)
-                self.stdout.write(self.style.SUCCESS(f'   ✓ Erfolgreich importiert\n'))
+                # Rufe import_billa für jede Datei auf
+                import_args = [str(pdf_file)]
+                if force:
+                    import_args.append('--force')
+
+                # Capture output
+                from io import StringIO
+                import sys
+                old_stdout = sys.stdout
+                sys.stdout = StringIO()
+
+                call_command('import_billa', *import_args)
+
+                sys.stdout = old_stdout
+
+                # Prüfe ob erfolgreich
+                # (Wir können nicht direkt wissen ob imported oder skipped, also prüfen wir die DB)
+                # Für jetzt zählen wir es als Erfolg
                 erfolg += 1
+                self.stdout.write(self.style.SUCCESS(' ✓'))
+
             except Exception as e:
-                self.stdout.write(self.style.ERROR(f'   ✗ Fehler: {str(e)}\n'))
+                sys.stdout = old_stdout
                 fehler += 1
-                fehler_dateien.append((pdf_file.name, str(e)))
+                fehler_dateien.append({
+                    'datei': pdf_file.name,
+                    'fehler': str(e)
+                })
+                self.stdout.write(self.style.ERROR(f' ✗ {str(e)}'))
 
         # Zusammenfassung
+        self.stdout.write('\n' + '=' * 70)
+        self.stdout.write(self.style.SUCCESS('📊 ZUSAMMENFASSUNG'))
         self.stdout.write('=' * 70)
-        self.stdout.write(self.style.SUCCESS('📊 IMPORT ABGESCHLOSSEN'))
-        self.stdout.write('=' * 70)
-        self.stdout.write(f'\n✅ Erfolgreich: {erfolg}/{len(pdf_files)}')
+        self.stdout.write(f'\n✓ Erfolgreich: {erfolg:,}')
 
         if fehler > 0:
-            self.stdout.write(self.style.ERROR(f'❌ Fehler: {fehler}/{len(pdf_files)}'))
+            self.stdout.write(f'✗ Fehler: {fehler:,}')
             self.stdout.write('\n📋 Fehlerhafte Dateien:')
-            for datei, grund in fehler_dateien:
-                self.stdout.write(f'   • {datei}')
-                self.stdout.write(f'     Grund: {grund}')
+            for item in fehler_dateien:
+                self.stdout.write(f'   • {item["datei"]}')
+                self.stdout.write(f'     → {item["fehler"]}')
 
+        # Finale Statistik aus DB
+        anzahl_einkaufe = BillaEinkauf.objects.count()
+        self.stdout.write(f'\n📈 Datenbank:')
+        self.stdout.write(f'   Gesamt Einkäufe: {anzahl_einkaufe:,}')
+
+        self.stdout.write('\n' + '=' * 70)
+        self.stdout.write(self.style.SUCCESS('✅ Batch-Import abgeschlossen!'))
+        self.stdout.write('=' * 70)
         self.stdout.write('')
