@@ -3,7 +3,7 @@ from django.db import transaction
 from django.contrib import messages
 import tempfile
 import os
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Avg, Count, Max, Min, Q
 from django.db.models.functions import TruncMonth, TruncDate
@@ -19,6 +19,8 @@ from django.views.decorators.http import require_POST
 import pdfplumber
 import re
 from finance.brand_mapper import BrandMapper
+from finance.billa_parser import BillaReceiptParser
+
 
 @login_required
 def billa_dashboard(request):
@@ -1630,7 +1632,6 @@ class BillaReceiptParser:
         return name.lstrip('@').strip().lower()
 
 
-# Neue View für den Upload
 @login_required
 @transaction.atomic
 def billa_import_upload(request):
@@ -1661,16 +1662,8 @@ def billa_import_upload(request):
                     for chunk in pdf_file.chunks():
                         destination.write(chunk)
 
-                # Parse PDF
+                # Parse PDF (verwendet jetzt die konsolidierte Logik)
                 data = parser.parse_pdf(temp_path)
-
-                # Validierung der Pflichtfelder
-                if not data.get('datum'):
-                    raise ValueError("Datum konnte nicht aus dem PDF extrahiert werden")
-                if not data.get('re_nr'):
-                    raise ValueError("Rechnungsnummer konnte nicht gefunden werden")
-                if not data.get('gesamt_preis'):
-                    raise ValueError("Gesamtpreis konnte nicht ermittelt werden")
 
                 # Prüfe ob bereits importiert
                 if not force and data['re_nr']:
@@ -1678,64 +1671,20 @@ def billa_import_upload(request):
                         stats['skipped'] += 1
                         continue
 
-                # Erstelle Einkauf
-                artikel_liste = data.pop('artikel')
-                einkauf = BillaEinkauf.objects.create(**data)
-
-                # Erstelle Artikel
-                for artikel_data in artikel_liste:
-                    artikel_data['einkauf'] = einkauf
-
-                    produkt_name_norm = artikel_data['produkt_name_normalisiert']
-                    produkt_name_original = artikel_data['produkt_name']
-
-                    produkt, created = BillaProdukt.objects.get_or_create(
-                        name_normalisiert=produkt_name_norm,
-                        defaults={
-                            'name_original': produkt_name_original,
-                            'letzter_preis': artikel_data['gesamtpreis'],
-                            'marke': BrandMapper.extract_brand(produkt_name_original)
-                        }
-                    )
-
-                    if not created and not produkt.marke:
-                        produkt.marke = BrandMapper.extract_brand(produkt_name_original)
-                        produkt.save(update_fields=['marke'])
-
-                    if not created:
-                        if len(produkt_name_original) < len(produkt.name_original):
-                            produkt.name_original = produkt_name_original
-                            produkt.save(update_fields=['name_original'])
-
-                    artikel_data['produkt'] = produkt
-                    artikel = BillaArtikel.objects.create(**artikel_data)
-
-                    # Erstelle Preishistorie
-                    BillaPreisHistorie.objects.create(
-                        produkt=produkt,
-                        artikel=artikel,
-                        datum=einkauf.datum,
-                        preis=artikel.preis_pro_einheit,
-                        menge=artikel.menge,
-                        einheit=artikel.einheit,
-                        filiale=einkauf.filiale
-                    )
-
-                    # Aktualisiere Produkt-Statistiken
-                    produkt.update_statistiken()
-
+                # Erstelle Einkauf und Artikel
+                _create_einkauf_with_artikel(data)
                 stats['imported'] += 1
 
             except Exception as e:
                 stats['errors'] += 1
                 error_msg = str(e)
 
-                # Zusätzliche Debug-Info bei Parsing-Fehlern
+                # Debug-Info bei Parsing-Fehlern
                 if "konnte nicht" in error_msg or "NULL" in error_msg:
                     try:
+                        import pdfplumber
                         with pdfplumber.open(temp_path) as pdf:
                             first_page_text = pdf.pages[0].extract_text()
-                            # Erste 500 Zeichen für Debug
                             preview = first_page_text[:500] if first_page_text else "Kein Text extrahierbar"
                             error_msg += f"\n\nPDF-Vorschau (erste 500 Zeichen):\n{preview}"
                     except:
@@ -1766,13 +1715,66 @@ def billa_import_upload(request):
             for error in stats['error_details']:
                 messages.error(request, f"  • {error['file']}: {error['error']}")
 
-        # Redirect zum Dashboard
-        from django.shortcuts import redirect
         return redirect('finance:billa_dashboard')
 
     context = {}
     return render(request, 'finance/billa_import.html', context)
 
+def _create_einkauf_with_artikel(data):
+    """
+    Gemeinsame Logik für Einkauf-Erstellung.
+    Wird von View und Command verwendet.
+    """
+    # Erstelle Einkauf
+    artikel_liste = data.pop('artikel')
+    einkauf = BillaEinkauf.objects.create(**data)
+
+    # Erstelle Artikel
+    for artikel_data in artikel_liste:
+        artikel_data['einkauf'] = einkauf
+
+        produkt_name_norm = artikel_data['produkt_name_normalisiert']
+        produkt_name_original = artikel_data['produkt_name']
+
+        # Finde oder erstelle Produkt
+        produkt, created = BillaProdukt.objects.get_or_create(
+            name_normalisiert=produkt_name_norm,
+            defaults={
+                'name_original': produkt_name_original,
+                'letzter_preis': artikel_data['gesamtpreis'],
+                'marke': BrandMapper.extract_brand(produkt_name_original)
+            }
+        )
+
+        # Aktualisiere Marke falls noch nicht gesetzt
+        if not created and not produkt.marke:
+            produkt.marke = BrandMapper.extract_brand(produkt_name_original)
+            produkt.save(update_fields=['marke'])
+
+        # Aktualisiere Original-Namen (kürzeste Variante bevorzugen)
+        if not created:
+            if len(produkt_name_original) < len(produkt.name_original):
+                produkt.name_original = produkt_name_original
+                produkt.save(update_fields=['name_original'])
+
+        artikel_data['produkt'] = produkt
+        artikel = BillaArtikel.objects.create(**artikel_data)
+
+        # Erstelle Preishistorie
+        BillaPreisHistorie.objects.create(
+            produkt=produkt,
+            artikel=artikel,
+            datum=einkauf.datum,
+            preis=artikel.preis_pro_einheit,
+            menge=artikel.menge,
+            einheit=artikel.einheit,
+            filiale=einkauf.filiale
+        )
+
+        # Aktualisiere Produkt-Statistiken
+        produkt.update_statistiken()
+
+    return einkauf
 
 # Füge diese View in finance/views_billa.py hinzu, direkt VOR der billa_einkauf_detail View:
 
