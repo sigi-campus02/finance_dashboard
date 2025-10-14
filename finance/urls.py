@@ -100,6 +100,5 @@ urlpatterns = [
     path('billa/preisentwicklung/ueberkategorien/', views_billa.billa_preisentwicklung_ueberkategorien, name='billa_preisentwicklung_ueberkategorien'),
     path('billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/', views_billa.billa_preisentwicklung_ueberkategorie, name='billa_preisentwicklung_ueberkategorie'),
     path('billa/preisentwicklung/produktgruppe/<str:produktgruppe>/', views_billa.billa_preisentwicklung_produktgruppe, name='billa_preisentwicklung_produktgruppe'),
-    path('billa/preisentwicklung/produkt/<int:produkt_id>/', views_billa.billa_preisentwicklung_produkt, name='billa_preisentwicklung_produkt'),
 
 ]
