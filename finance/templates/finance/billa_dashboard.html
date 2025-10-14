@@ -52,7 +52,7 @@
         position: relative;
         overflow: hidden;
     }
-    
+
     .nav-card::before {
         content: '';
         position: absolute;
@@ -64,47 +64,47 @@
         transform: translateX(-100%);
         transition: transform 0.3s ease;
     }
-    
+
     .nav-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 15px rgba(0,0,0,0.2);
         color: white;
         text-decoration: none;
     }
-    
+
     .nav-card:hover::before {
         transform: translateX(0);
     }
-    
+
     .nav-card.blue {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     }
-    
+
     .nav-card.green {
         background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
     }
-    
+
     .nav-card.orange {
         background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
     }
-    
+
     .nav-card-icon {
         font-size: 3rem;
         margin-bottom: 15px;
         display: block;
     }
-    
+
     .nav-card-title {
         font-size: 1.2rem;
         font-weight: 600;
         margin-bottom: 8px;
     }
-    
+
     .nav-card-description {
         font-size: 0.9rem;
         opacity: 0.9;
     }
-    
+
     .section-title {
         font-size: 1.5rem;
         font-weight: 600;
@@ -122,6 +122,31 @@
     <div class="row mb-4">
         <div class="col">
             <h1>🛒 Billa Einkaufsanalyse</h1>
+        </div>
+    </div>
+
+    <!-- Navigation - AN DEN ANFANG VERSCHOBEN -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <a href="{% url 'finance:billa_produkte_liste' %}" class="nav-card blue">
+                <span class="nav-card-icon">📦</span>
+                <div class="nav-card-title">Alle Produkte</div>
+                <div class="nav-card-description">Durchsuche alle gekauften Produkte und deren Details</div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="nav-card green">
+                <span class="nav-card-icon">🏷️</span>
+                <div class="nav-card-title">Produktgruppen</div>
+                <div class="nav-card-description">Analysiere Ausgaben nach Produktgruppen</div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}" class="nav-card orange">
+                <span class="nav-card-icon">📈</span>
+                <div class="nav-card-title">Preisentwicklung</div>
+                <div class="nav-card-description">Verfolge Preisänderungen über die Zeit</div>
+            </a>
         </div>
     </div>
 
@@ -199,13 +224,13 @@
     <div class="row mt-4">
         <div class="col-md-6">
             <div class="chart-container">
-                <h5>🏷️ Top 15 Produkte (Häufigkeit)</h5>
+                <h5>🏷️ Top 10 Produkte (Häufigkeit)</h5>
                 <div id="chart-top-products"></div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="chart-container">
-                <h5>💰 Top 15 Produkte (Ausgaben)</h5>
+                <h5>💰 Top 10 Produkte (Ausgaben)</h5>
                 <div id="chart-top-spending"></div>
             </div>
         </div>
@@ -223,37 +248,6 @@
                 <h5>💸 Ersparnisse nach Rabatt-Typ</h5>
                 <div id="chart-rabatte"></div>
             </div>
-        </div>
-    </div>
-
-    <!-- Weitere Analysen - Neue Position und Design -->
-    <div class="row mt-5 mb-4">
-        <div class="col-12">
-            <h3 class="section-title">🔍 Weitere Analysen</h3>
-        </div>
-    </div>
-    
-    <div class="row mb-5">
-        <div class="col-md-4">
-            <a href="{% url 'finance:billa_produkte_liste' %}" class="nav-card blue">
-                <span class="nav-card-icon">📦</span>
-                <div class="nav-card-title">Alle Produkte</div>
-                <div class="nav-card-description">Durchsuche alle gekauften Produkte und deren Details</div>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="nav-card green">
-                <span class="nav-card-icon">🏷️</span>
-                <div class="nav-card-title">Produktgruppen</div>
-                <div class="nav-card-description">Analysiere Ausgaben nach Produktgruppen</div>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}" class="nav-card orange">
-                <span class="nav-card-icon">📈</span>
-                <div class="nav-card-title">Preisentwicklung</div>
-                <div class="nav-card-description">Verfolge Preisänderungen über die Zeit</div>
-            </a>
         </div>
     </div>
 </div>
@@ -280,46 +274,57 @@ const layoutConfig = {
     }
 };
 
-// Helper: Hash für konsistente Farben
-function hashCode(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash);
-}
+// Helper: Produktnamen kürzen für bessere Lesbarkeit
+const shortenName = (name) => {
+    return name.length > 35 ? name.substring(0, 32) + '...' : name;
+};
 
-// 1. Tägliche Ausgaben (Line Chart)
+// 1. Tägliche Ausgaben (Schönes Line Chart mit Spline, Fill & besserem Hover)
 if (dailyData && dailyData.length > 0) {
     const dailyTrace = {
         x: dailyData.map(d => d.tag),
         y: dailyData.map(d => parseFloat(d.ausgaben)),
         type: 'scatter',
         mode: 'lines+markers',
-        line: { color: '#FF6B6B', width: 3 },
-        marker: { size: 6, color: '#FF6B6B' },
-        hovertemplate: '<b>%{x}</b><br>€ %{y:.2f}<extra></extra>'
+        line: {
+            color: '#FF6B6B',
+            width: 3,
+            shape: 'spline'  // Weiche Kurven
+        },
+        marker: {
+            size: 5,
+            color: '#FF6B6B'
+        },
+        fill: 'tozeroy',  // Füllt den Bereich unter der Linie
+        fillcolor: 'rgba(255, 107, 107, 0.2)',
+        hovertemplate: '<b>%{x|%A, %d.%m.%Y}</b><br>€ %{y:.2f}<extra></extra>'
     };
 
     Plotly.newPlot('chart-daily', [dailyTrace], {
         ...layoutConfig,
-        margin: { t: 10, b: 50, l: 60, r: 20 },
+        margin: { t: 20, b: 60, l: 60, r: 20 },
         xaxis: {
             title: 'Datum',
-            tickangle: -45
+            tickangle: -45,
+            tickformat: '%d.%m',  // kürzeres Datum
+            automargin: true,
+            showgrid: false
         },
         yaxis: {
             title: 'Ausgaben (€)',
-            tickprefix: '€ '
-        }
+            tickprefix: '€ ',
+            showgrid: true,
+            gridcolor: '#f0f0f0'
+        },
+        height: 400,
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff'
     });
 } else {
     document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 2. Monatliche Ausgaben (Gestapeltes Balkendiagramm nach Überkategorie)
+// 2. Monatliche Ausgaben (Gestapeltes Balkendiagramm - Schönere Version)
 const monthlyStackedData = JSON.parse('{{ monthly_spending_stacked|safe }}');
 
 if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate.length > 0) {
@@ -331,10 +336,9 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
     ];
 
     // Erstelle Traces für jede Überkategorie
-    const traces = monthlyStackedData.kategorien.map((kategorie, index) => {
-        // "Sonstiges" bekommt eine graue Farbe
+    let traces = monthlyStackedData.kategorien.map((kategorie, index) => {
         const farbe = kategorie === 'Sonstiges'
-            ? '#95A5A6'  // Grau
+            ? '#95A5A6'
             : colorPalette[index % colorPalette.length];
 
         return {
@@ -345,150 +349,201 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
             marker: {
                 color: farbe
             },
-            hovertemplate: '<b>' + kategorie + '</b><br>€ %{y:.2f}<extra></extra>'
+            hovertemplate: '%{x}<br><b>%{fullData.name}</b>: €%{y:.2f}<extra></extra>'
         };
     });
+
+    // Optional: Reihenfolge umkehren (größere Kategorien oben sichtbar)
+    traces = traces.reverse();
 
     const layout = {
         ...layoutConfig,
         barmode: 'stack',
-        margin: { t: 10, b: 80, l: 60, r: 20 },
+        margin: { t: 20, b: 80, l: 60, r: 20 },
         xaxis: {
             title: 'Monat',
-            tickangle: -45
+            tickangle: -45,
+            showgrid: false,
+            automargin: true
         },
         yaxis: {
             title: 'Ausgaben (€)',
-            tickprefix: '€ '
+            tickprefix: '€ ',
+            gridcolor: '#eee'
         },
         legend: {
             orientation: 'h',
             yanchor: 'bottom',
-            y: -0.5,
+            y: -0.4,
             xanchor: 'center',
             x: 0.5,
-            font: {
-                size: 10
-            }
+            font: { size: 10 },
+            itemclick: 'toggleothers',
+            itemdoubleclick: 'toggle'
         },
-        hovermode: 'x unified'
+        hovermode: 'x unified',
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff'
     };
 
-    Plotly.newPlot('chart-monthly', traces, layout, {displayModeBar: false});
+    Plotly.newPlot('chart-monthly', traces, layout, { displayModeBar: false });
 } else {
     document.getElementById('chart-monthly').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 3. Top 15 Produkte nach Häufigkeit (Horizontal Bar) - MIT KATEGORIE-FARBEN
+
+// 3. Top 15 Produkte nach Häufigkeit (Vertical Bar) - OPTIMIERT
 if (topProdukte && topProdukte.length > 0) {
+    // Nur Top 10 für bessere Übersicht
+    const top10 = topProdukte.slice(0, 10);
+
     const topProdukteTrace = {
-        x: topProdukte.map(p => p.anzahl),
-        y: topProdukte.map(p => p.produkt__name_normalisiert),
+        x: top10.map(p => shortenName(p.produkt__name_normalisiert)),
+        y: top10.map(p => p.anzahl),
         type: 'bar',
-        orientation: 'h',
         marker: {
-            color: topProdukte.map(p => {
-                const kat = p.produkt__ueberkategorie;
-                return kat ? `hsl(${hashCode(kat) % 360}, 70%, 60%)` : '#95E1D3';
-            })
+            color: '#4ECDC4',
+            line: {
+                color: '#2C9A91',
+                width: 1
+            }
         },
-        hovertemplate: '<b>%{y}</b><br>%{x} Käufe<extra></extra>'
+        text: top10.map(p => p.anzahl),
+        textposition: 'outside',
+        hovertemplate: '<b>%{customdata}</b><br>%{y} Käufe<extra></extra>',
+        customdata: top10.map(p => p.produkt__name_normalisiert)
     };
 
     Plotly.newPlot('chart-top-products', [topProdukteTrace], {
         ...layoutConfig,
-        margin: { t: 10, b: 40, l: 200, r: 20 },
-        xaxis: { title: 'Anzahl Käufe' },
-        yaxis: {
+        margin: { t: 20, b: 150, l: 60, r: 20 },
+        xaxis: {
             title: '',
-            automargin: true
-        }
+            tickangle: -45,
+            automargin: true,
+            tickfont: { size: 10 }
+        },
+        yaxis: {
+            title: 'Anzahl Käufe',
+            showgrid: true
+        },
+        height: 450
     });
 } else {
     document.getElementById('chart-top-products').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 4. Top 15 Produkte nach Ausgaben (Horizontal Bar) - MIT KATEGORIE-FARBEN
+// 4. Top 15 Produkte nach Ausgaben (Vertical Bar) - GEDREHT
 if (topAusgaben && topAusgaben.length > 0) {
+    // Nur Top 10 für bessere Übersicht
+    const top10 = topAusgaben.slice(0, 10);
+
     const topAusgabenTrace = {
-        x: topAusgaben.map(p => parseFloat(p.ausgaben)),
-        y: topAusgaben.map(p => p.produkt__name_normalisiert),
+        x: top10.map(p => shortenName(p.produkt__name_normalisiert)),
+        y: top10.map(p => parseFloat(p.ausgaben)),
         type: 'bar',
-        orientation: 'h',
         marker: {
-            color: topAusgaben.map(p => {
-                const kat = p.produkt__ueberkategorie;
-                return kat ? `hsl(${hashCode(kat) % 360}, 70%, 60%)` : '#F38181';
-            })
+            color: '#FF6B6B',
+            line: {
+                color: '#D63447',
+                width: 1
+            }
         },
-        hovertemplate: '<b>%{y}</b><br>€ %{x:.2f}<extra></extra>'
+        text: top10.map(p => '€' + parseFloat(p.ausgaben).toFixed(2)),
+        textposition: 'outside',
+        hovertemplate: '<b>%{customdata}</b><br>€%{y:.2f}<extra></extra>',
+        customdata: top10.map(p => p.produkt__name_normalisiert)
     };
 
     Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
         ...layoutConfig,
-        margin: { t: 10, b: 40, l: 200, r: 20 },
+        margin: { t: 20, b: 150, l: 60, r: 20 },
         xaxis: {
-            title: 'Ausgaben (€)',
-            tickprefix: '€ '
+            title: '',
+            tickangle: -45,
+            automargin: true,
+            tickfont: { size: 10 }
         },
         yaxis: {
-            title: '',
-            automargin: true
-        }
+            title: 'Ausgaben (€)',
+            tickprefix: '€',
+            showgrid: true
+        },
+        height: 450
     });
 } else {
     document.getElementById('chart-top-spending').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 5. Ausgaben nach Kategorie (Pie Chart)
+
+// 5. Ausgaben nach Kategorie (Pie Chart - optimiert)
 if (kategorieData && kategorieData.length > 0) {
+    const sortedKategorieData = [...kategorieData].sort((a, b) => b.ausgaben - a.ausgaben);
+
     const kategorieTrace = {
-        values: kategorieData.map(k => parseFloat(k.ausgaben)),
-        labels: kategorieData.map(k => k.produkt__ueberkategorie || 'Nicht zugeordnet'),
+        values: sortedKategorieData.map(k => parseFloat(k.ausgaben)),
+        labels: sortedKategorieData.map(k => k.produkt__ueberkategorie || 'Nicht zugeordnet'),
         type: 'pie',
+        textinfo: 'label+percent',
+        textposition: 'inside',
+        insidetextorientation: 'radial',
         hovertemplate: '<b>%{label}</b><br>€ %{value:.2f}<br>%{percent}<extra></extra>',
-        textposition: 'auto',
-        textinfo: 'label+percent'
+        marker: {
+            line: { color: '#ffffff', width: 1 }
+        }
     };
 
     Plotly.newPlot('chart-kategorie', [kategorieTrace], {
         ...layoutConfig,
-        margin: { t: 10, b: 10, l: 10, r: 10 },
+        margin: { t: 20, b: 20, l: 20, r: 20 },
         showlegend: true,
         legend: {
             orientation: 'v',
-            x: 1.1,
-            y: 0.5
-        }
+            x: 1.05,
+            y: 0.5,
+            font: { size: 10 }
+        },
+        paper_bgcolor: '#fff',
+        plot_bgcolor: '#fff'
     });
 } else {
     document.getElementById('chart-kategorie').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 6. Ersparnisse nach Rabatt-Typ (Pie Chart)
+// 6. Ersparnisse nach Rabatt-Typ (Pie Chart - optimiert)
 if (rabatteData && rabatteData.length > 0) {
+    const sortedRabatteData = [...rabatteData].sort((a, b) => b.ersparnis - a.ersparnis);
+
     const rabatteTrace = {
-        values: rabatteData.map(r => parseFloat(r.ersparnis)),
-        labels: rabatteData.map(r => r.rabatt_typ || 'Unbekannt'),
+        values: sortedRabatteData.map(r => parseFloat(r.ersparnis)),
+        labels: sortedRabatteData.map(r => r.rabatt_typ || 'Unbekannt'),
         type: 'pie',
+        textinfo: 'label+percent',
+        textposition: 'inside',
+        insidetextorientation: 'radial',
         hovertemplate: '<b>%{label}</b><br>€ %{value:.2f}<br>%{percent}<extra></extra>',
-        textposition: 'auto',
-        textinfo: 'label+percent'
+        marker: {
+            line: { color: '#ffffff', width: 1 }
+        }
     };
 
     Plotly.newPlot('chart-rabatte', [rabatteTrace], {
         ...layoutConfig,
-        margin: { t: 10, b: 10, l: 10, r: 10 },
+        margin: { t: 20, b: 20, l: 20, r: 20 },
         showlegend: true,
         legend: {
             orientation: 'v',
-            x: 1.1,
-            y: 0.5
-        }
+            x: 1.05,
+            y: 0.5,
+            font: { size: 10 }
+        },
+        paper_bgcolor: '#fff',
+        plot_bgcolor: '#fff'
     });
 } else {
     document.getElementById('chart-rabatte').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
+
 
 // Responsive resize handling
 window.addEventListener('resize', function() {
