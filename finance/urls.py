@@ -84,4 +84,7 @@ urlpatterns = [
     # Billa API Endpoints
     path('billa/api/preisverlauf/<int:produkt_id>/', views_billa.billa_api_preisverlauf, name='billa_api_preisverlauf'),
     path('billa/api/stats/', views_billa.billa_api_stats, name='billa_api_stats'),
+    path('billa/produktgruppen-mapper/', views_billa.produktgruppen_mapper, name='produktgruppen_mapper'),
+    path('billa/produktgruppen-speichern/', views_billa.produktgruppen_speichern, name='produktgruppen_speichern'),
+
 ]

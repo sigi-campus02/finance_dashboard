@@ -8,12 +8,12 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 from decimal import Decimal
 import json
-
 from .models import (
     BillaEinkauf, BillaArtikel, BillaProdukt,
     BillaPreisHistorie, BillaKategorieMapping
 )
-
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 
 @login_required
 def billa_dashboard(request):
@@ -391,3 +391,42 @@ def billa_api_stats(request):
     )
 
     return JsonResponse(stats)
+
+
+@login_required
+def produktgruppen_mapper(request):
+    """Produktgruppen-Mapping Tool"""
+
+    # Alle Produkte mit relevanten Feldern holen
+    produkte = BillaProdukt.objects.all().values(
+        'id',
+        'name_original',
+        'name_normalisiert',
+        'kategorie',
+        'produktgruppe'  # Falls das Feld noch nicht existiert
+    )
+
+    context = {
+        'produkte_json': json.dumps(list(produkte), ensure_ascii=False),
+        'anzahl_produkte': len(produkte)
+    }
+
+    return render(request, 'finance/produktgruppen_mapper.html', context)
+
+
+@login_required
+@require_POST
+def produktgruppen_speichern(request):
+    """Speichert die Produktgruppen-Zuordnung"""
+    try:
+        data = json.loads(request.body)
+        produkte = data.get('produkte', [])
+
+        for produkt_data in produkte:
+            BillaProdukt.objects.filter(id=produkt_data['id']).update(
+                produktgruppe=produkt_data.get('produktgruppe')
+            )
+
+        return JsonResponse({'status': 'success', 'updated': len(produkte)})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

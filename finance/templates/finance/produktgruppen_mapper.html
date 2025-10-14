@@ -1,0 +1,336 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Produktgruppen Mapper{% endblock %}
+
+{% block content %}
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const ProduktgruppenMapper = () => {
+  const [produktListe, setProduktListe] = useState([]);
+  const [filter, setFilter] = useState('alle');
+  const [suchbegriff, setSuchbegriff] = useState('');
+  const [stats, setStats] = useState({ mitGruppe: 0, ohneGruppe: 0, gesamt: 0 });
+
+  // Produktgruppen-Definitionen
+const produktGruppen = {
+  // ========== GEMÜSE ==========
+  'Paprika': ['paprika', 'spitzpaprika'],
+  'Tomaten': ['tomat', 'paradeiser', 'cherry', 'rispenparadeiser'],
+  'Gurken': ['gurke', 'gurk'],
+  'Salat': ['salat', 'rucola', 'eisberg', 'lollo', 'vogerlsalat'],
+  'Zwiebeln': ['zwiebel', 'schalott'],
+  'Kartoffeln': ['kartoffel', 'erdäpfel', 'erdapfel', 'süßkartoffel'],
+  'Karotten': ['karott', 'möhre', 'wurzel'],
+  'Knoblauch': ['knoblauch'],
+  'Kräuter': ['petersilie', 'schnittlauch', 'basilikum', 'koriander', 'dill', 'thymian', 'rosmarin', 'salbei'],
+  'Radieschen': ['radieschen'],
+  'Zucchini': ['zucchini'],
+  'Auberginen': ['aubergine', 'melanzani'],
+  'Brokkoli': ['brokkoli', 'brocoli'],
+  'Blumenkohl': ['blumenkohl', 'karfiol'],
+  'Mais': ['mais', 'zuckermais'],
+  'Erbsen': ['erbse', 'kichererbse'],
+  'Bohnen': ['bohne', 'sojabohne', 'kidneybohne', 'riesenbohne'],
+  'Spinat': ['spinat', 'jungspinat', 'blattspinat'],
+  'Lauch': ['lauch', 'porree'],
+  'Kürbis': ['kürbis', 'hokkaido', 'butternuss'],
+  'Ingwer': ['ingwer'],
+  'Chili': ['chili', 'chiliwurzerl', 'peperoni'],
+  
+  // ========== OBST ==========
+  'Äpfel': ['apfel', 'äpfel'],
+  'Bananen': ['banane'],
+  'Orangen': ['orange', 'apfelsine'],
+  'Zitronen': ['zitrone', 'limette', 'lime'],
+  'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
+  'Trauben': ['traube', 'weintraube'],
+  'Birnen': ['birne'],
+  'Kiwi': ['kiwi'],
+  'Mango': ['mango'],
+  'Ananas': ['ananas'],
+  'Pfirsich': ['pfirsich', 'nektarine'],
+  'Melone': ['melone', 'wassermelone', 'honigmelone'],
+  'Avocado': ['avocado'],
+  'Granatapfel': ['granatapfel'],
+  
+  // ========== MILCHPRODUKTE ==========
+  'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
+  'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt'],
+  'Käse': ['käse', 'gouda', 'emmentaler', 'parmesan', 'mozzarella', 'cheddar', 'grana', 'padano', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse', 'bergkäse'],
+  'Butter': ['butter', 'kräuterbutter'],
+  'Margarine': ['margarine'],
+  'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche'],
+  'Topfen': ['topfen', 'quark', 'magertopfen'],
+  'Frischkäse': ['frischkäse'],
+  
+  // ========== BACKWAREN ==========
+  'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot'],
+  'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
+  'Toast': ['toast', 'toastbrot', 'mehrkorntoast'],
+  'Gebäck': ['gebäck', 'croissant'],
+  
+  // ========== EIER ==========
+  'Eier': ['eier', 'ei '],
+  
+  // ========== FLEISCH & WURST ==========
+  'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks'],
+  'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
+  'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl'],
+  'Putenfleisch': ['puten', 'pute'],
+  'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker'],
+  'Schinken': ['schinken', 'speck', 'bratl'],
+  'Faschiertes': ['faschiert', 'hackfleisch'],
+  
+  // ========== FISCH ==========
+  'Lachs': ['lachs'],
+  'Thunfisch': ['thunfisch'],
+  'Forelle': ['forelle'],
+  'Garnelen': ['garnele', 'shrimp', 'crevette'],
+  'Fisch': ['fisch', 'scholle'],
+  
+  // ========== NUDELN & REIS ==========
+  'Nudeln': ['nudel', 'pasta', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'rigatoni', 'farfalle', 'tortellini', 'ravioli'],
+  'Gnocchi': ['gnocchi', 'schupfnudeln'],
+  'Reis': ['reis', 'basmati', 'risotto', 'reisfleisch'],
+  'Quinoa': ['quinoa'],
+  'Couscous': ['couscous'],
+  
+  // ========== BACKEN ==========
+  'Mehl': ['mehl'],
+  'Backpulver': ['backpulver'],
+  'Hefe': ['hefe', 'backhefe'],
+  'Vanille': ['vanille'],
+  'Pudding': ['pudding'],
+  
+  // ========== SÜSSES ==========
+  'Zucker': ['zucker', 'puderzucker'],
+  'Honig': ['honig'],
+  
+  // ========== GEWÜRZE ==========
+  'Salz': ['salz'],
+  'Pfeffer': ['pfeffer'],
+  'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'koriander'],
+  
+  // ========== ÖLE & ESSIG ==========
+  'Olivenöl': ['olivenöl'],
+  'Sonnenblumenöl': ['sonnenblumenöl'],
+  'Kürbisöl': ['kürbisöl'],
+  'Essig': ['essig', 'balsamico'],
+  
+  // ========== SOSSEN ==========
+  'Ketchup': ['ketchup'],
+  'Mayonnaise': ['mayonnaise', 'mayo'],
+  'Soßen': ['soße', 'sauce', 'hollandaise', 'pizzasauce'],
+  
+  // ========== FRÜHSTÜCK ==========
+  'Müsli': ['müsli', 'knusperli'],
+  'Cornflakes': ['cornflakes'],
+  'Haferflocken': ['haferflocken', 'hafer'],
+  
+  // ========== SÜSSIGKEITEN & SNACKS ==========
+  'Schokolade': ['schokolade', 'schoko', 'nutella'],
+  'Kekse': ['keks', 'biskuit', 'cookie'],
+  'Chips': ['chips'],
+  'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'cashew', 'pistazie', 'erdnuss'],
+  'Trockenfrüchte': ['rosine', 'dattel'],
+  
+  // ========== GETRÄNKE ==========
+  'Wasser': ['wasser', 'mineralwasser'],
+  'Saft': ['saft', 'nektar', 'rübensaft'],
+  'Limonade': ['cola', 'sprite', 'fanta', 'limo'],
+  'Bier': ['bier', 'radler'],
+  'Wein': ['wein', 'rotwein', 'weißwein', 'weisswein'],
+  'Energy Drinks': ['red bull', 'energy'],
+  'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista'],
+  'Sojamilch': ['sojamilch', 'sojadrink'],
+  
+  // ========== HYGIENE ==========
+  'Shampoo': ['shampoo'],
+  'Duschgel': ['duschgel'],
+  'Deo': ['deo'],
+  
+  // ========== HAUSHALT ==========
+  'Reiniger': ['reiniger', 'frosch'],
+  'Spülmittel': ['spülmittel'],
+  
+  // ========== TIEFKÜHL ==========
+  'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
+  'Pizza': ['pizza', 'pizzamehl'],
+  
+  // ========== AUFSTRICHE ==========
+  'Marmelade': ['marmelade', 'konfitüre'],
+  'Aufstrich': ['aufstrich']
+};
+
+  const findeProduktGruppe = (produktName) => {
+    if (!produktName) return null;
+    const nameLower = produktName.toLowerCase();
+    
+    for (const [gruppe, keywords] of Object.entries(produktGruppen)) {
+      for (const keyword of keywords) {
+        if (nameLower.includes(keyword)) {
+          return gruppe;
+        }
+      }
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    // Daten vom Django Backend laden
+    const produkteVonDjango = {{ produkte_json|safe }};
+    
+    const mitGruppen = produkteVonDjango.map(produkt => ({
+      ...produkt,
+      produktgruppe: produkt.produktgruppe || findeProduktGruppe(produkt.name_normalisiert)
+    }));
+
+    setProduktListe(mitGruppen);
+    
+    const mitGruppe = mitGruppen.filter(p => p.produktgruppe !== null).length;
+    setStats({
+      gesamt: mitGruppen.length,
+      mitGruppe,
+      ohneGruppe: mitGruppen.length - mitGruppe
+    });
+  }, []);
+
+  const gefiltert = produktListe.filter(p => {
+    const matchFilter = filter === 'alle' || 
+      (filter === 'mit' && p.produktgruppe) || 
+      (filter === 'ohne' && !p.produktgruppe);
+    
+    const matchSuche = !suchbegriff || 
+      p.name_normalisiert?.toLowerCase().includes(suchbegriff.toLowerCase());
+    
+    return matchFilter && matchSuche;
+  });
+
+  const speichereMapping = async () => {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    try {
+      const response = await fetch('{% url "finance:produktgruppen_speichern" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf
+        },
+        body: JSON.stringify({ produkte: produktListe })
+      });
+      
+      if (response.ok) {
+        alert('✓ Produktgruppen erfolgreich gespeichert!');
+      }
+    } catch (error) {
+      alert('Fehler beim Speichern: ' + error);
+    }
+  };
+
+  const downloadCSV = () => {
+    const headers = ['id', 'name_original', 'name_normalisiert', 'kategorie', 'produktgruppe'];
+    const csv = [
+      headers.join(','),
+      ...produktListe.map(p => 
+        headers.map(h => `"${p[h] || ''}"`).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'billa_produkte_mit_gruppen.csv';
+    a.click();
+  };
+
+  // UI Code hier... (gekürzt wegen Länge - siehe vollständigen Code unten)
+
+  return (
+    <div className="container-fluid p-4">
+      <h1 className="mb-4">🏷️ Produktgruppen-Mapper</h1>
+      
+      {/* Statistiken */}
+      <div className="row mb-4">
+        <div className="col-md-4">
+          <div className="card border-primary">
+            <div className="card-body">
+              <h3>{stats.gesamt}</h3>
+              <p className="mb-0">Gesamt Produkte</p>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="card border-success">
+            <div className="card-body">
+              <h3 className="text-success">{stats.mitGruppe}</h3>
+              <p className="mb-0">Mit Produktgruppe ({Math.round(stats.mitGruppe/stats.gesamt*100)}%)</p>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="card border-warning">
+            <div className="card-body">
+              <h3 className="text-warning">{stats.ohneGruppe}</h3>
+              <p className="mb-0">Ohne Produktgruppe</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Aktionen */}
+      <div className="mb-3">
+        <button onClick={speichereMapping} className="btn btn-primary me-2">
+          💾 In Datenbank speichern
+        </button>
+        <button onClick={downloadCSV} className="btn btn-secondary">
+          📥 Als CSV downloaden
+        </button>
+      </div>
+
+      {/* Tabelle */}
+      <div className="table-responsive">
+        <table className="table table-striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Produktname</th>
+              <th>Kategorie</th>
+              <th>Produktgruppe</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gefiltert.slice(0, 100).map((p, idx) => (
+              <tr key={idx}>
+                <td>{p.id}</td>
+                <td>{p.name_normalisiert}</td>
+                <td>{p.kategorie}</td>
+                <td>
+                  {p.produktgruppe ? (
+                    <span className="badge bg-success">{p.produktgruppe}</span>
+                  ) : (
+                    <span className="badge bg-secondary">Keine Zuordnung</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.render(<ProduktgruppenMapper />, document.getElementById('root'));
+</script>
+
+{% csrf_token %}
+{% endblock %}

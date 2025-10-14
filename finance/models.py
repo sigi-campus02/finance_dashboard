@@ -736,6 +736,14 @@ class BillaProdukt(models.Model):
         blank=True,
         verbose_name="Letzter Preis"
     )
+
+    produktgruppe = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name='Produktgruppe'
+    )
+
     anzahl_kaeufe = models.IntegerField(default=0, verbose_name="Anzahl Käufe")
     letzte_aktualisierung = models.DateTimeField(auto_now=True, verbose_name="Letzte Aktualisierung")
 
@@ -832,3 +840,5 @@ class BillaKategorieMapping(models.Model):
 
     def __str__(self):
         return f"{self.suchbegriff} → {self.get_kategorie_display()}"
+
+
