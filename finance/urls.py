@@ -75,6 +75,7 @@ urlpatterns = [
 
     # Billa URLs (erweitert)
     path('billa/', views_billa.billa_dashboard, name='billa_dashboard'),
+    path('billa/import/', views_billa.billa_import_upload, name='billa_import'),
     path('billa/einkauf/<int:einkauf_id>/', views_billa.billa_einkauf_detail, name='billa_einkauf_detail'),
     path('billa/produkt/<int:produkt_id>/', views_billa.billa_produkt_detail, name='billa_produkt_detail'),
 

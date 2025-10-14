@@ -1,5 +1,8 @@
 # finance/views_billa.py
-
+from django.db import transaction
+from django.contrib import messages
+import tempfile
+import os
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Avg, Count, Max, Min, Q
@@ -13,7 +16,9 @@ from .models import (
     BillaPreisHistorie
 )
 from django.views.decorators.http import require_POST
-
+import pdfplumber
+import re
+from finance.brand_mapper import BrandMapper
 
 @login_required
 def billa_dashboard(request):
@@ -1377,3 +1382,357 @@ def billa_preisentwicklung_marke(request, marke):
     }
 
     return render(request, 'finance/billa_preisentwicklung_marke.html', context)
+
+
+class BillaReceiptParser:
+    """Parser für Billa-Rechnungen (aus dem Command kopiert)"""
+
+    def __init__(self):
+        self.artikel_pattern = re.compile(r'^(.+?)\s+([ABCDG])\s+([\d.,-]+)\s*$')
+        self.gewicht_pattern = re.compile(r'^\s*([\d.]+)\s*kg\s*(?:\(N\))?\s*x\s*([\d.]+)\s*EUR/kg\s*$')
+        self.menge_pattern = re.compile(r'^\s*(\d+)\s*x\s*([\d.]+)\s*$')
+        self.rabatt_pattern = re.compile(
+            r'^(NIMM MEHR|EXTREM AKTION|GRATIS AKTION|AKTIONSNACHLASS|'
+            r'FILIALAKTION|Preiskorrektur|Jö Äpp Extrem Bon)\s+([ABCDG])?\s*([\d.,-]+)\s*$'
+        )
+
+    def parse_pdf(self, pdf_path):
+        """Parst eine PDF-Rechnung"""
+        with pdfplumber.open(pdf_path) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() + "\n"
+
+        lines = text.split('\n')
+
+        data = {
+            'datum': None,
+            'zeit': None,
+            'filiale': None,
+            'kassa': None,
+            'bon_nr': None,
+            're_nr': None,
+            'gesamt_preis': None,
+            'gesamt_ersparnis': Decimal('0'),
+            'zwischensumme': None,
+            'mwst_b': None,
+            'mwst_c': None,
+            'mwst_g': None,
+            'mwst_d': None,
+            'oe_punkte_gesammelt': 0,
+            'oe_punkte_eingeloest': 0,
+            'pdf_datei': pdf_path,
+            'artikel': []
+        }
+
+        data.update(self._extract_header(lines))
+        data['artikel'] = self._extract_artikel(lines)
+
+        return data
+
+    def _extract_header(self, lines):
+        """Extrahiert Header-Informationen"""
+        info = {}
+
+        for line in lines:
+            # Datum und Zeit
+            m = re.search(r'Datum:\s*(\d{2}\.\d{2}\.\d{4})\s+Zeit:\s*(\d{2}:\d{2})', line)
+            if m:
+                info['datum'] = datetime.strptime(m.group(1), '%d.%m.%Y').date()
+                info['zeit'] = datetime.strptime(m.group(2), '%H:%M').time()
+
+            # Filiale
+            m = re.search(r'Filiale:\s*(\d+)', line)
+            if m:
+                info['filiale'] = m.group(1)
+
+            # Kassa
+            m = re.search(r'Kassa:\s*(\d+)', line)
+            if m:
+                info['kassa'] = int(m.group(1))
+
+            # Bon-Nr
+            m = re.search(r'Bon-Nr:\s*(\d+)', line)
+            if m:
+                info['bon_nr'] = m.group(1)
+
+            # Re-Nr
+            m = re.search(r'Re-Nr:\s*([\d-]+)', line)
+            if m:
+                info['re_nr'] = m.group(1)
+
+            # Ersparnis
+            m = re.search(r'HEUTE GESPART\s+([\d.,]+)\s*EUR', line)
+            if m:
+                info['gesamt_ersparnis'] = Decimal(m.group(1).replace(',', '.'))
+
+            # Summe
+            if line.startswith('Summe') and 'EUR' in line:
+                m = re.search(r'([\d.,]+)$', line)
+                if m:
+                    info['gesamt_preis'] = Decimal(m.group(1).replace(',', '.'))
+
+            # MwSt
+            m = re.search(r'B:\s*10%\s*MwSt.*?=\s*([\d.,]+)', line)
+            if m:
+                info['mwst_b'] = Decimal(m.group(1).replace(',', '.'))
+
+            m = re.search(r'C:\s*20%\s*MwSt.*?=\s*([\d.,]+)', line)
+            if m:
+                info['mwst_c'] = Decimal(m.group(1).replace(',', '.'))
+
+            m = re.search(r'G:\s*13%\s*MwSt.*?=\s*([\d.,]+)', line)
+            if m:
+                info['mwst_g'] = Decimal(m.group(1).replace(',', '.'))
+
+            # Ö-Punkte
+            m = re.search(r'GESAMMELT\s+(\d+)', line)
+            if m:
+                info['oe_punkte_gesammelt'] = int(m.group(1))
+
+            m = re.search(r'EINGELÖST\s+(\d+)', line)
+            if m:
+                info['oe_punkte_eingeloest'] = int(m.group(1))
+
+        return info
+
+    def _extract_artikel(self, lines):
+        """Extrahiert Artikel aus den Zeilen"""
+        artikel_liste = []
+        position = 0
+        pending_artikel = None
+
+        for i, line in enumerate(lines):
+            if pending_artikel and self._ist_gewicht_zeile(line):
+                gewicht_data = self._parse_gewicht_zeile(line)
+                pending_artikel.update(gewicht_data)
+                artikel_liste.append(pending_artikel)
+                pending_artikel = None
+                continue
+
+            if pending_artikel and self._ist_menge_zeile(line):
+                menge_data = self._parse_menge_zeile(line)
+                pending_artikel.update(menge_data)
+                artikel_liste.append(pending_artikel)
+                pending_artikel = None
+                continue
+
+            if pending_artikel:
+                artikel_liste.append(pending_artikel)
+                pending_artikel = None
+
+            if self._ist_rabatt_zeile(line):
+                rabatt_data = self._check_rabatt(line)
+                if rabatt_data and artikel_liste:
+                    artikel_liste[-1]['rabatt'] = rabatt_data['rabatt']
+                    artikel_liste[-1]['rabatt_typ'] = rabatt_data['rabatt_typ']
+                continue
+
+            match = self.artikel_pattern.match(line.strip())
+            if match:
+                position += 1
+                name = match.group(1).strip()
+                preis = Decimal(match.group(3).replace(',', '.'))
+
+                pending_artikel = {
+                    'position': position,
+                    'produkt_name': name,
+                    'produkt_name_normalisiert': self._normalize_name(name),
+                    'menge': Decimal('1'),
+                    'einheit': 'Stk',
+                    'einzelpreis': preis,
+                    'gesamtpreis': preis,
+                    'rabatt': Decimal('0'),
+                    'rabatt_typ': None,
+                    'mwst_kategorie': match.group(2),
+                    'ist_gewichtsartikel': False,
+                    'ist_mehrfachgebinde': name.startswith('@')
+                }
+
+        if pending_artikel:
+            artikel_liste.append(pending_artikel)
+
+        return artikel_liste
+
+    def _ist_gewicht_zeile(self, line):
+        return bool(self.gewicht_pattern.match(line.strip()))
+
+    def _ist_menge_zeile(self, line):
+        return bool(self.menge_pattern.match(line.strip()))
+
+    def _parse_gewicht_zeile(self, line):
+        match = self.gewicht_pattern.match(line.strip())
+        if match:
+            return {
+                'menge': Decimal(match.group(1)),
+                'einheit': 'kg',
+                'einzelpreis': Decimal(match.group(2).replace(',', '.')),
+                'ist_gewichtsartikel': True
+            }
+        return {}
+
+    def _parse_menge_zeile(self, line):
+        match = self.menge_pattern.match(line.strip())
+        if match:
+            return {
+                'menge': Decimal(match.group(1)),
+                'einzelpreis': Decimal(match.group(2).replace(',', '.'))
+            }
+        return {}
+
+    def _ist_rabatt_zeile(self, line):
+        line_stripped = line.strip()
+        if re.match(r'^[A-Za-zäöüÄÖÜ\s]+-?\d+%\s+([ABCDG])?\s*-?[\d.,-]+\s*$', line_stripped):
+            return True
+        if self.rabatt_pattern.match(line_stripped):
+            return True
+        return False
+
+    def _check_rabatt(self, line):
+        line_stripped = line.strip()
+
+        prozent_match = re.match(r'^(.+?)\s+(-?\d+)%\s+([ABCDG])?\s*([\d.,-]+)\s*', line_stripped)
+        if prozent_match:
+            rabatt_name = prozent_match.group(1).strip()
+            prozent = prozent_match.group(2)
+            betrag = prozent_match.group(4).replace(',', '.')
+            return {
+                'rabatt_typ': f'{rabatt_name} {prozent}%',
+                'rabatt': abs(Decimal(betrag))
+            }
+
+        match = self.rabatt_pattern.match(line_stripped)
+        if match:
+            betrag = match.group(3).replace(',', '.')
+            return {
+                'rabatt_typ': match.group(1),
+                'rabatt': abs(Decimal(betrag))
+            }
+
+        return None
+
+    def _normalize_name(self, name):
+        return name.lstrip('@').strip().lower()
+
+
+# Neue View für den Upload
+@login_required
+@transaction.atomic
+def billa_import_upload(request):
+    """Upload-Formular für Billa-Rechnungen"""
+
+    if request.method == 'POST' and request.FILES.getlist('pdf_files'):
+        pdf_files = request.FILES.getlist('pdf_files')
+        force = request.POST.get('force', False)
+
+        stats = {
+            'total': len(pdf_files),
+            'imported': 0,
+            'skipped': 0,
+            'errors': 0,
+            'error_details': []
+        }
+
+        parser = BillaReceiptParser()
+
+        for pdf_file in pdf_files:
+            # Speichere Datei temporär
+            temp_dir = tempfile.mkdtemp()
+            temp_path = os.path.join(temp_dir, pdf_file.name)
+
+            try:
+                # Schreibe Datei
+                with open(temp_path, 'wb+') as destination:
+                    for chunk in pdf_file.chunks():
+                        destination.write(chunk)
+
+                # Parse PDF
+                data = parser.parse_pdf(temp_path)
+
+                # Prüfe ob bereits importiert
+                if not force and data['re_nr']:
+                    if BillaEinkauf.objects.filter(re_nr=data['re_nr']).exists():
+                        stats['skipped'] += 1
+                        continue
+
+                # Erstelle Einkauf
+                artikel_liste = data.pop('artikel')
+                einkauf = BillaEinkauf.objects.create(**data)
+
+                # Erstelle Artikel
+                for artikel_data in artikel_liste:
+                    artikel_data['einkauf'] = einkauf
+
+                    produkt_name_norm = artikel_data['produkt_name_normalisiert']
+                    produkt_name_original = artikel_data['produkt_name']
+
+                    produkt, created = BillaProdukt.objects.get_or_create(
+                        name_normalisiert=produkt_name_norm,
+                        defaults={
+                            'name_original': produkt_name_original,
+                            'letzter_preis': artikel_data['gesamtpreis'],
+                            'marke': BrandMapper.extract_brand(produkt_name_original)
+                        }
+                    )
+
+                    if not created and not produkt.marke:
+                        produkt.marke = BrandMapper.extract_brand(produkt_name_original)
+                        produkt.save(update_fields=['marke'])
+
+                    if not created:
+                        if len(produkt_name_original) < len(produkt.name_original):
+                            produkt.name_original = produkt_name_original
+                            produkt.save(update_fields=['name_original'])
+
+                    artikel_data['produkt'] = produkt
+                    artikel = BillaArtikel.objects.create(**artikel_data)
+
+                    # Erstelle Preishistorie
+                    BillaPreisHistorie.objects.create(
+                        produkt=produkt,
+                        artikel=artikel,
+                        datum=einkauf.datum,
+                        preis=artikel.preis_pro_einheit,
+                        menge=artikel.menge,
+                        einheit=artikel.einheit,
+                        filiale=einkauf.filiale
+                    )
+
+                    # Aktualisiere Produkt-Statistiken
+                    produkt.update_statistiken()
+
+                stats['imported'] += 1
+
+            except Exception as e:
+                stats['errors'] += 1
+                stats['error_details'].append({
+                    'file': pdf_file.name,
+                    'error': str(e)
+                })
+
+            finally:
+                # Lösche temporäre Datei
+                try:
+                    os.remove(temp_path)
+                    os.rmdir(temp_dir)
+                except:
+                    pass
+
+        # Feedback-Nachrichten
+        if stats['imported'] > 0:
+            messages.success(request, f"✓ {stats['imported']} Rechnung(en) erfolgreich importiert")
+
+        if stats['skipped'] > 0:
+            messages.warning(request, f"⊘ {stats['skipped']} Rechnung(en) bereits vorhanden (übersprungen)")
+
+        if stats['errors'] > 0:
+            messages.error(request, f"✗ {stats['errors']} Fehler beim Import")
+            for error in stats['error_details']:
+                messages.error(request, f"  • {error['file']}: {error['error']}")
+
+        # Redirect zum Dashboard
+        from django.shortcuts import redirect
+        return redirect('finance:billa_dashboard')
+
+    context = {}
+    return render(request, 'finance/billa_import.html', context)

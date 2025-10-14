@@ -1,0 +1,265 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Billa Rechnungen importieren{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 3px dashed #dee2e6;
+        border-radius: 15px;
+        padding: 3rem;
+        text-align: center;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        margin: 2rem 0;
+    }
+    
+    .upload-area:hover {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+    }
+    
+    .upload-area.dragover {
+        border-color: #198754;
+        background: #d1e7dd;
+    }
+    
+    .upload-icon {
+        font-size: 4rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+    
+    .file-list {
+        margin-top: 1.5rem;
+    }
+    
+    .file-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .file-item i {
+        color: #dc3545;
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+    
+    .file-item i:hover {
+        color: #bb2d3b;
+    }
+    
+    .import-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="import-header">
+        <h1 class="mb-2">
+            <i class="bi bi-upload"></i> Billa Rechnungen importieren
+        </h1>
+        <p class="mb-0">Laden Sie Ihre Billa-Rechnungen als PDF-Dateien hoch</p>
+    </div>
+
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" id="uploadForm">
+                        {% csrf_token %}
+                        
+                        <!-- Upload Area -->
+                        <div class="upload-area" id="uploadArea">
+                            <i class="bi bi-cloud-upload upload-icon"></i>
+                            <h4>PDF-Dateien hierher ziehen</h4>
+                            <p class="text-muted mb-3">oder klicken, um Dateien auszuwählen</p>
+                            <input type="file" 
+                                   name="pdf_files" 
+                                   id="pdfFiles" 
+                                   multiple 
+                                   accept=".pdf"
+                                   style="display: none;">
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('pdfFiles').click()">
+                                <i class="bi bi-folder2-open"></i> Dateien auswählen
+                            </button>
+                        </div>
+
+                        <!-- File List -->
+                        <div class="file-list" id="fileList" style="display: none;">
+                            <h5><i class="bi bi-files"></i> Ausgewählte Dateien:</h5>
+                            <div id="fileItems"></div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   name="force" 
+                                   id="forceImport">
+                            <label class="form-check-label" for="forceImport">
+                                Bereits vorhandene Rechnungen erneut importieren (überschreiben)
+                            </label>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Zurück zum Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
+                                <i class="bi bi-upload"></i> Importieren
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card mt-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-info-circle"></i> Hinweise
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Es werden nur <strong>PDF-Dateien</strong> von Billa akzeptiert</li>
+                        <li>Sie können <strong>mehrere Rechnungen gleichzeitig</strong> hochladen</li>
+                        <li>Bereits importierte Rechnungen werden automatisch übersprungen (außer Option aktiviert)</li>
+                        <li>Der Import kann einige Sekunden dauern</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('pdfFiles');
+    const fileList = document.getElementById('fileList');
+    const fileItems = document.getElementById('fileItems');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    
+    let selectedFiles = [];
+    
+    // Click to select files
+    uploadArea.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'BUTTON') {
+            fileInput.click();
+        }
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        handleFiles(Array.from(e.target.files));
+    });
+    
+    // Drag and drop
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', function() {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+        handleFiles(files);
+    });
+    
+    function handleFiles(files) {
+        if (files.length === 0) return;
+        
+        selectedFiles = files;
+        renderFileList();
+        submitBtn.disabled = false;
+    }
+    
+    function renderFileList() {
+        if (selectedFiles.length === 0) {
+            fileList.style.display = 'none';
+            return;
+        }
+        
+        fileList.style.display = 'block';
+        fileItems.innerHTML = '';
+        
+        selectedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <div>
+                    <i class="bi bi-file-pdf text-danger me-2"></i>
+                    <strong>${file.name}</strong>
+                    <span class="text-muted ms-2">(${formatFileSize(file.size)})</span>
+                </div>
+                <i class="bi bi-x-circle" onclick="removeFile(${index})"></i>
+            `;
+            fileItems.appendChild(item);
+        });
+    }
+    
+    window.removeFile = function(index) {
+        selectedFiles.splice(index, 1);
+        
+        // Update file input
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        fileInput.files = dt.files;
+        
+        renderFileList();
+        
+        if (selectedFiles.length === 0) {
+            submitBtn.disabled = true;
+        }
+    };
+    
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+    
+    // Form submit handling
+    uploadForm.addEventListener('submit', function(e) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importiere...';
+    });
+});
+</script>
+{% endblock %}
