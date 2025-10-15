@@ -105,13 +105,21 @@
         </div>
     </div>
 
+
     <!-- Navigation - AN DEN ANFANG VERSCHOBEN -->
     <div class="row g-3 mb-4">
         <div class="col">
-            <a href="{% url 'finance:billa_einkauefe_uebersicht' %}" class="nav-card-compact" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <a href="{% url 'finance:billa_einkauefe_uebersicht' %}" class="nav-card-compact green">
                 <span class="nav-card-icon">🛒</span>
                 <div class="nav-card-title">Einkäufe Übersicht</div>
                 <div class="nav-card-description">Alle Einkäufe anzeigen</div>
+            </a>
+        </div>
+        <div class="col">
+            <a href="{% url 'finance:billa_ueberkategorien_liste' %}" class="nav-card-compact orange">
+                <span class="nav-card-icon">📦</span>
+                <div class="nav-card-title">Überkategorien</div>
+                <div class="nav-card-description">Kategorien anzeigen</div>
             </a>
         </div>
         <div class="col">
@@ -126,13 +134,6 @@
                 <span class="nav-card-icon">🏷️</span>
                 <div class="nav-card-title">Produktgruppen</div>
                 <div class="nav-card-description">Ausgaben nach Kategorien</div>
-            </a>
-        </div>
-        <div class="col">
-            <a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}" class="nav-card-compact orange">
-                <span class="nav-card-icon">📈</span>
-                <div class="nav-card-title">Preisentwicklung</div>
-                <div class="nav-card-description">Preisänderungen verfolgen</div>
             </a>
         </div>
         <div class="col">

@@ -414,10 +414,11 @@ def billa_produkte_liste(request):
 
     return render(request, 'finance/billa_produkte_liste.html', context)
 
-
+# ❌ DEPRECATED
+"""
 @login_required
 def billa_preisentwicklung(request):
-    """Zeigt Produkte mit größten Preisänderungen"""
+
 
     # Produkte mit mindestens 3 Käufen
     produkte_mit_aenderungen = []
@@ -446,7 +447,7 @@ def billa_preisentwicklung(request):
     }
 
     return render(request, 'finance/billa_preisentwicklung.html', context)
-
+"""
 
 # API Endpoints für AJAX
 
@@ -768,14 +769,12 @@ def billa_produktgruppe_detail(request, produktgruppe):
 
 # ============================================================================
 # PREISENTWICKLUNG - ÜBERSICHT
+# DEPRECATED - ersetzt durch billa_ueberkategorien
 # ============================================================================
-
+"""
 @login_required
 def billa_preisentwicklung_uebersicht(request):
-    """
-    Übersichtsseite für Preisentwicklung.
-    Zeigt aggregierte Statistiken für alle Ebenen.
-    """
+
 
     # === Überkategorien Statistiken ===
     ueberkategorien_stats = BillaProdukt.objects.exclude(
@@ -835,15 +834,15 @@ def billa_preisentwicklung_uebersicht(request):
         'top_produkte': produkte_mit_preisen[:20]
     }
 
-    return render(request, 'finance/billa_preisentwicklung_uebersicht.html', context)
-
+    return render(request, 'finance/_OLD_billa_preisentwicklung_uebersicht.html', context)
+"""
 
 # ============================================================================
 # PREISENTWICKLUNG - ÜBERKATEGORIEN
 # ============================================================================
 
 @login_required
-def billa_preisentwicklung_ueberkategorien(request):
+def billa_ueberkategorien_liste(request):
     """
     Zeigt alle Überkategorien mit aggregierter Preisentwicklung.
     ✅ FIX: Konvertiert Decimal zu Float für JavaScript Charts
@@ -915,7 +914,7 @@ def billa_preisentwicklung_ueberkategorien(request):
         'ueberkategorien': ueberkategorien
     }
 
-    return render(request, 'finance/billa_preisentwicklung_ueberkategorien.html', context)
+    return render(request, 'finance/billa_ueberkategorien_liste.html', context)
 
 
 # ============================================================================
@@ -923,7 +922,7 @@ def billa_preisentwicklung_ueberkategorien(request):
 # ============================================================================
 
 @login_required
-def billa_preisentwicklung_ueberkategorie(request, ueberkategorie):
+def billa_ueberkategorie(request, ueberkategorie):
     """Überkategorie mit Produktgruppen - MIT CHARTS"""
 
     stats = BillaProdukt.objects.filter(
@@ -997,7 +996,7 @@ def billa_preisentwicklung_ueberkategorie(request, ueberkategorie):
         'produktgruppen': json.dumps(produktgruppen)
     }
 
-    return render(request, 'finance/billa_preisentwicklung_ueberkategorie.html', context)
+    return render(request, 'finance/billa_ueberkategorie.html', context)
 
 
 # ============================================================================
@@ -1101,11 +1100,11 @@ def billa_preisentwicklung_produktgruppe(request, produktgruppe):
 
 # ============================================================================
 # PREISENTWICKLUNG - EINZELNES PRODUKT
+# ❌ DEPRECATED
 # ============================================================================
-
+"""
 @login_required
 def billa_preisentwicklung_produkt(request, produkt_id):
-    """Einzelprodukt Detail mit Preisentwicklung"""
 
     produkt = get_object_or_404(BillaProdukt, pk=produkt_id)
 
@@ -1158,8 +1157,8 @@ def billa_preisentwicklung_produkt(request, produkt_id):
         'letzte_kaeufe': letzte_kaeufe
     }
 
-    return render(request, 'finance/billa_preisentwicklung_produkt.html', context)
-
+    return render(request, 'finance/_OLD_billa_preisentwicklung_produkt.html', context)
+"""
 
 # ============================================================================
 # HILFSFUNKTIONEN
@@ -2140,15 +2139,32 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
             diff = max_preis - min_preis
             diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
 
+            # ✅ NEU: Preisverlauf für Charts (letzte 30 Einträge)
+            preis_historie_raw = BillaPreisHistorie.objects.filter(
+                produkt__ueberkategorie=ueberkategorie,
+                produkt__produktgruppe=gruppe_name
+            ).values('datum').annotate(
+                durchschnitt=Avg('preis')
+            ).order_by('datum')[:30]
+
+            preis_historie = [
+                {
+                    'datum': h['datum'].strftime('%d.%m.%Y'),
+                    'durchschnitt': float(h['durchschnitt']) if h['durchschnitt'] else 0
+                }
+                for h in preis_historie_raw
+            ]
+
             produktgruppen_mit_preisen.append({
                 'name': gruppe_name,
                 'anzahl_produkte': gruppe['anzahl_produkte'],
                 'anzahl_kaeufe': gruppe['anzahl_kaeufe'],
-                'min_preis': min_preis,
-                'max_preis': max_preis,
-                'avg_preis': preis_stats['avg_preis'],
-                'diff': diff,
-                'diff_pct': diff_pct
+                'min_preis': float(min_preis),  # ✅ Float für JSON
+                'max_preis': float(max_preis),  # ✅ Float für JSON
+                'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0,
+                'diff': float(diff),  # ✅ Float für JSON
+                'diff_pct': float(diff_pct),  # ✅ Float für JSON
+                'preis_historie': preis_historie  # ✅ NEU: Für Charts
             })
 
     # Sortiere nach Preisänderung
@@ -2197,12 +2213,14 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
     # Context zusammenstellen
     # ========================================================================
 
+    stats['anzahl_produktgruppen'] = len(produktgruppen_list)
+
     context = {
         'ueberkategorie': ueberkategorie,
         'icon': icon,
         'stats': stats,
         'produktgruppen': produktgruppen_list,
-        'produktgruppen_mit_preisen': produktgruppen_mit_preisen,
+        'produktgruppen_mit_preisen': json.dumps(produktgruppen_mit_preisen),  # ✅ JSON!
         'top_produkte': top_produkte,
 
         # JSON-serialisierte Chart-Daten

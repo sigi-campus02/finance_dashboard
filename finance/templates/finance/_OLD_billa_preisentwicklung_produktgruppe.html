@@ -11,7 +11,7 @@
             <li class="breadcrumb-item"><a href="{% url 'finance:billa_dashboard' %}">Billa</a></li>
             <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">Preisentwicklung</a></li>
             {% if ueberkategorie %}
-            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' ueberkategorie %}">{{ ueberkategorie }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_ueberkategorie' ueberkategorie %}">{{ ueberkategorie }}</a></li>
             {% endif %}
             <li class="breadcrumb-item active">{{ produktgruppe }}</li>
         </ol>
@@ -22,7 +22,7 @@
         {% if ueberkategorie %}
         <div>
             <span class="badge bg-secondary me-2"><i class="bi bi-tag-fill"></i> {{ ueberkategorie }}</span>
-            <a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' ueberkategorie %}" class="btn btn-outline-secondary">
+            <a href="{% url 'finance:billa_ueberkategorie' ueberkategorie %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Zurück
             </a>
         </div>

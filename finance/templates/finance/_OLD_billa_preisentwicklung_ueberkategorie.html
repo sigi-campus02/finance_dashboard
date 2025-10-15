@@ -10,14 +10,14 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'finance:billa_dashboard' %}">Billa</a></li>
             <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">Preisentwicklung</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}">Überkategorien</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_ueberkategorien_liste' %}">Überkategorien</a></li>
             <li class="breadcrumb-item active">{{ ueberkategorie }}</li>
         </ol>
     </nav>
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><i class="bi bi-tag-fill"></i> {{ ueberkategorie }}</h1>
-        <a href="{% url 'finance:billa_preisentwicklung_ueberkategorien' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'finance:billa_ueberkategorien_liste' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Zurück
         </a>
     </div>
