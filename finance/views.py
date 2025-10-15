@@ -2602,16 +2602,16 @@ def api_categorygroup_quarterly_breakdown(request):
 
     # Farbpalette für deutliche Unterscheidung
     colors = [
-        'rgb(255, 99, 132)',  # Rot
-        'rgb(54, 162, 235)',  # Blau
-        'rgb(255, 206, 86)',  # Gelb
-        'rgb(75, 192, 192)',  # Türkis
-        'rgb(153, 102, 255)',  # Lila
-        'rgb(255, 159, 64)',  # Orange
-        'rgb(201, 203, 207)',  # Grau
-        'rgb(255, 99, 255)',  # Pink
-        'rgb(99, 255, 132)',  # Hellgrün
-        'rgb(99, 132, 255)',  # Hellblau
+        'rgb(130, 177, 255)',  # Helles Blau
+        'rgb(158, 206, 154)',  # Mintgrün
+        'rgb(255, 183, 178)',  # Lachs/Koralle
+        'rgb(189, 178, 255)',  # Lavendel
+        'rgb(255, 218, 121)',  # Helles Gelb
+        'rgb(174, 214, 241)',  # Baby Blau
+        'rgb(255, 195, 160)',  # Pfirsich
+        'rgb(162, 217, 206)',  # Aquamarin
+        'rgb(229, 152, 155)',  # Altrosa
+        'rgb(197, 202, 233)',  # Periwinkle (Blaugrau-hell)
     ]
 
     color_idx = 0  # Zähler für Farben (nur für Kategorien mit Daten)
@@ -2982,15 +2982,15 @@ def api_supermarket_year_comparison(request):
             {
                 'label': '2025',
                 'data': comparison_data.get(2025, [0] * 12),
-                'backgroundColor': 'rgba(54, 162, 235, 0.8)',  # Blau
-                'borderColor': 'rgba(54, 162, 235, 1)',
+                'backgroundColor': 'rgba(52, 168, 83, 0.7)',  # Blau
+                'borderColor': 'rgba(52, 168, 83, 1)',
                 'borderWidth': 1
             },
             {
                 'label': '2024',
                 'data': comparison_data.get(2024, [0] * 12),
-                'backgroundColor': 'rgba(128, 128, 128, 0.5)',  # Grau
-                'borderColor': 'rgba(128, 128, 128, 1)',
+                'backgroundColor': 'rgba(52, 168, 83, 0.25)',  # Grau
+                'borderColor': 'rgba(52, 168, 83, 1)',
                 'borderWidth': 1
             }
         ]

@@ -12,7 +12,7 @@
 
     .chart-container-medium {
         position: relative;
-        height: 280px;  /* GEÄNDERT von 400px auf 280px */
+        height: 280px;
         padding-bottom: 10px;
     }
 
@@ -26,9 +26,94 @@
     .stat-box {
         background: #f8f9fa;
         border-left: 4px solid;
-        padding: 15px;
-        margin-bottom: 15px;
+        padding: 12px 15px;
+        margin-bottom: 20px;
         border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .stat-box-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .stat-box-value {
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0;
+        color: #212529;
+    }
+
+    @media (max-width: 576px) {
+        .stat-box {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px 12px;
+        }
+
+        .stat-box-value {
+            font-size: 1.5rem;
+            margin-top: 4px;
+        }
+    }
+
+    /* Bereichs-Hintergründe */
+    .section-bg-overview {
+        background: linear-gradient(to bottom, rgba(91, 155, 213, 0.03) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-supermarkt {
+        background: linear-gradient(to bottom, rgba(52, 168, 83, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-haushalt {
+        background: linear-gradient(to bottom, rgba(91, 155, 213, 0.04) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-wohnung {
+        background: linear-gradient(to bottom, rgba(237, 125, 49, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-restaurant {
+        background: linear-gradient(to bottom, rgba(132, 151, 176, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-gesundheit {
+        background: linear-gradient(to bottom, rgba(255, 192, 0, 0.06) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-freizeit {
+        background: linear-gradient(to bottom, rgba(112, 173, 71, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-geschenke {
+        background: linear-gradient(to bottom, rgba(68, 114, 196, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-bg-kfz {
+        background: linear-gradient(to bottom, rgba(255, 0, 102, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .section-wrapper {
+        padding: 30px 0;
+        margin-left: -15px;
+        margin-right: -15px;
+        padding-left: 15px;
+        padding-right: 15px;
+        margin-bottom: 20px;
+    }
+
+    @media (min-width: 768px) {
+        .section-wrapper {
+            margin-left: calc(-50vw + 50%);
+            margin-right: calc(-50vw + 50%);
+            padding-left: calc(50vw - 50% + 15px);
+            padding-right: calc(50vw - 50% + 15px);
+        }
     }
 
     /* Mobile: Mehr Höhe für bessere Lesbarkeit */
@@ -38,7 +123,7 @@
             padding-bottom: 15px;
         }
         .chart-container-medium {
-            height: 350px;  /* GEÄNDERT von 500px auf 350px */
+            height: 350px;
             padding-bottom: 15px;
         }
     }
@@ -50,8 +135,142 @@
             padding-bottom: 20px;
         }
         .chart-container-medium {
-            height: 400px;  /* GEÄNDERT von 600px auf 400px */
+            height: 400px;
             padding-bottom: 20px;
+        }
+    }
+
+    /* Floating Navigation Button */
+    .floating-nav-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        cursor: pointer;
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        transition: all 0.3s ease;
+    }
+
+    .floating-nav-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    }
+
+    .floating-nav-btn.show {
+        display: flex;
+    }
+
+    /* Navigation Overlay */
+    .nav-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 1100;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .nav-overlay.show {
+        display: block;
+        opacity: 1;
+    }
+
+    /* Navigation Menu */
+    .nav-menu {
+        position: fixed;
+        bottom: -100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+        z-index: 1200;
+        max-height: 70vh;
+        overflow-y: auto;
+        transition: bottom 0.3s ease;
+        padding: 20px;
+    }
+
+    .nav-menu.show {
+        bottom: 0;
+    }
+
+    .nav-menu-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .nav-menu-header h5 {
+        margin: 0;
+        color: #333;
+    }
+
+    .nav-close-btn {
+        background: none;
+        border: none;
+        font-size: 28px;
+        color: #999;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .nav-menu-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+        background: #f8f9fa;
+        border-left: 4px solid;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: #333;
+    }
+
+    .nav-menu-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+
+    .nav-menu-item i {
+        font-size: 20px;
+        margin-right: 12px;
+        width: 24px;
+        text-align: center;
+    }
+
+    .nav-menu-item span {
+        font-weight: 500;
+    }
+
+    /* Desktop: Button verstecken */
+    @media (min-width: 992px) {
+        .floating-nav-btn {
+            display: none !important;
         }
     }
 </style>
@@ -76,7 +295,8 @@
     </div>
 
     <!-- Gestapeltes Balkendiagramm -->
-    <div class="row mb-4">
+    <div class="section-wrapper section-bg-overview">
+        <div class="row mb-4" id="section-overview">
         <div class="col-12">
             <div class="card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -102,9 +322,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- Tortendiagramme -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-overview">
+        <div class="row mb-5" id="section-pie-charts">
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header bg-primary text-white">
@@ -127,12 +349,15 @@
                 <div class="card-body">
                     <canvas id="categoryPieChart2024" height="250"></canvas>
                 </div>
+                </div>
             </div>
         </div>
     </div>
+    </div>
 
     <!-- ===== SPECIAL SECTION: SUPERMARKT (Kategorie 1.4. id=5) ===== -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-supermarkt">
+        <div class="row mb-5" id="section-supermarkt">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(52, 168, 83);">
@@ -150,17 +375,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-supermarket">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-supermarket">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <!-- Monatliche Entwicklung mit Trendlinie -->
                     <div class="row mb-4">
                         <div class="col-12">
@@ -170,7 +387,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Jahresvergleich 2024 vs 2025 -->
                     <div class="row mb-4">
                         <div class="col-12">
@@ -180,7 +397,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- SPECIAL: Kombiniertes Billa-Diagramm -->
                     <div class="row">
                         <div class="col-12">
@@ -197,10 +414,12 @@
             </div>
         </div>
     </div>
+    </div>
     <!-- ===== END SUPERMARKT SECTION ===== -->
 
     <!-- 1. Haushaltsausgaben -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-haushalt">
+        <div class="row mb-5" id="section-haushalt">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(91, 155, 213);">
@@ -217,17 +436,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-2">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-2">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -236,7 +447,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -245,7 +456,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -258,9 +469,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- 2. Wohnung -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-wohnung">
+        <div class="row mb-5" id="section-wohnung">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(237, 125, 49);">
@@ -277,17 +490,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-3">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-3">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -296,7 +501,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -305,7 +510,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -318,9 +523,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- 3. Restaurant & Lieferservice -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-restaurant">
+        <div class="row mb-5" id="section-restaurant">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(132, 151, 176);">
@@ -337,17 +544,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-4">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-4">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -356,7 +555,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -365,7 +564,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -378,9 +577,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- 4. Ärzte & Gesundheit -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-gesundheit">
+        <div class="row mb-5" id="section-gesundheit">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(255, 192, 0);">
@@ -397,17 +598,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-5">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-5">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -416,7 +609,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -425,7 +618,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -438,9 +631,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- 5. Freizeit & Hobby & Urlaub -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-freizeit">
+        <div class="row mb-5" id="section-freizeit">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(112, 173, 71);">
@@ -457,17 +652,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-6">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-6">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -476,7 +663,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -485,7 +672,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -498,9 +685,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- 6. Geschenke -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-geschenke">
+        <div class="row mb-5" id="section-geschenke">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(68, 114, 196);">
@@ -517,17 +706,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-7">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-7">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -536,7 +717,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -545,7 +726,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -558,9 +739,11 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- 9. KFZ -->
-    <div class="row mb-5">
+    <div class="section-wrapper section-bg-kfz">
+        <div class="row mb-5" id="section-kfz">
         <div class="col-12">
             <div class="card">
                 <div class="categorygroup-header" style="background-color: rgb(255, 0, 102);">
@@ -577,17 +760,9 @@
                                     <span class="spinner-border spinner-border-sm" role="status"></span>
                                 </h3>
                             </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Anzahl Monate</h6>
-                                <h5 class="mb-0" id="num-months-10">-</h5>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-1">Gesamtausgaben</h6>
-                                <h5 class="mb-0" id="total-spending-10">-</h5>
-                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-graph-up"></i> Monatliche Entwicklung 2024-2025</h5>
@@ -596,7 +771,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5><i class="bi bi-bar-chart"></i> Jahresvergleich 2024 vs 2025</h5>
@@ -605,7 +780,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-12">
                             <h5><i class="bi bi-stack"></i> Quartalsweise nach Kategorien</h5>
@@ -617,6 +792,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Link zur Transaktionsliste -->
@@ -636,6 +812,74 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Floating Navigation Button (nur Mobile) -->
+    <button class="floating-nav-btn" id="floatingNavBtn" aria-label="Navigation öffnen">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Navigation Overlay -->
+    <div class="nav-overlay" id="navOverlay"></div>
+
+    <!-- Navigation Menu -->
+    <div class="nav-menu" id="navMenu">
+        <div class="nav-menu-header">
+            <h5><i class="bi bi-compass"></i> Navigation</h5>
+            <button class="nav-close-btn" id="navCloseBtn" aria-label="Menü schließen">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+
+        <a href="#section-overview" class="nav-menu-item" style="border-left-color: rgb(91, 155, 213);" data-section="section-overview">
+            <i class="bi bi-bar-chart-fill" style="color: rgb(91, 155, 213);"></i>
+            <span>Übersicht Monatlich</span>
+        </a>
+
+        <a href="#section-pie-charts" class="nav-menu-item" style="border-left-color: rgb(91, 155, 213);" data-section="section-pie-charts">
+            <i class="bi bi-pie-chart-fill" style="color: rgb(91, 155, 213);"></i>
+            <span>Kategorien 2024/2025</span>
+        </a>
+
+        <a href="#section-supermarkt" class="nav-menu-item" style="border-left-color: rgb(52, 168, 83);" data-section="section-supermarkt">
+            <i class="bi bi-cart" style="color: rgb(52, 168, 83);"></i>
+            <span>Supermarkt</span>
+        </a>
+
+        <a href="#section-haushalt" class="nav-menu-item" style="border-left-color: rgb(91, 155, 213);" data-section="section-haushalt">
+            <i class="bi bi-cart" style="color: rgb(91, 155, 213);"></i>
+            <span>Haushaltsausgaben</span>
+        </a>
+
+        <a href="#section-wohnung" class="nav-menu-item" style="border-left-color: rgb(237, 125, 49);" data-section="section-wohnung">
+            <i class="bi bi-house" style="color: rgb(237, 125, 49);"></i>
+            <span>Wohnung</span>
+        </a>
+
+        <a href="#section-restaurant" class="nav-menu-item" style="border-left-color: rgb(132, 151, 176);" data-section="section-restaurant">
+            <i class="bi bi-cup-straw" style="color: rgb(132, 151, 176);"></i>
+            <span>Restaurant & Lieferservice</span>
+        </a>
+
+        <a href="#section-gesundheit" class="nav-menu-item" style="border-left-color: rgb(255, 192, 0);" data-section="section-gesundheit">
+            <i class="bi bi-heart-pulse" style="color: rgb(255, 192, 0);"></i>
+            <span>Ärzte & Gesundheit</span>
+        </a>
+
+        <a href="#section-freizeit" class="nav-menu-item" style="border-left-color: rgb(112, 173, 71);" data-section="section-freizeit">
+            <i class="bi bi-balloon" style="color: rgb(112, 173, 71);"></i>
+            <span>Freizeit & Hobby & Urlaub</span>
+        </a>
+
+        <a href="#section-geschenke" class="nav-menu-item" style="border-left-color: rgb(68, 114, 196);" data-section="section-geschenke">
+            <i class="bi bi-gift" style="color: rgb(68, 114, 196);"></i>
+            <span>Geschenke</span>
+        </a>
+
+        <a href="#section-kfz" class="nav-menu-item" style="border-left-color: rgb(255, 0, 102);" data-section="section-kfz">
+            <i class="bi bi-car-front" style="color: rgb(255, 0, 102);"></i>
+            <span>KFZ</span>
+        </a>
     </div>
 </div>
 {% endblock %}
@@ -666,9 +910,9 @@ function loadMonthlyChart(year) {
                 type: 'bar',
                 data: data,
                 options: {
-                    indexAxis: 'y',  // Horizontale Balken
+                    indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: false,  // Ermöglicht flexible Höhe
+                    maintainAspectRatio: false,
                     layout: {
                         padding: {
                             top: 10,
@@ -706,7 +950,7 @@ function loadMonthlyChart(year) {
                                 font: {
                                     size: window.innerWidth < 576 ? 11 : 12
                                 },
-                                autoSkip: false  // Zeige alle Monate
+                                autoSkip: false
                             }
                         }
                     },
@@ -724,7 +968,6 @@ function loadMonthlyChart(year) {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    // Bei horizontalen Balken ist der Wert in context.parsed.x
                                     return context.dataset.label + ': € ' +
                                            context.parsed.x.toLocaleString('de-DE', {
                                                minimumFractionDigits: 2,
@@ -759,7 +1002,6 @@ function loadPieChart(year, canvasId, chartVariable) {
         .then(data => {
             const ctx = document.getElementById(canvasId).getContext('2d');
 
-            // Destroy existing chart
             if (chartVariable === '2025' && pieChart2025) {
                 pieChart2025.destroy();
             } else if (chartVariable === '2024' && pieChart2024) {
@@ -804,7 +1046,6 @@ function loadPieChart(year, canvasId, chartVariable) {
                 }
             });
 
-            // Store chart reference
             if (chartVariable === '2025') {
                 pieChart2025 = newChart;
             } else if (chartVariable === '2024') {
@@ -820,25 +1061,74 @@ function loadPieChart(year, canvasId, chartVariable) {
 
 const categoryGroups = [2, 3, 4, 5, 6, 7, 10];
 
-// Format für Euro-Werte
+// Farbschema für jeden Bereich
+const groupColors = {
+    2: { // Haushaltsausgaben
+        primary: 'rgb(91, 155, 213)',
+        primaryAlpha: 'rgba(91, 155, 213, 0.7)',
+        secondary: 'rgb(91, 155, 213)',
+        secondaryAlpha: 'rgba(91, 155, 213, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    },
+    3: { // Wohnung
+        primary: 'rgb(237, 125, 49)',
+        primaryAlpha: 'rgba(237, 125, 49, 0.7)',
+        secondary: 'rgb(237, 125, 49)',
+        secondaryAlpha: 'rgba(237, 125, 49, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    },
+    4: { // Restaurant
+        primary: 'rgb(132, 151, 176)',
+        primaryAlpha: 'rgba(132, 151, 176, 0.7)',
+        secondary: 'rgb(132, 151, 176)',
+        secondaryAlpha: 'rgba(132, 151, 176, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    },
+    5: { // Gesundheit
+        primary: 'rgb(255, 192, 0)',
+        primaryAlpha: 'rgba(255, 192, 0, 0.7)',
+        secondary: 'rgb(255, 192, 0)',
+        secondaryAlpha: 'rgba(255, 192, 0, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    },
+    6: { // Freizeit
+        primary: 'rgb(112, 173, 71)',
+        primaryAlpha: 'rgba(112, 173, 71, 0.7)',
+        secondary: 'rgb(112, 173, 71)',
+        secondaryAlpha: 'rgba(112, 173, 71, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    },
+    7: { // Geschenke
+        primary: 'rgb(68, 114, 196)',
+        primaryAlpha: 'rgba(68, 114, 196, 0.7)',
+        secondary: 'rgb(68, 114, 196)',
+        secondaryAlpha: 'rgba(68, 114, 196, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    },
+    10: { // KFZ
+        primary: 'rgb(255, 0, 102)',
+        primaryAlpha: 'rgba(255, 0, 102, 0.7)',
+        secondary: 'rgb(255, 0, 102)',
+        secondaryAlpha: 'rgba(255, 0, 102, 0.25)',
+        trend: 'rgb(255, 99, 132)'
+    }
+};
+
 function formatEuro(value) {
-    return new Intl.NumberFormat('de-DE', { 
-        style: 'currency', 
+    return new Intl.NumberFormat('de-DE', {
+        style: 'currency',
         currency: 'EUR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(value);
 }
 
-// Lade Statistiken für alle CategoryGroups
 function loadCategoryGroupStats() {
     categoryGroups.forEach(groupId => {
         fetch(`/api/categorygroup-stats/?group_id=${groupId}`)
             .then(response => response.json())
             .then(data => {
                 document.getElementById(`avg-spending-${groupId}`).innerHTML = formatEuro(data.monthly_average);
-                document.getElementById(`num-months-${groupId}`).textContent = data.num_months;
-                document.getElementById(`total-spending-${groupId}`).textContent = formatEuro(data.total_spending);
             })
             .catch(error => {
                 console.error(`Error loading stats for group ${groupId}:`, error);
@@ -847,14 +1137,14 @@ function loadCategoryGroupStats() {
     });
 }
 
-// Erstelle Trendlinie-Diagramme
 function createTrendCharts() {
     categoryGroups.forEach(groupId => {
         fetch(`/api/categorygroup-monthly-trend/?group_id=${groupId}`)
             .then(response => response.json())
             .then(data => {
                 const ctx = document.getElementById(`trendChart${groupId}`).getContext('2d');
-                
+                const colors = groupColors[groupId];
+
                 new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -863,8 +1153,8 @@ function createTrendCharts() {
                             {
                                 label: 'Ausgaben',
                                 data: data.data,
-                                borderColor: 'rgb(75, 192, 192)',
-                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: colors.primary,
+                                backgroundColor: colors.primaryAlpha,
                                 borderWidth: 2,
                                 tension: 0.4,
                                 fill: true
@@ -872,7 +1162,7 @@ function createTrendCharts() {
                             {
                                 label: 'Trend',
                                 data: data.trend_data,
-                                borderColor: 'rgb(255, 99, 132)',
+                                borderColor: colors.trend,
                                 backgroundColor: 'transparent',
                                 borderWidth: 2,
                                 borderDash: [5, 5],
@@ -929,14 +1219,14 @@ function createTrendCharts() {
     });
 }
 
-// Erstelle Vergleichs-Diagramme (2024 vs 2025)
 function createComparisonCharts() {
     categoryGroups.forEach(groupId => {
         fetch(`/api/categorygroup-year-comparison/?group_id=${groupId}`)
             .then(response => response.json())
             .then(data => {
                 const ctx = document.getElementById(`comparisonChart${groupId}`).getContext('2d');
-                
+                const colors = groupColors[groupId];
+
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -945,15 +1235,15 @@ function createComparisonCharts() {
                             {
                                 label: '2025',
                                 data: data.data_2025,
-                                backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                                borderColor: 'rgba(54, 162, 235, 1)',
+                                backgroundColor: colors.primaryAlpha,
+                                borderColor: colors.primary,
                                 borderWidth: 1
                             },
                             {
                                 label: '2024',
                                 data: data.data_2024,
-                                backgroundColor: 'rgba(128, 128, 128, 0.5)',
-                                borderColor: 'rgba(128, 128, 128, 1)',
+                                backgroundColor: colors.secondaryAlpha,
+                                borderColor: colors.secondary,
                                 borderWidth: 1
                             }
                         ]
@@ -1000,14 +1290,13 @@ function createComparisonCharts() {
     });
 }
 
-// Erstelle Quartals-Diagramme
 function createQuarterlyCharts() {
     categoryGroups.forEach(groupId => {
         fetch(`/api/categorygroup-quarterly-breakdown/?group_id=${groupId}`)
             .then(response => response.json())
             .then(data => {
                 const ctx = document.getElementById(`quarterlyChart${groupId}`).getContext('2d');
-                
+
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -1065,16 +1354,14 @@ function createQuarterlyCharts() {
             .catch(error => console.error(`Error creating quarterly chart ${groupId}:`, error));
     });
 }
+
 // ===== SUPERMARKT-BEREICH FUNCTIONS =====
 
-// Lade Supermarkt-Statistiken
 function loadSupermarketStats() {
     fetch('/api/supermarket-stats/')
         .then(response => response.json())
         .then(data => {
             document.getElementById('avg-spending-supermarket').innerHTML = formatEuro(data.monthly_average);
-            document.getElementById('num-months-supermarket').textContent = data.num_months;
-            document.getElementById('total-spending-supermarket').textContent = formatEuro(data.total_spending);
         })
         .catch(error => {
             console.error('Error loading supermarket stats:', error);
@@ -1082,13 +1369,12 @@ function loadSupermarketStats() {
         });
 }
 
-// Erstelle Supermarkt Trendlinie-Diagramm
 function createSupermarketTrendChart() {
     fetch('/api/supermarket-monthly-trend/')
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('supermarketTrendChart').getContext('2d');
-            
+
             new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1098,8 +1384,8 @@ function createSupermarketTrendChart() {
                             label: 'Ausgaben',
                             data: data.data,
                             borderColor: 'rgb(52, 168, 83)',
-                            backgroundColor: 'rgba(52, 168, 83, 0.2)',
-                            borderWidth: 2,
+                            backgroundColor: 'rgba(52, 168, 83, 0.3)',
+                            borderWidth: 3,
                             tension: 0.4,
                             fill: true,
                             yAxisID: 'y'
@@ -1156,13 +1442,12 @@ function createSupermarketTrendChart() {
         .catch(error => console.error('Error loading supermarket trend chart:', error));
 }
 
-// Erstelle Supermarkt Jahresvergleichs-Diagramm
 function createSupermarketComparisonChart() {
     fetch('/api/supermarket-year-comparison/')
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('supermarketComparisonChart').getContext('2d');
-            
+
             new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1201,36 +1486,39 @@ function createSupermarketComparisonChart() {
         .catch(error => console.error('Error loading supermarket comparison chart:', error));
 }
 
-// Erstelle kombiniertes Billa-Diagramm (Balken + Linie)
 function createBillaCombinedChart() {
     fetch('/api/billa-combined-chart/')
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('billaCombinedChart').getContext('2d');
             
+            // Mobile Detection
+            const isMobile = window.innerWidth < 768;
+
             new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: data.labels,
                     datasets: [
                         {
-                            label: 'Anzahl Einkäufe',
+                            label: isMobile ? 'Anzahl' : 'Anzahl Einkäufe',
                             data: data.count_data,
-                            backgroundColor: 'rgba(91, 155, 213, 0.7)',
-                            borderColor: 'rgba(91, 155, 213, 1)',
-                            borderWidth: 1,
+                            backgroundColor: 'rgba(52, 168, 83, 0.6)',
+                            borderColor: 'rgb(52, 168, 83)',
+                            borderWidth: isMobile ? 1 : 1,
                             yAxisID: 'y-count',
                             order: 2
                         },
                         {
-                            label: 'Durchschnittliche Einkaufshöhe',
+                            label: isMobile ? 'Ø Höhe' : 'Durchschnittliche Einkaufshöhe',
                             data: data.avg_data,
                             type: 'line',
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            pointBackgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(30,122,54)',
+                            backgroundColor: 'rgba(52, 168, 83, 0.2)',
+                            borderWidth: isMobile ? 2 : 3,
+                            pointRadius: isMobile ? 6 : 5,  // Größere Touch-Targets
+                            pointHoverRadius: isMobile ? 8 : 7,
+                            pointBackgroundColor: 'rgb(52, 168, 83)',
                             tension: 0.4,
                             yAxisID: 'y-avg',
                             order: 1,
@@ -1248,9 +1536,26 @@ function createBillaCombinedChart() {
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top'
+                            position: isMobile ? 'bottom' : 'top',  // Legende unten auf Mobile
+                            labels: {
+                                padding: isMobile ? 10 : 15,
+                                font: {
+                                    size: isMobile ? 11 : 12
+                                },
+                                boxWidth: isMobile ? 30 : 40
+                            }
                         },
                         tooltip: {
+                            enabled: true,
+                            mode: 'index',
+                            intersect: false,
+                            padding: isMobile ? 8 : 12,
+                            titleFont: {
+                                size: isMobile ? 12 : 13
+                            },
+                            bodyFont: {
+                                size: isMobile ? 11 : 12
+                            },
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -1258,7 +1563,7 @@ function createBillaCombinedChart() {
                                         label += ': ';
                                     }
                                     if (context.dataset.yAxisID === 'y-count') {
-                                        label += context.parsed.y + ' Einkäufe';
+                                        label += context.parsed.y + (isMobile ? 'x' : ' Einkäufe');
                                     } else {
                                         label += formatEuro(context.parsed.y);
                                     }
@@ -1268,19 +1573,36 @@ function createBillaCombinedChart() {
                         }
                     },
                     scales: {
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: isMobile ? 9 : 11
+                                },
+                                maxRotation: isMobile ? 45 : 0,  // Drehe Labels auf Mobile
+                                minRotation: isMobile ? 45 : 0,
+                                autoSkip: true,
+                                autoSkipPadding: isMobile ? 20 : 10
+                            }
+                        },
                         'y-count': {
                             type: 'linear',
                             position: 'left',
                             beginAtZero: true,
                             ticks: {
                                 stepSize: 1,
+                                font: {
+                                    size: isMobile ? 10 : 11
+                                },
                                 callback: function(value) {
-                                    return value + ' x';
+                                    return value + 'x';
                                 }
                             },
                             title: {
-                                display: true,
-                                text: 'Anzahl Einkäufe'
+                                display: !isMobile,  // Verberge Titel auf Mobile
+                                text: 'Anzahl Einkäufe',
+                                font: {
+                                    size: isMobile ? 11 : 12
+                                }
                             }
                         },
                         'y-avg': {
@@ -1291,13 +1613,20 @@ function createBillaCombinedChart() {
                                 drawOnChartArea: false
                             },
                             ticks: {
+                                font: {
+                                    size: isMobile ? 10 : 11
+                                },
                                 callback: function(value) {
-                                    return formatEuro(value);
+                                    // Kürzeres Format auf Mobile
+                                    return isMobile ? '€' + Math.round(value) : formatEuro(value);
                                 }
                             },
                             title: {
-                                display: true,
-                                text: 'Durchschnittliche Einkaufshöhe'
+                                display: !isMobile,  // Verberge Titel auf Mobile
+                                text: 'Durchschnittliche Einkaufshöhe',
+                                font: {
+                                    size: isMobile ? 11 : 12
+                                }
                             }
                         }
                     }
@@ -1306,29 +1635,85 @@ function createBillaCombinedChart() {
         })
         .catch(error => console.error('Error loading Billa combined chart:', error));
 }
+
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     // Lade bestehende Charts (Balken und Tortendiagramme)
     loadMonthlyChart({{ current_year }});
     loadPieChart(2025, 'categoryPieChart2025', '2025');
     loadPieChart(2024, 'categoryPieChart2024', '2024');
-    
+
     // Event Listener für Jahr-Wechsel beim Balkendiagramm
     document.getElementById('barChartYearSelect').addEventListener('change', function() {
         loadMonthlyChart(this.value);
     });
-    
+
     // Lade alle CategoryGroup Daten
     loadCategoryGroupStats();
     createTrendCharts();
     createComparisonCharts();
     createQuarterlyCharts();
-    
+
     // Supermarkt-Bereich laden
     loadSupermarketStats();
     createSupermarketTrendChart();
     createSupermarketComparisonChart();
     createBillaCombinedChart();
+
+    // === Floating Navigation ===
+    const floatingBtn = document.getElementById('floatingNavBtn');
+    const navOverlay = document.getElementById('navOverlay');
+    const navMenu = document.getElementById('navMenu');
+    const navCloseBtn = document.getElementById('navCloseBtn');
+    const navMenuItems = document.querySelectorAll('.nav-menu-item');
+
+    // Zeige Button beim Scrollen
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 300) {
+            floatingBtn.classList.add('show');
+        } else {
+            floatingBtn.classList.remove('show');
+        }
+    });
+
+    // Öffne Navigation
+    floatingBtn.addEventListener('click', function() {
+        navOverlay.classList.add('show');
+        navMenu.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    });
+
+    // Schließe Navigation
+    function closeNav() {
+        navOverlay.classList.remove('show');
+        navMenu.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    navCloseBtn.addEventListener('click', closeNav);
+    navOverlay.addEventListener('click', closeNav);
+
+    // Navigation zu Bereichen
+    navMenuItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('data-section');
+            const targetElement = document.getElementById(targetId);
+
+            if (targetElement) {
+                closeNav();
+
+                // Smooth scroll mit Offset für Header
+                const yOffset = -80;
+                const y = targetElement.getBoundingClientRect().top + window.pageYOffset + yOffset;
+
+                window.scrollTo({
+                    top: y,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

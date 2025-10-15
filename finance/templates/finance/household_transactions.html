@@ -18,6 +18,78 @@
     .action-icon:hover {
         transform: scale(1.2);
     }
+    /* Farbliche Kennzeichnung nach Person */
+    tr.row-sigi td {
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+    tr.row-robert td {
+        background-color: rgba(25, 135, 84, 0.1) !important;
+    }
+    /* Transfer und Kursschwankung bleiben grau */
+    tr.table-secondary.row-sigi td,
+    tr.table-secondary.row-robert td {
+        background-color: rgba(108, 117, 125, 0.2) !important;
+    }
+    /* Hover-Effekt beibehalten */
+    .table-hover tr.row-sigi:hover td {
+        background-color: rgba(13, 110, 253, 0.15) !important;
+    }
+    .table-hover tr.row-robert:hover td {
+        background-color: rgba(25, 135, 84, 0.15) !important;
+    }
+
+    /* Mobile Optimierung */
+    @media (max-width: 768px) {
+        /* Tabelle auf Mobile ausblenden */
+        .desktop-table {
+            display: none !important;
+        }
+        .mobile-cards {
+            display: block !important;
+        }
+    }
+
+    @media (min-width: 769px) {
+        /* Cards auf Desktop ausblenden */
+        .desktop-table {
+            display: block !important;
+        }
+        .mobile-cards {
+            display: none !important;
+        }
+    }
+
+    /* Mobile Card Styling */
+    .transaction-card {
+        margin-bottom: 0.5rem;
+        border-left: 4px solid;
+    }
+    .transaction-card .card-body {
+        padding: 0.75rem;
+    }
+    .transaction-card.card-sigi {
+        border-left-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.03);
+    }
+    .transaction-card.card-robert {
+        border-left-color: #198754;
+        background-color: rgba(25, 135, 84, 0.03);
+    }
+    .transaction-card.card-transfer {
+        border-left-color: #6c757d;
+        opacity: 0.7;
+    }
+    .transaction-card hr {
+        margin: 0.5rem 0;
+    }
+    .transaction-card .row {
+        margin-bottom: 0;
+    }
+    .transaction-card .col-6,
+    .transaction-card .col-12 {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
 </style>
 {% endblock %}
 
@@ -80,88 +152,97 @@
 
 <!-- Filter -->
 <div class="card mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3" id="filterForm">
-            <div class="col-md-2">
-                <label class="form-label">Jahr</label>
-                <select name="year" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    {% for y in years %}
-                    <option value="{{ y }}" {% if selected_year and y == selected_year|add:"0" %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Monat</label>
-                <select name="month" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    <option value="1" {% if selected_month == "1" %}selected{% endif %}>Jänner</option>
-                    <option value="2" {% if selected_month == "2" %}selected{% endif %}>Februar</option>
-                    <option value="3" {% if selected_month == "3" %}selected{% endif %}>März</option>
-                    <option value="4" {% if selected_month == "4" %}selected{% endif %}>April</option>
-                    <option value="5" {% if selected_month == "5" %}selected{% endif %}>Mai</option>
-                    <option value="6" {% if selected_month == "6" %}selected{% endif %}>Juni</option>
-                    <option value="7" {% if selected_month == "7" %}selected{% endif %}>Juli</option>
-                    <option value="8" {% if selected_month == "8" %}selected{% endif %}>August</option>
-                    <option value="9" {% if selected_month == "9" %}selected{% endif %}>September</option>
-                    <option value="10" {% if selected_month == "10" %}selected{% endif %}>Oktober</option>
-                    <option value="11" {% if selected_month == "11" %}selected{% endif %}>November</option>
-                    <option value="12" {% if selected_month == "12" %}selected{% endif %}>Dezember</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <label class="form-label">Person</label>
-                <select name="person" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Beide</option>
-                    <option value="sigi" {% if selected_person == "sigi" %}selected{% endif %}>Sigi</option>
-                    <option value="robert" {% if selected_person == "robert" %}selected{% endif %}>Robert</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Konto</label>
-                <select name="account" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    {% for acc in accounts %}
-                    <option value="{{ acc.id }}" {% if selected_account and acc.id == selected_account|add:"0" %}selected{% endif %}>
-                        {{ acc.account }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Kategorie</label>
-                <select name="category" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category and cat.id == selected_category|add:"0" %}selected{% endif %}>
-                        {{ cat.category }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Suche</label>
-                <input type="text" name="search" class="form-control" placeholder="Payee oder Memo" value="{{ search_query|default:'' }}">
-            </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
-        </form>
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-funnel"></i> Filter
+        </h6>
+        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
+            <i class="bi bi-chevron-down" id="filterChevron"></i>
+        </button>
+    </div>
+    <div class="collapse" id="filterCollapse">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-2">
+                    <label class="form-label">Jahr</label>
+                    <select name="year" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if selected_year and y == selected_year|add:"0" %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Monat</label>
+                    <select name="month" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        <option value="1" {% if selected_month == "1" %}selected{% endif %}>Jänner</option>
+                        <option value="2" {% if selected_month == "2" %}selected{% endif %}>Februar</option>
+                        <option value="3" {% if selected_month == "3" %}selected{% endif %}>März</option>
+                        <option value="4" {% if selected_month == "4" %}selected{% endif %}>April</option>
+                        <option value="5" {% if selected_month == "5" %}selected{% endif %}>Mai</option>
+                        <option value="6" {% if selected_month == "6" %}selected{% endif %}>Juni</option>
+                        <option value="7" {% if selected_month == "7" %}selected{% endif %}>Juli</option>
+                        <option value="8" {% if selected_month == "8" %}selected{% endif %}>August</option>
+                        <option value="9" {% if selected_month == "9" %}selected{% endif %}>September</option>
+                        <option value="10" {% if selected_month == "10" %}selected{% endif %}>Oktober</option>
+                        <option value="11" {% if selected_month == "11" %}selected{% endif %}>November</option>
+                        <option value="12" {% if selected_month == "12" %}selected{% endif %}>Dezember</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Person</label>
+                    <select name="person" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Beide</option>
+                        <option value="sigi" {% if selected_person == "sigi" %}selected{% endif %}>Sigi</option>
+                        <option value="robert" {% if selected_person == "robert" %}selected{% endif %}>Robert</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Konto</label>
+                    <select name="account" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        {% for acc in accounts %}
+                        <option value="{{ acc.id }}" {% if selected_account and acc.id == selected_account|add:"0" %}selected{% endif %}>
+                            {{ acc.account }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Kategorie</label>
+                    <select name="category" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category and cat.id == selected_category|add:"0" %}selected{% endif %}>
+                            {{ cat.category }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Suche</label>
+                    <input type="text" name="search" class="form-control" placeholder="Payee oder Memo" value="{{ search_query|default:'' }}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-<!-- Tabelle -->
+<!-- Tabelle & Cards Container -->
 <div class="card">
     <div class="card-body">
-        <div class="table-responsive">
+        <!-- Desktop Tabelle -->
+        <div class="table-responsive desktop-table">
             <table class="table table-hover">
                 <thead>
                     <tr>
                         <th>Datum</th>
-                        <th>Person</th>
-                        <th>Konto</th>
                         <th>Payee</th>
                         <th>Kategorie</th>
                         <th>Memo</th>
@@ -172,23 +253,9 @@
                 </thead>
                 <tbody>
                     {% for trans in transactions %}
-                    <tr {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}class="table-secondary" style="opacity: 0.6;"{% endif %}>
+                    <tr class="{% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}table-secondary{% endif %} {% if trans.person == 'Sigi' %}row-sigi{% else %}row-robert{% endif %}"
+                        {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}style="opacity: 0.6;"{% endif %}>
                         <td>{{ trans.date|date:"d.m.Y" }}</td>
-                        <td>
-                            {% if trans.person == "Sigi" %}
-                                <span class="badge bg-primary">Sigi</span>
-                            {% else %}
-                                <span class="badge bg-success">Robert</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if trans.account %}
-                            <i class="bi bi-{{ trans.account.account|account_icon }} text-muted"></i>
-                            {{ trans.account }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
                         <td>
                             {{ trans.payee|default:"-" }}
                             {% if trans.payee.payee_type == 'transfer' %}
@@ -227,19 +294,19 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center">Keine Transaktionen gefunden</td>
+                        <td colspan="7" class="text-center">Keine Transaktionen gefunden</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot class="table-light">
                     <tr class="fw-bold">
-                        <td colspan="6" class="text-end">Summe Ausgaben (gefiltert):</td>
+                        <td colspan="4" class="text-end">Summe Ausgaben (gefiltert):</td>
                         <td class="text-end text-danger">€ {{ total_outflow|floatformat:2 }}</td>
                         <td class="text-end">-</td>
                         <td></td>
                     </tr>
                     <tr>
-                        <td colspan="6" class="text-end">
+                        <td colspan="4" class="text-end">
                             <small class="text-muted">
                                 Robert: <span class="badge bg-success">{{ robert_percentage|floatformat:1 }}%</span>
                                 |
@@ -256,6 +323,90 @@
                 </tfoot>
             </table>
         </div>
+
+        <!-- Mobile Card Ansicht -->
+        <div class="mobile-cards">
+            {% for trans in transactions %}
+            <div class="card transaction-card {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}card-transfer{% elif trans.person == 'Sigi' %}card-sigi{% else %}card-robert{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="flex-grow-1">
+                            <strong>{{ trans.payee|default:"-" }}</strong>
+                            {% if trans.payee.payee_type == 'transfer' %}
+                                <span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">Transfer</span>
+                            {% elif trans.payee.payee_type == 'kursschwankung' %}
+                                <span class="badge bg-info ms-1" style="font-size: 0.7rem;">Kursschwankung</span>
+                            {% endif %}
+                            <div>
+                                <small class="text-muted">{{ trans.date|date:"d.m.Y" }}</small>
+                                <span class="mx-1">•</span>
+                                {% if trans.person == "Sigi" %}
+                                    <span class="badge bg-primary" style="font-size: 0.7rem;">Sigi</span>
+                                {% else %}
+                                    <span class="badge bg-success" style="font-size: 0.7rem;">Robert</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <i class="bi bi-trash text-danger action-icon"
+                           data-bs-toggle="modal"
+                           data-bs-target="#deleteModal"
+                           data-transaction-id="{{ trans.id }}"
+                           data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                           data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                           data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                           data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                           data-transaction-person="{{ trans.person }}"
+                           title="Löschen"></i>
+                    </div>
+                    <div class="mb-1">
+                        <small class="text-muted">{{ trans.category.categorygroup|default:"-" }} › {{ trans.category|default:"-" }}</small>
+                    </div>
+                    {% if trans.memo %}
+                    <div class="mb-1">
+                        <small>{{ trans.memo }}</small>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div>
+                            <strong class="text-danger">
+                                {% if trans.outflow %}€ {{ trans.outflow|floatformat:2 }}{% else %}-{% endif %}
+                            </strong>
+                        </div>
+                        <div>
+                            <strong class="text-success">
+                                {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Keine Transaktionen gefunden
+            </div>
+            {% endfor %}
+
+            <!-- Mobile Summen -->
+            <div class="card mt-2">
+                <div class="card-body bg-light" style="padding: 0.75rem;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>Summe Ausgaben:</strong>
+                        <strong class="text-danger">€ {{ total_outflow|floatformat:2 }}</strong>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-success">{{ robert_percentage|floatformat:1 }}%</span>
+                            <small class="ms-1">€{{ robert_outflow|floatformat:2 }}</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">{{ sigi_percentage|floatformat:1 }}%</span>
+                            <small class="ms-1">€{{ sigi_outflow|floatformat:2 }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -265,6 +416,10 @@
     <strong>Hinweis:</strong>
     Diese Ansicht zeigt alle Transaktionen von Robert sowie Sigis Transaktionen mit Flag "Relevant für Haushaltsbudget".
     Filter zeigen nur Werte an, die tatsächlich in den Daten vorkommen.
+    <br>
+    <strong>Farbcodierung:</strong>
+    <span class="badge bg-primary">Sigi = Blau</span> |
+    <span class="badge bg-success">Robert = Grün</span>
     <br>
     <strong>Statistik-Regeln:</strong>
     <ul class="mb-0 mt-2">
@@ -348,6 +503,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modal-category').textContent = category;
 
         document.getElementById('deleteForm').action = '/transactions/delete/' + transactionId + '/';
+    });
+
+    // Filter Collapse Chevron Icon wechseln
+    var filterCollapse = document.getElementById('filterCollapse');
+    var filterChevron = document.getElementById('filterChevron');
+
+    filterCollapse.addEventListener('show.bs.collapse', function () {
+        filterChevron.classList.remove('bi-chevron-down');
+        filterChevron.classList.add('bi-chevron-up');
+    });
+
+    filterCollapse.addEventListener('hide.bs.collapse', function () {
+        filterChevron.classList.remove('bi-chevron-up');
+        filterChevron.classList.add('bi-chevron-down');
     });
 });
 </script>
