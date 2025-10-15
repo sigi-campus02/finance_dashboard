@@ -70,6 +70,19 @@
 
 {% block content %}
 <div class="container-fluid">
+
+    <!-- ✅ Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_dashboard' %}">
+                    <i class="bi bi-cart3"></i> Billa
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Import</li>
+        </ol>
+    </nav>
+
     <div class="import-header">
         <h1 class="mb-2">
             <i class="bi bi-upload"></i> Billa Rechnungen importieren

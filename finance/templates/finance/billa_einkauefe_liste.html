@@ -47,11 +47,16 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <!-- Breadcrumb -->
+    
+    <!-- ✅ Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'finance:billa_dashboard' %}">Billa Dashboard</a></li>
-            <li class="breadcrumb-item active">Einkäufe Übersicht</li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_dashboard' %}">
+                    <i class="bi bi-cart3"></i> Billa
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Einkäufe</li>
         </ol>
     </nav>
     

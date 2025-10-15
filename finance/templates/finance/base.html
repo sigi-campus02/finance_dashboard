@@ -38,29 +38,6 @@
         .navbar {
             box-shadow: 0 2px 4px rgba(0,0,0,.1);
         }
-        .card {
-            box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
-            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
-            border: none;
-        }
-        .card:hover {
-            box-shadow: 0 14px 28px rgba(0,0,0,.25), 0 10px 10px rgba(0,0,0,.22);
-        }
-        .kpi-card {
-            border-left: 4px solid;
-        }
-        .kpi-card.income {
-            border-left-color: #28a745;
-        }
-        .kpi-card.expense {
-            border-left-color: #dc3545;
-        }
-        .kpi-card.balance {
-            border-left-color: #007bff;
-        }
-        .kpi-card.transactions {
-            border-left-color: #ffc107;
-        }
         .sidebar {
             background-color: #fff;
             min-height: 100vh;
@@ -94,6 +71,17 @@
         /* PWA Install Button */
         #installButton {
             display: none;
+        }
+        /* Billa Submenu Mobile - weißer Hintergrund */
+        #billaSubmenuMobile {
+            background-color: #fff;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border-radius: 0.25rem;
+        }
+        
+        #billaSubmenuMobile .nav-link {
+            color: #333;
         }
     </style>
     
@@ -148,7 +136,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-<!-- Navbar -->
+    <!-- Navbar -->
     <nav class="navbar navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'finance:dashboard' %}">
@@ -203,19 +191,19 @@
                         </ul>
                     </li>
 
-                    <!-- Billa Dropdown in der Sidebar -->
+                    <!-- ✅ Billa Dropdown in Mobile Navigation - ERWEITERT -->
                     <li class="nav-item">
                         <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
                            href="#"
-                           id="billaDropdown"
+                           id="billaDropdownMobile"
                            role="button"
                            data-bs-toggle="collapse"
-                           data-bs-target="#billaSubmenu"
+                           data-bs-target="#billaSubmenuMobile"
                            aria-expanded="false">
                             <i class="bi bi-cart3"></i> Billa
                         </a>
                         <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}"
-                             id="billaSubmenu">
+                             id="billaSubmenuMobile">
                             <ul class="nav flex-column ms-3">
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
@@ -224,9 +212,39 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'produktgruppen_mapper' %}active{% endif %}"
-                                       href="{% url 'finance:produktgruppen_mapper' %}">
-                                        <i class="bi bi-tag"></i> Produktgruppen
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_import' %}active{% endif %}"
+                                       href="{% url 'finance:billa_import' %}">
+                                        <i class="bi bi-upload"></i> Rechnung hochladen
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_einkauefe_liste' %}active{% endif %}"
+                                       href="{% url 'finance:billa_einkauefe_liste' %}">
+                                        <i class="bi bi-cart-check"></i> Einkäufe
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_marken_liste' %}active{% endif %}"
+                                       href="{% url 'finance:billa_marken_liste' %}">
+                                        <i class="bi bi-tag-fill"></i> Marken
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_ueberkategorien_liste' %}active{% endif %}"
+                                       href="{% url 'finance:billa_ueberkategorien_liste' %}">
+                                        <i class="bi bi-layers-fill"></i> Überkategorien
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
+                                       href="{% url 'finance:billa_produktgruppen_liste' %}">
+                                        <i class="bi bi-grid-3x3-gap"></i> Produktgruppen
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'billa_produkte_liste' %}active{% endif %}"
+                                       href="{% url 'finance:billa_produkte_liste' %}">
+                                        <i class="bi bi-box-seam"></i> Produkte
                                     </a>
                                 </li>
                             </ul>
@@ -275,8 +293,7 @@
     <div class="container-fluid">
         <div class="row">
 
-            <!-- Sidebar -->
-
+            <!-- ✅ Sidebar - ERWEITERT -->
             <nav class="col-md-2 d-none d-md-block sidebar">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
@@ -344,7 +361,8 @@
                                 Investment-Anpassung
                             </a>
                         </li>
-                        <!-- Billa Dropdown in der Sidebar -->
+                        
+                        <!-- ✅ Billa Dropdown in der Sidebar - ERWEITERT -->
                         <li class="nav-item">
                             <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
                                href="#"
@@ -352,22 +370,52 @@
                                role="button"
                                data-bs-toggle="collapse"
                                data-bs-target="#billaSubmenu"
-                               aria-expanded="false">
+                               aria-expanded="{% if 'billa' in request.resolver_match.url_name %}true{% else %}false{% endif %}">
                                 <i class="bi bi-cart3"></i> Billa
                             </a>
                             <div class="collapse {% if 'billa' in request.resolver_match.url_name %}show{% endif %}"
                                  id="billaSubmenu">
-                                <ul class="nav flex-column ms-3">
+                                <ul class="nav flex-column">
                                     <li class="nav-item">
-                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
                                            href="{% url 'finance:billa_dashboard' %}">
                                             <i class="bi bi-graph-up"></i> Dashboard
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_import' %}active{% endif %}"
+                                           href="{% url 'finance:billa_import' %}">
+                                            <i class="bi bi-upload"></i> Rechnung hochladen
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_einkauefe_liste' %}active{% endif %}"
+                                           href="{% url 'finance:billa_einkauefe_liste' %}">
+                                            <i class="bi bi-cart-check"></i> Einkäufe
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_marken_liste' %}active{% endif %}"
+                                           href="{% url 'finance:billa_marken_liste' %}">
+                                            <i class="bi bi-tag-fill"></i> Marken
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_ueberkategorien_liste' %}active{% endif %}"
+                                           href="{% url 'finance:billa_ueberkategorien_liste' %}">
+                                            <i class="bi bi-layers-fill"></i> Überkategorien
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
                                            href="{% url 'finance:billa_produktgruppen_liste' %}">
-                                            <i class="bi bi-tag"></i> Produktgruppen
+                                            <i class="bi bi-grid-3x3-gap"></i> Produktgruppen
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_produkte_liste' %}active{% endif %}"
+                                           href="{% url 'finance:billa_produkte_liste' %}">
+                                            <i class="bi bi-box-seam"></i> Produkte
                                         </a>
                                     </li>
                                 </ul>

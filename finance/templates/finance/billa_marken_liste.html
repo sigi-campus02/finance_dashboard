@@ -4,15 +4,25 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+
+    <!-- ✅ Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_dashboard' %}">
+                    <i class="bi bi-cart3"></i> Billa
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Marken</li>
+        </ol>
+    </nav>
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2><i class="bi bi-tag-fill text-primary"></i> Marken Übersicht</h2>
             <p class="text-muted mb-0">{{ gesamt_marken }} Marken gefunden</p>
         </div>
-        <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Zurück
-        </a>
     </div>
 
     <!-- Filter & Suche -->

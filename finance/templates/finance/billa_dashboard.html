@@ -37,114 +37,210 @@
         margin-bottom: 20px;
     }
     
-    .nav-card-compact {
-        display: block;
-        padding: 1rem;
+    /* Navigation Cards - Icon rechts */
+    .nav-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
         border-radius: 10px;
         text-decoration: none;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         height: 100%;
         color: white;
+        position: relative;
+        overflow: hidden;
+        gap: 0.75rem;
     }
     
-    .nav-card-compact:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    .nav-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+    }
+    
+    .nav-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
         text-decoration: none;
         color: white;
     }
     
-    .nav-card-compact .nav-card-icon {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        display: block;
+    .nav-card-content {
+        order: 1;
+        flex: 1;
+        position: relative;
+        z-index: 1;
     }
-    
-    .nav-card-compact .nav-card-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-    
-    .nav-card-compact .nav-card-description {
-        font-size: 0.75rem;
-        opacity: 0.9;
-    }
-    
-    .blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-    .orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .yellow { background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%); }
     
     .nav-card-icon {
-        font-size: 3rem;
-        margin-bottom: 15px;
+        font-size: 2.5rem;
+        margin-bottom: 0;
         display: block;
-    }
-
-    .nav-card-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-
-    .nav-card-description {
-        font-size: 0.9rem;
-        opacity: 0.9;
+        opacity: 0.95;
+        order: 2;
+        flex-shrink: 0;
     }
     
+    .nav-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+    
+    .nav-card-description {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        line-height: 1.4;
+    }
+    
+    /* Gradient Colors */
+    .gradient-upload { 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+    }
+    .gradient-purchases { 
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+    }
+    .gradient-brands { 
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+    }
+    .gradient-categories { 
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); 
+    }
+    .gradient-groups { 
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); 
+    }
+    .gradient-products { 
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); 
+    }
+    
+    .section-divider {
+        border-top: 2px solid #e9ecef;
+        margin: 2rem 0;
+        padding-top: 1rem;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid py-4">
+    
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-cart3"></i> Billa Dashboard
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
     <div class="row mb-4">
         <div class="col">
             <h1>🛒 Billa Einkaufsanalyse</h1>
+            <p class="text-muted mb-0">Deine persönliche Übersicht über alle Billa-Einkäufe</p>
         </div>
     </div>
 
-
-    <!-- Navigation - AN DEN ANFANG VERSCHOBEN -->
+     <!-- ✅ NAVIGATION CARDS -->
     <div class="row g-3 mb-4">
-        <div class="col">
-            <a href="{% url 'finance:billa_einkauefe_liste' %}" class="nav-card-compact green">
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_import' %}" class="nav-card gradient-upload">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Rechnung hochladen</div>
+                    <div class="nav-card-description">
+                        PDF-Belege von Billa importieren und automatisch analysieren lassen
+                    </div>
+                </div>
+                <span class="nav-card-icon">📤</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_einkauefe_liste' %}" class="nav-card gradient-purchases">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Einkäufe</div>
+                    <div class="nav-card-description">
+                        Alle deine Billa-Einkäufe mit Details zu Datum, Filiale und Ausgaben
+                    </div>
+                </div>
                 <span class="nav-card-icon">🛒</span>
-                <div class="nav-card-title">Einkäufe Übersicht</div>
-                <div class="nav-card-description">Alle Einkäufe anzeigen</div>
             </a>
         </div>
-        <div class="col">
-            <a href="{% url 'finance:billa_ueberkategorien_liste' %}" class="nav-card-compact orange">
-                <span class="nav-card-icon">📦</span>
-                <div class="nav-card-title">Überkategorien</div>
-                <div class="nav-card-description">Kategorien anzeigen</div>
-            </a>
-        </div>
-        <div class="col">
-            <a href="{% url 'finance:billa_produkte_liste' %}" class="nav-card-compact blue">
-                <span class="nav-card-icon">📦</span>
-                <div class="nav-card-title">Alle Produkte</div>
-                <div class="nav-card-description">Durchsuche alle gekauften Produkte</div>
-            </a>
-        </div>
-        <div class="col">
-            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="nav-card-compact green">
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_marken_liste' %}" class="nav-card gradient-brands">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Marken</div>
+                    <div class="nav-card-description">
+                        {{ anzahl_marken|default:"Keine" }} Marken erkannt - Analysiere deine Markenpräferenzen
+                    </div>
+                </div>
                 <span class="nav-card-icon">🏷️</span>
-                <div class="nav-card-title">Produktgruppen</div>
-                <div class="nav-card-description">Ausgaben nach Kategorien</div>
             </a>
         </div>
-        <div class="col">
-            <a href="{% url 'finance:billa_import' %}" class="nav-card-compact yellow">
-                <span class="nav-card-icon">💾</span>
-                <div class="nav-card-title">Import</div>
-                <div class="nav-card-description">Rechnung hochladen</div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_ueberkategorien_liste' %}" class="nav-card gradient-categories">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Überkategorien</div>
+                    <div class="nav-card-description">
+                        Hauptkategorien wie Obst, Gemüse, Milchprodukte und mehr
+                    </div>
+                </div>
+                <span class="nav-card-icon">📦</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="nav-card gradient-groups">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Produktgruppen</div>
+                    <div class="nav-card-description">
+                        Detaillierte Gruppierung deiner Einkäufe nach Produkttypen
+                    </div>
+                </div>
+                <span class="nav-card-icon">🗂️</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'finance:billa_produkte_liste' %}" class="nav-card gradient-products">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Produkte</div>
+                    <div class="nav-card-description">
+                        Alle gekauften Produkte mit Preisentwicklung und Statistiken
+                    </div>
+                </div>
+                <span class="nav-card-icon">📦</span>
             </a>
         </div>
     </div>
-</div>
+
+    <!-- Section Divider -->
+    <div class="section-divider">
+        <h3 class="section-title">
+            <i class="bi bi-bar-chart-line"></i>
+            Statistiken & Analysen
+        </h3>
+    </div>
 
     <!-- Filter -->
     <div class="filter-section">
@@ -157,23 +253,27 @@
                 <label for="end_date" class="form-label">Bis:</label>
                 <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
             </div>
-            <div class="filter-group">
-                <label for="filiale">Filiale:</label>
-                <select name="filiale" id="filiale" class="filter-select">
+            <div class="col-md-3">
+                <label for="filiale" class="form-label">Filiale:</label>
+                <select name="filiale" id="filiale" class="form-select">
                     <option value="alle" {% if selected_filiale == 'alle' %}selected{% endif %}>
                         Alle Filialen
                     </option>
                     {% for filiale in filialen %}
                     <option value="{{ filiale.filial_nr }}" 
                             {% if selected_filiale == filiale.filial_nr %}selected{% endif %}>
-                        {{ filiale }}  <!-- Zeigt jetzt automatisch "Billa Plus - Josef-Pock-Straße" -->
+                        {{ filiale }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">Filter anwenden</button>
-                <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-secondary">Zurücksetzen</a>
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-funnel"></i> Filter anwenden
+                </button>
+                <a href="{% url 'finance:billa_dashboard' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Zurücksetzen
+                </a>
             </div>
         </form>
     </div>
@@ -253,51 +353,6 @@
     </div>
 </div>
 
-    <!-- Füge diesen Card-Block zu deinem billa_dashboard.html hinzu -->
-<!-- Am besten neben oder unter die Produktgruppen-Card -->
-
-<div class="col-md-6 col-lg-4">
-    <div class="card h-100 hover-card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-tag-fill text-primary"></i> Marken
-                </h5>
-                <span class="badge bg-primary">{{ anzahl_marken }}</span>
-            </div>
-            
-            <p class="text-muted small mb-3">
-                Übersicht aller erkannten Marken in deinen Einkäufen
-            </p>
-
-            <div class="d-grid gap-2">
-                <a href="{% url 'finance:billa_marken_liste' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-list-ul"></i> Alle Marken
-                </a>
-            </div>
-
-            <!-- Optional: Top 5 Marken anzeigen -->
-            {% if top_marken %}
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-block mb-2">Top Marken:</small>
-                {% for marke in top_marken %}
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <small>
-                        <a href="{% url 'finance:billa_marke_detail' marke.marke %}" 
-                           class="text-decoration-none">
-                            {{ marke.marke }}
-                        </a>
-                    </small>
-                    <small class="text-muted">{{ marke.anzahl_kaeufe }} Käufe</small>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-    
 {% endblock %}
 
 {% block extra_js %}
@@ -335,13 +390,13 @@ if (dailyData && dailyData.length > 0) {
         line: {
             color: '#FF6B6B',
             width: 3,
-            shape: 'spline'  // Weiche Kurven
+            shape: 'spline'
         },
         marker: {
             size: 5,
             color: '#FF6B6B'
         },
-        fill: 'tozeroy',  // Füllt den Bereich unter der Linie
+        fill: 'tozeroy',
         fillcolor: 'rgba(255, 107, 107, 0.2)',
         hovertemplate: '<b>%{x|%A, %d.%m.%Y}</b><br>€ %{y:.2f}<extra></extra>'
     };
@@ -352,7 +407,7 @@ if (dailyData && dailyData.length > 0) {
         xaxis: {
             title: 'Datum',
             tickangle: -45,
-            tickformat: '%d.%m',  // kürzeres Datum
+            tickformat: '%d.%m',
             automargin: true,
             showgrid: false
         },
@@ -370,18 +425,16 @@ if (dailyData && dailyData.length > 0) {
     document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 2. Monatliche Ausgaben (Gestapeltes Balkendiagramm - Schönere Version)
+// 2. Monatliche Ausgaben (Gestapeltes Balkendiagramm)
 const monthlyStackedData = JSON.parse('{{ monthly_spending_stacked|safe }}');
 
 if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate.length > 0) {
-    // Farbpalette für Überkategorien (farbenfrohe Töne)
     const colorPalette = [
         '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
         '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#52BE80',
         '#F1948A', '#F39C12', '#3498DB', '#9B59B6', '#E74C3C'
     ];
 
-    // Erstelle Traces für jede Überkategorie
     let traces = monthlyStackedData.kategorien.map((kategorie, index) => {
         const farbe = kategorie === 'Sonstiges'
             ? '#95A5A6'
@@ -399,7 +452,6 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
         };
     });
 
-    // Optional: Reihenfolge umkehren (größere Kategorien oben sichtbar)
     traces = traces.reverse();
 
     const layout = {
@@ -437,10 +489,8 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
     document.getElementById('chart-monthly').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-
-// 3. Top 15 Produkte nach Häufigkeit (Vertical Bar) - OPTIMIERT
+// 3. Top 10 Produkte nach Häufigkeit
 if (topProdukte && topProdukte.length > 0) {
-    // Nur Top 10 für bessere Übersicht
     const top10 = topProdukte.slice(0, 10);
 
     const topProdukteTrace = {
@@ -479,9 +529,8 @@ if (topProdukte && topProdukte.length > 0) {
     document.getElementById('chart-top-products').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 4. Top 15 Produkte nach Ausgaben (Vertical Bar) - GEDREHT
+// 4. Top 10 Produkte nach Ausgaben
 if (topAusgaben && topAusgaben.length > 0) {
-    // Nur Top 10 für bessere Übersicht
     const top10 = topAusgaben.slice(0, 10);
 
     const topAusgabenTrace = {
@@ -521,8 +570,7 @@ if (topAusgaben && topAusgaben.length > 0) {
     document.getElementById('chart-top-spending').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-
-// 5. Ausgaben nach Kategorie (Pie Chart - optimiert)
+// 5. Ausgaben nach Kategorie (Pie Chart)
 if (kategorieData && kategorieData.length > 0) {
     const sortedKategorieData = [...kategorieData].sort((a, b) => b.ausgaben - a.ausgaben);
 
@@ -556,7 +604,7 @@ if (kategorieData && kategorieData.length > 0) {
     document.getElementById('chart-kategorie').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 6. Ersparnisse nach Rabatt-Typ (Pie Chart - optimiert)
+// 6. Ersparnisse nach Rabatt-Typ (Pie Chart)
 if (rabatteData && rabatteData.length > 0) {
     const sortedRabatteData = [...rabatteData].sort((a, b) => b.ersparnis - a.ersparnis);
 
@@ -589,7 +637,6 @@ if (rabatteData && rabatteData.length > 0) {
 } else {
     document.getElementById('chart-rabatte').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
-
 
 // Responsive resize handling
 window.addEventListener('resize', function() {

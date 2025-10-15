@@ -6,12 +6,22 @@
 {% block content %}
 <div class="container-fluid py-4">
     
-    <!-- Zurück Button -->
-    <div class="mb-3">
-        <a href="{% url 'finance:billa_produkte_liste' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Zur Produktliste
-        </a>
-    </div>
+    <!-- ✅ Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_dashboard' %}">
+                    <i class="bi bi-cart3"></i> Billa
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_produkte_liste' %}">Produkte</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ produkt.name_normalisiert|truncatewords:5 }}
+            </li>
+        </ol>
+    </nav>
 
     <!-- Header -->
     <div class="header-section mb-4">

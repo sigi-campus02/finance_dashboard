@@ -13,20 +13,20 @@
         margin-bottom: 2rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    
+
     .header-icon {
         font-size: 3rem;
         opacity: 0.9;
         margin-bottom: 1rem;
     }
-    
+
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
-    
+
     .stat-card {
         background: white;
         padding: 1.5rem;
@@ -35,29 +35,29 @@
         text-align: center;
         transition: transform 0.2s;
     }
-    
+
     .stat-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-    
+
     .stat-value {
         font-size: 2rem;
         font-weight: bold;
         color: #667eea;
         margin-bottom: 0.5rem;
     }
-    
+
     .stat-label {
         color: #6c757d;
         font-size: 0.9rem;
     }
-    
+
     .nav-tabs {
         border-bottom: 2px solid #dee2e6;
         margin-bottom: 2rem;
     }
-    
+
     .nav-tabs .nav-link {
         color: #6c757d;
         border: none;
@@ -65,28 +65,28 @@
         font-weight: 500;
         transition: all 0.3s;
     }
-    
+
     .nav-tabs .nav-link:hover {
         color: #667eea;
         background: transparent;
     }
-    
+
     .nav-tabs .nav-link.active {
         color: #667eea;
         border-bottom: 3px solid #667eea;
         background: transparent;
     }
-    
+
     .price-change-badge {
         padding: 0.5rem 1rem;
         border-radius: 20px;
         font-weight: bold;
     }
-    
+
     .tab-content {
         animation: fadeIn 0.3s;
     }
-    
+
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -97,12 +97,20 @@
 {% block content %}
 <div class="container-fluid py-4">
 
-    <!-- Zurück-Button -->
-    <div class="mb-3">
-        <a href="{% url 'finance:billa_produktgruppen_liste' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Zurück zur Übersicht
-        </a>
-    </div>
+    <!-- ✅ Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_dashboard' %}">
+                    <i class="bi bi-cart3"></i> Billa
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'finance:billa_produktgruppen_liste' %}">Produktgruppen</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">{{ produktgruppe|title }}</li>
+        </ol>
+    </nav>
 
     <!-- Header -->
     <div class="header-section">
@@ -191,17 +199,17 @@
 
     <!-- Tab Content -->
     <div class="tab-content">
-        
+
         <!-- ============================================================ -->
         <!-- TAB 1: ÜBERSICHT -->
         <!-- ============================================================ -->
         <div class="tab-pane fade show active" id="uebersicht" role="tabpanel">
-            
+
             <!-- Produktliste -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-box-seam"></i> 
+                        <i class="bi bi-box-seam"></i>
                         Alle Produkte ({{ produkte.count }})
                     </h4>
                 </div>
@@ -254,7 +262,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <a href="{% url 'finance:billa_produkt_detail' produkt.id %}" 
+                                        <a href="{% url 'finance:billa_produkt_detail' produkt.id %}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i> Details
                                         </a>
@@ -272,7 +280,7 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-graph-up"></i> 
+                        <i class="bi bi-graph-up"></i>
                         Durchschnittliche Preisentwicklung
                     </h4>
                 </div>
@@ -287,13 +295,13 @@
         <!-- TAB 2: PREISENTWICKLUNG (DETAILLIERT) -->
         <!-- ============================================================ -->
         <div class="tab-pane fade" id="preisentwicklung" role="tabpanel">
-            
+
             {% if produkte_mit_preisen %}
             <!-- Erweiterte Preisentwicklung Chart -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-bar-chart-line"></i> 
+                        <i class="bi bi-bar-chart-line"></i>
                         Preisentwicklung mit Min/Max
                     </h4>
                 </div>
@@ -306,7 +314,7 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-sort-down"></i> 
+                        <i class="bi bi-sort-down"></i>
                         Produkte nach Preisänderung
                     </h4>
                 </div>
@@ -348,7 +356,7 @@
                                         €{{ item.diff|floatformat:2 }}
                                     </td>
                                     <td class="text-end">
-                                        <span class="price-change-badge 
+                                        <span class="price-change-badge
                                             {% if item.diff_pct > 50 %}bg-danger text-white
                                             {% elif item.diff_pct > 20 %}bg-warning text-dark
                                             {% else %}bg-info text-white{% endif %}">
@@ -356,7 +364,7 @@
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{% url 'finance:billa_produkt_detail' item.produkt.id %}" 
+                                        <a href="{% url 'finance:billa_produkt_detail' item.produkt.id %}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-graph-up"></i> Details
                                         </a>
@@ -380,12 +388,12 @@
         <!-- TAB 3: EINKÄUFE -->
         <!-- ============================================================ -->
         <div class="tab-pane fade" id="einkauefe" role="tabpanel">
-            
+
             {% if letzte_kaeufe %}
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-clock-history"></i> 
+                        <i class="bi bi-clock-history"></i>
                         Letzte Käufe ({{ letzte_kaeufe.count }})
                     </h4>
                 </div>
@@ -425,7 +433,7 @@
                                         <strong>€{{ artikel.gesamtpreis|floatformat:2 }}</strong>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{% url 'finance:billa_einkauf_detail' artikel.einkauf.id %}" 
+                                        <a href="{% url 'finance:billa_einkauf_detail' artikel.einkauf.id %}"
                                            class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-receipt"></i> Beleg
                                         </a>
@@ -466,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tab.show();
         }
     }
-    
+
     // Tab-Wechsel in URL speichern
     document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(function(tab) {
         tab.addEventListener('shown.bs.tab', function(e) {
