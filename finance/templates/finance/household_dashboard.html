@@ -107,6 +107,43 @@
         margin-bottom: 20px;
     }
 
+    
+    /* Mobile: Kompaktere Chart-Höhen */
+    @media (max-width: 768px) {
+        .chart-container-horizontal {
+            height: 500px !important;  /* Reduziert von 700px */
+            padding-bottom: 10px;
+        }
+        
+        /* Tortendiagramme: Reduziere Canvas-Höhe */
+        #categoryPieChart2025,
+        #categoryPieChart2024 {
+            max-height: 300px !important;
+        }
+    }
+
+    /* Extra kleine Geräte: Weitere Optimierung */
+    @media (max-width: 576px) {
+        .chart-container-horizontal {
+            height: 450px !important;  /* Reduziert von 800px */
+            padding-bottom: 10px;
+        }
+        
+        #categoryPieChart2025,
+        #categoryPieChart2024 {
+            max-height: 280px !important;
+        }
+        
+        /* Kompaktere Card-Header */
+        .card-header h5 {
+            font-size: 0.95rem;
+        }
+        
+        .card-header small {
+            font-size: 0.8rem;
+        }
+    }
+    
     @media (min-width: 768px) {
         .section-wrapper {
             margin-left: calc(-50vw + 50%);
@@ -115,31 +152,7 @@
             padding-right: calc(50vw - 50% + 15px);
         }
     }
-
-    /* Mobile: Mehr Höhe für bessere Lesbarkeit */
-    @media (max-width: 768px) {
-        .chart-container-horizontal {
-            height: 700px;
-            padding-bottom: 15px;
-        }
-        .chart-container-medium {
-            height: 350px;
-            padding-bottom: 15px;
-        }
-    }
-
-    /* Extra kleine Geräte: Noch mehr Höhe */
-    @media (max-width: 576px) {
-        .chart-container-horizontal {
-            height: 800px;
-            padding-bottom: 20px;
-        }
-        .chart-container-medium {
-            height: 400px;
-            padding-bottom: 20px;
-        }
-    }
-
+    
     /* Floating Navigation Button */
     .floating-nav-btn {
         position: fixed;
@@ -894,7 +907,10 @@ let monthlyChart = null;
 let pieChart2025 = null;
 let pieChart2024 = null;
 
-// Funktion zum Laden des gestapelten Balkendiagramms
+// ============================================================
+// Ersetze die loadMonthlyChart Funktion mit dieser optimierten Version:
+// ============================================================
+
 function loadMonthlyChart(year) {
     fetch(`/api/household-monthly-spending/?year=${year}`)
         .then(response => response.json())
@@ -906,6 +922,10 @@ function loadMonthlyChart(year) {
                 monthlyChart.destroy();
             }
 
+            // Mobile Detection
+            const isMobile = window.innerWidth < 768;
+            const isSmallMobile = window.innerWidth < 576;
+
             monthlyChart = new Chart(ctx, {
                 type: 'bar',
                 data: data,
@@ -915,10 +935,10 @@ function loadMonthlyChart(year) {
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            top: 10,
-                            right: 10,
-                            bottom: 10,
-                            left: 10
+                            top: isMobile ? 5 : 10,
+                            right: isMobile ? 5 : 10,
+                            bottom: isMobile ? 5 : 10,
+                            left: isMobile ? 5 : 10
                         }
                     },
                     interaction: {
@@ -931,11 +951,18 @@ function loadMonthlyChart(year) {
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
+                                    // Kompaktere Darstellung auf Mobile
+                                    if (isMobile) {
+                                        return '€' + (value / 1000).toFixed(0) + 'k';
+                                    }
                                     return '€ ' + value.toLocaleString('de-DE');
                                 },
                                 font: {
-                                    size: window.innerWidth < 576 ? 10 : 12
-                                }
+                                    size: isSmallMobile ? 9 : (isMobile ? 10 : 12)
+                                },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                autoSkipPadding: isMobile ? 10 : 5
                             },
                             grid: {
                                 color: 'rgba(0, 0, 0, 0.05)'
@@ -948,24 +975,43 @@ function loadMonthlyChart(year) {
                             },
                             ticks: {
                                 font: {
-                                    size: window.innerWidth < 576 ? 11 : 12
+                                    size: isSmallMobile ? 10 : (isMobile ? 11 : 12)
                                 },
-                                autoSkip: false
+                                autoSkip: false,
+                                // Kürzere Monatsnamen auf Mobile
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    if (isMobile && label.length > 10) {
+                                        // Kürze lange Labels
+                                        return label.substring(0, 8) + '..';
+                                    }
+                                    return label;
+                                }
                             }
                         }
                     },
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top',
+                            position: isMobile ? 'bottom' : 'top',
                             labels: {
                                 font: {
-                                    size: window.innerWidth < 576 ? 11 : 13
+                                    size: isSmallMobile ? 10 : (isMobile ? 11 : 13)
                                 },
-                                padding: window.innerWidth < 576 ? 10 : 15
+                                padding: isSmallMobile ? 8 : (isMobile ? 10 : 15),
+                                boxWidth: isMobile ? 10 : 15,
+                                boxHeight: isMobile ? 10 : 15
                             }
                         },
                         tooltip: {
+                            enabled: true,
+                            padding: isMobile ? 8 : 12,
+                            titleFont: {
+                                size: isMobile ? 11 : 13
+                            },
+                            bodyFont: {
+                                size: isMobile ? 10 : 12
+                            },
                             callbacks: {
                                 label: function(context) {
                                     return context.dataset.label + ': € ' +
@@ -995,7 +1041,6 @@ function loadMonthlyChart(year) {
         });
 }
 
-// Funktion zum Laden des Tortendiagramms
 function loadPieChart(year, canvasId, chartVariable) {
     fetch(`/api/household-category-breakdown/?year=${year}`)
         .then(response => response.json())
@@ -1008,24 +1053,74 @@ function loadPieChart(year, canvasId, chartVariable) {
                 pieChart2024.destroy();
             }
 
+            // Mobile Detection
+            const isMobile = window.innerWidth < 768;
+            const isSmallMobile = window.innerWidth < 576;
+
             const newChart = new Chart(ctx, {
-                type: 'pie',
+                type: isMobile ? 'doughnut' : 'pie',  // Doughnut auf Mobile
                 data: data,
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
+                    cutout: isMobile ? '50%' : '0%',  // ← HIER: auf options-Ebene!
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'bottom',
+                            position: isMobile ? 'top' : 'bottom',
+                            align: 'center',
                             labels: {
-                                padding: 15,
+                                padding: isMobile ? 6 : 15,
                                 font: {
-                                    size: 11
+                                    size: isSmallMobile ? 8 : (isMobile ? 9 : 11)
+                                },
+                                boxWidth: isMobile ? 10 : 15,
+                                boxHeight: isMobile ? 10 : 15,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                            const percentage = ((value / total) * 100).toFixed(0);
+                                            
+                                            // Kürzere Labels auf Mobile
+                                            let shortLabel = label;
+                                            if (isMobile) {
+                                                const labelMap = {
+                                                    'Haushaltsausgaben': 'Haushalt',
+                                                    'Wohnung': 'Wohnung',
+                                                    'Restaurant & Lieferservice': 'Restaurant',
+                                                    'Ärzte & Gesundheit': 'Gesundheit',
+                                                    'Freizeit & Hobby & Urlaub': 'Freizeit',
+                                                    'Geschenke': 'Geschenke',
+                                                    'KFZ': 'KFZ'
+                                                };
+                                                shortLabel = labelMap[label] || label;
+                                            }
+                                            
+                                            return {
+                                                text: `${shortLabel} (${percentage}%)`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                hidden: false,
+                                                index: i,
+                                                lineWidth: 0
+                                            };
+                                        });
+                                    }
+                                    return [];
                                 }
                             }
                         },
                         tooltip: {
+                            enabled: true,
+                            padding: isMobile ? 8 : 12,
+                            titleFont: {
+                                size: isMobile ? 11 : 13
+                            },
+                            bodyFont: {
+                                size: isMobile ? 10 : 12
+                            },
                             callbacks: {
                                 label: function(context) {
                                     const label = context.label || '';
@@ -1033,6 +1128,9 @@ function loadPieChart(year, canvasId, chartVariable) {
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const percentage = ((value / total) * 100).toFixed(1);
 
+                                    if (isMobile) {
+                                        return `${label}: €${Math.round(value).toLocaleString('de-DE')} (${percentage}%)`;
+                                    }
                                     return label + ': € ' +
                                            value.toLocaleString('de-DE', {
                                                minimumFractionDigits: 2,
@@ -1041,6 +1139,14 @@ function loadPieChart(year, canvasId, chartVariable) {
                                            ' (' + percentage + '%)';
                                 }
                             }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 0,
+                            bottom: isMobile ? 10 : 0,
+                            left: 0,
+                            right: isMobile ? 5 : 0  // Weniger Padding rechts auf Mobile
                         }
                     }
                 }
