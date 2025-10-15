@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="Finance">
     
     <!-- Manifest -->
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="/manifest.json">
     
     <!-- Icons -->
     <link rel="icon" type="image/png" sizes="96x96" href="/static/icons/icons8-euro-money-ios-17-outlined-96.png">
@@ -131,6 +131,21 @@
             </div>
             <button id="installButton" class="btn btn-primary btn-sm ms-3">
                 Installieren
+            </button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- PWA Update Banner -->
+    <div id="updateBanner" style="display: none;" class="alert alert-warning alert-dismissible fade show position-fixed bottom-0 start-50 translate-middle-x mb-3 shadow-lg" style="z-index: 9999; max-width: 500px;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-arrow-repeat me-3 fs-4"></i>
+            <div class="flex-grow-1">
+                <strong>Update verfügbar</strong>
+                <p class="mb-0 small">Es gibt eine neue Version der App. Bitte neu laden.</p>
+            </div>
+            <button id="reloadButton" class="btn btn-warning btn-sm ms-3">
+                Neu laden
             </button>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -477,10 +492,49 @@
     <script>
         // Service Worker registrieren
         if ('serviceWorker' in navigator) {
+            const updateBanner = document.getElementById('updateBanner');
+            const reloadButton = document.getElementById('reloadButton');
+
+            const showUpdateBanner = (worker) => {
+                if (!updateBanner || !reloadButton) {
+                    return;
+                }
+                updateBanner.style.display = 'block';
+                reloadButton.onclick = () => {
+                    worker.postMessage({ type: 'SKIP_WAITING' });
+                };
+            };
+
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) {
+                    return;
+                }
+                refreshing = true;
+                window.location.reload();
+            });
+
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then(registration => {
                         console.log('Service Worker registriert:', registration);
+
+                        if (registration.waiting) {
+                            showUpdateBanner(registration.waiting);
+                        }
+
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (!newWorker) {
+                                return;
+                            }
+
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    showUpdateBanner(newWorker);
+                                }
+                            });
+                        });
                     })
                     .catch(error => {
                         console.log('Service Worker Registrierung fehlgeschlagen:', error);

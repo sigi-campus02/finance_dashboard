@@ -1,6 +1,7 @@
 {
   "name": "Finance Dashboard",
   "short_name": "Finance",
+  "version": "1.0.0",
   "description": "Persönliches Finance Dashboard für Ausgabenverwaltung",
   "start_url": "/",
   "scope": "/",
