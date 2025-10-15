@@ -287,6 +287,67 @@ def billa_dashboard(request):
 
 
 @login_required
+def billa_einkauefe_liste(request):
+    """Übersicht aller Einkäufe"""
+
+    # Filter aus GET-Parametern
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    filiale_id = request.GET.get('filiale')
+
+    # Basis-Queryset
+    einkaufe = BillaEinkauf.objects.select_related('filiale')
+
+    # Datum-Filter
+    if start_date:
+        einkaufe = einkaufe.filter(datum__gte=start_date)
+    if end_date:
+        einkaufe = einkaufe.filter(datum__lte=end_date)
+
+    # Filialen-Filter
+    if filiale_id and filiale_id != 'alle':
+        einkaufe = einkaufe.filter(filiale__filial_nr=filiale_id)
+
+    # Sortierung
+    einkaufe = einkaufe.order_by('-datum', '-zeit')
+
+    # Statistiken
+    stats = einkaufe.aggregate(
+        anzahl=Count('id'),
+        gesamt_ausgaben=Sum('gesamt_preis'),
+        gesamt_ersparnis=Sum('gesamt_ersparnis'),
+        avg_warenkorb=Avg('gesamt_preis')
+    )
+
+    # Filialen für Filter
+    filialen = BillaFiliale.objects.filter(aktiv=True).order_by('filial_nr')
+
+    context = {
+        'einkaufe': einkaufe,
+        'stats': stats,
+        'filialen': filialen,
+        'selected_filiale': filiale_id or 'alle',
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+
+    return render(request, 'finance/billa_einkauefe_liste.html', context)
+
+@login_required
+def billa_einkauf_detail(request, einkauf_id):
+    """Detail-Ansicht eines Einkaufs"""
+    einkauf = get_object_or_404(BillaEinkauf, pk=einkauf_id)
+    artikel = einkauf.artikel.select_related('produkt').order_by('position')
+
+    context = {
+        'einkauf': einkauf,
+        'artikel': artikel
+    }
+
+    return render(request, 'finance/billa_einkauf_detail.html', context)
+
+
+@login_required
 def billa_einkauf_detail(request, einkauf_id):
     """Detail-Ansicht eines Einkaufs"""
     einkauf = get_object_or_404(BillaEinkauf, pk=einkauf_id)
@@ -413,41 +474,6 @@ def billa_produkte_liste(request):
     }
 
     return render(request, 'finance/billa_produkte_liste.html', context)
-
-# ❌ DEPRECATED
-"""
-@login_required
-def billa_preisentwicklung(request):
-
-
-    # Produkte mit mindestens 3 Käufen
-    produkte_mit_aenderungen = []
-
-    for produkt in BillaProdukt.objects.filter(anzahl_kaeufe__gte=3):
-        preise = list(produkt.preishistorie.values_list('preis', flat=True))
-        if len(preise) >= 2:
-            min_preis = min(preise)
-            max_preis = max(preise)
-            diff = max_preis - min_preis
-            diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
-
-            if diff > Decimal('0.5'):
-                produkte_mit_aenderungen.append({
-                    'produkt': produkt,
-                    'min_preis': min_preis,
-                    'max_preis': max_preis,
-                    'diff': diff,
-                    'diff_pct': diff_pct
-                })
-
-    produkte_mit_aenderungen.sort(key=lambda x: x['diff_pct'], reverse=True)
-
-    context = {
-        'produkte': produkte_mit_aenderungen[:50]
-    }
-
-    return render(request, 'finance/billa_preisentwicklung.html', context)
-"""
 
 # API Endpoints für AJAX
 
@@ -768,76 +794,6 @@ def billa_produktgruppe_detail(request, produktgruppe):
 
 
 # ============================================================================
-# PREISENTWICKLUNG - ÜBERSICHT
-# DEPRECATED - ersetzt durch billa_ueberkategorien
-# ============================================================================
-"""
-@login_required
-def billa_preisentwicklung_uebersicht(request):
-
-
-    # === Überkategorien Statistiken ===
-    ueberkategorien_stats = BillaProdukt.objects.exclude(
-        Q(ueberkategorie__isnull=True) | Q(ueberkategorie='')
-    ).values('ueberkategorie').annotate(
-        anzahl_produkte=Count('id'),
-        anzahl_kaeufe=Sum('anzahl_kaeufe'),
-        avg_preis=Avg('durchschnittspreis')
-    ).order_by('-anzahl_kaeufe')[:10]
-
-    # === Produktgruppen Statistiken (Top 20) ===
-    produktgruppen_stats = BillaProdukt.objects.exclude(
-        Q(produktgruppe__isnull=True) | Q(produktgruppe='')
-    ).values('produktgruppe', 'ueberkategorie').annotate(
-        anzahl_produkte=Count('id'),
-        anzahl_kaeufe=Sum('anzahl_kaeufe'),
-        avg_preis=Avg('durchschnittspreis')
-    ).order_by('-anzahl_kaeufe')[:20]
-
-    # === Top Preisänderungen (effizient berechnet) ===
-    produkte_mit_preisen = []
-
-    # Hole nur Produkte mit mindestens 3 Käufen
-    relevante_produkte = BillaProdukt.objects.filter(
-        anzahl_kaeufe__gte=3
-    ).prefetch_related('preishistorie')[:100]  # Limitiere für Performance
-
-    for produkt in relevante_produkte:
-        # Hole Min/Max direkt aus PreisHistorie
-        preis_stats = produkt.preishistorie.aggregate(
-            min_preis=Min('preis'),
-            max_preis=Max('preis'),
-            count=Count('id')
-        )
-
-        if preis_stats['count'] >= 2 and preis_stats['min_preis'] and preis_stats['max_preis']:
-            min_preis = preis_stats['min_preis']
-            max_preis = preis_stats['max_preis']
-            diff = max_preis - min_preis
-
-            if diff > Decimal('0.5') and min_preis > 0:
-                diff_pct = (diff / min_preis * 100)
-                produkte_mit_preisen.append({
-                    'produkt': produkt,
-                    'min_preis': min_preis,
-                    'max_preis': max_preis,
-                    'diff': diff,
-                    'diff_pct': diff_pct
-                })
-
-    # Sortiere nach Preisänderung
-    produkte_mit_preisen.sort(key=lambda x: x['diff_pct'], reverse=True)
-
-    context = {
-        'ueberkategorien': ueberkategorien_stats,
-        'produktgruppen': produktgruppen_stats,
-        'top_produkte': produkte_mit_preisen[:20]
-    }
-
-    return render(request, 'finance/_OLD_billa_preisentwicklung_uebersicht.html', context)
-"""
-
-# ============================================================================
 # PREISENTWICKLUNG - ÜBERKATEGORIEN
 # ============================================================================
 
@@ -917,51 +873,102 @@ def billa_ueberkategorien_liste(request):
     return render(request, 'finance/billa_ueberkategorien_liste.html', context)
 
 
-# ============================================================================
-# PREISENTWICKLUNG - EINZELNE ÜBERKATEGORIE (mit Produktgruppen)
-# ============================================================================
-
 @login_required
-def billa_ueberkategorie(request, ueberkategorie):
-    """Überkategorie mit Produktgruppen - MIT CHARTS"""
+def billa_ueberkategorie_detail(request, ueberkategorie):
+    """
+    Detailansicht einer Überkategorie mit integrierter Preisentwicklung
+    NEU: Analog zu Produktgruppen und Marken mit Tab-Navigation
+    """
+    from decimal import Decimal
+    from django.db.models import Q, Count, Sum, Avg, Min, Max
+    import json
 
-    stats = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
-    ).aggregate(
-        gesamt_produkte=Count('id', distinct=True),
-        gesamt_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis')
-    )
+    # Prüfe ob Überkategorie existiert
+    if not BillaProdukt.objects.filter(ueberkategorie=ueberkategorie).exists():
+        from django.http import Http404
+        raise Http404("Überkategorie nicht gefunden")
 
+    # ========================================================================
+    # PRODUKTGRUPPEN dieser Überkategorie
+    # ========================================================================
+
+    # Aggregiere Produktgruppen
     produktgruppen_base = BillaProdukt.objects.filter(
         ueberkategorie=ueberkategorie
     ).exclude(
         Q(produktgruppe__isnull=True) | Q(produktgruppe='')
     ).values('produktgruppe').annotate(
         anzahl_produkte=Count('id', distinct=True),
-        anzahl_kaeufe=Sum('anzahl_kaeufe')
-    ).order_by('produktgruppe')
+        anzahl_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis')
+    ).order_by('-anzahl_kaeufe')
 
-    produktgruppen = []
+    # Icons für Produktgruppen
+    KATEGORIE_ICONS = {
+        'Gemüse': 'bi-basket',
+        'Obst': 'bi-apple',
+        'Milchprodukte': 'bi-cup-straw',
+        'Fleisch & Wurst': 'bi-shop',
+        'Getränke': 'bi-cup',
+        'Brot & Gebäck': 'bi-bread-slice',
+        'Tiefkühl': 'bi-snow',
+        'Süßigkeiten': 'bi-candy',
+        'Konserven': 'bi-archive',
+        'Haushalt': 'bi-house',
+        'Körperpflege': 'bi-droplet',
+        'Sonstiges': 'bi-three-dots'
+    }
+    icon = KATEGORIE_ICONS.get(ueberkategorie, 'bi-box-seam')
+
+    produktgruppen_list = []
+    for gruppe in produktgruppen_base:
+        gruppe['icon'] = KATEGORIE_ICONS.get(ueberkategorie, 'bi-tag')
+        produktgruppen_list.append(gruppe)
+
+    # ========================================================================
+    # STATISTIKEN der Überkategorie
+    # ========================================================================
+
+    stats = BillaProdukt.objects.filter(
+        ueberkategorie=ueberkategorie
+    ).aggregate(
+        gesamt_produkte=Count('id', distinct=True),
+        gesamt_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis'),
+        min_preis=Min('letzter_preis'),
+        max_preis=Max('letzter_preis'),
+        gesamt_ausgaben=Sum('artikel__gesamtpreis')
+    )
+
+    # ========================================================================
+    # PREISENTWICKLUNG - Detaillierte Analyse
+    # ========================================================================
+
+    # 1. Produktgruppen mit Preisänderungen
+    produktgruppen_mit_preisen = []
 
     for gruppe in produktgruppen_base:
         gruppe_name = gruppe['produktgruppe']
 
+        # Preisentwicklung dieser Produktgruppe
         preis_stats = BillaPreisHistorie.objects.filter(
             produkt__ueberkategorie=ueberkategorie,
             produkt__produktgruppe=gruppe_name
         ).aggregate(
             min_preis=Min('preis'),
             max_preis=Max('preis'),
+            avg_preis=Avg('preis'),
             count=Count('id')
         )
 
+        # Nur Gruppen mit Preishistorie einbeziehen
         if preis_stats['count'] >= 2 and preis_stats['min_preis']:
-            min_preis = float(preis_stats['min_preis'])
-            max_preis = float(preis_stats['max_preis'])
+            min_preis = preis_stats['min_preis']
+            max_preis = preis_stats['max_preis']
             diff = max_preis - min_preis
             diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
 
+            # ✅ NEU: Preisverlauf für Charts (letzte 30 Einträge)
             preis_historie_raw = BillaPreisHistorie.objects.filter(
                 produkt__ueberkategorie=ueberkategorie,
                 produkt__produktgruppe=gruppe_name
@@ -972,193 +979,86 @@ def billa_ueberkategorie(request, ueberkategorie):
             preis_historie = [
                 {
                     'datum': h['datum'].strftime('%d.%m.%Y'),
-                    'durchschnitt': float(h['durchschnitt'])
+                    'durchschnitt': float(h['durchschnitt']) if h['durchschnitt'] else 0
                 }
                 for h in preis_historie_raw
             ]
 
-            produktgruppen.append({
+            produktgruppen_mit_preisen.append({
                 'name': gruppe_name,
                 'anzahl_produkte': gruppe['anzahl_produkte'],
                 'anzahl_kaeufe': gruppe['anzahl_kaeufe'],
-                'min_preis': min_preis,
-                'max_preis': max_preis,
-                'diff': diff,
-                'diff_pct': diff_pct,
-                'preis_historie': preis_historie
+                'min_preis': float(min_preis),  # ✅ Float für JSON
+                'max_preis': float(max_preis),  # ✅ Float für JSON
+                'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0,
+                'diff': float(diff),  # ✅ Float für JSON
+                'diff_pct': float(diff_pct),  # ✅ Float für JSON
+                'preis_historie': preis_historie  # ✅ NEU: Für Charts
             })
-
-    produktgruppen.sort(key=lambda x: x['diff_pct'], reverse=True)
-
-    context = {
-        'ueberkategorie': ueberkategorie,
-        'stats': stats,
-        'produktgruppen': json.dumps(produktgruppen)
-    }
-
-    return render(request, 'finance/billa_ueberkategorie.html', context)
-
-
-# ============================================================================
-# PREISENTWICKLUNG - PRODUKTGRUPPE (mit einzelnen Produkten)
-# ❌ DEPRECATED - Funktionalität jetzt in billa_produktgruppe_detail integriert
-# ============================================================================
-
-"""
-@login_required
-def billa_preisentwicklung_produktgruppe(request, produktgruppe):
-
-    # Finde Überkategorie dieser Produktgruppe
-    beispiel_produkt = BillaProdukt.objects.filter(
-        produktgruppe=produktgruppe
-    ).first()
-
-    ueberkategorie = beispiel_produkt.ueberkategorie if beispiel_produkt else None
-
-    # === Alle Produkte dieser Gruppe ===
-    produkte_queryset = BillaProdukt.objects.filter(
-        produktgruppe=produktgruppe
-    ).prefetch_related('preishistorie')
-
-    # === Berechne Preisänderungen für jedes Produkt (JSON-serialisierbar) ===
-    produkte_mit_aenderungen = []
-
-    for produkt in produkte_queryset:
-        preis_stats = produkt.preishistorie.aggregate(
-            min_preis=Min('preis'),
-            max_preis=Max('preis'),
-            count=Count('id')
-        )
-
-        if preis_stats['count'] >= 2 and preis_stats['min_preis']:
-            min_preis = preis_stats['min_preis']
-            max_preis = preis_stats['max_preis']
-            diff = max_preis - min_preis
-
-            if min_preis > 0:
-                diff_pct = (diff / min_preis * 100)
-                # ✅ KORRIGIERT: Serialisiere alle Werte als Float/String
-                produkte_mit_aenderungen.append({
-                    'produkt': {
-                        'id': produkt.id,
-                        'name_normalisiert': produkt.name_normalisiert,
-                        'marke': produkt.marke or '',
-                        'anzahl_kaeufe': produkt.anzahl_kaeufe or 0,
-                        'durchschnittspreis': float(produkt.durchschnittspreis) if produkt.durchschnittspreis else 0.0,
-                    },
-                    'min_preis': float(min_preis),
-                    'max_preis': float(max_preis),
-                    'diff': float(diff),
-                    'diff_pct': float(diff_pct)
-                })
 
     # Sortiere nach Preisänderung
-    produkte_mit_aenderungen.sort(key=lambda x: x['diff_pct'], reverse=True)
+    produktgruppen_mit_preisen.sort(key=lambda x: x['diff_pct'], reverse=True)
 
-    # === Preisentwicklung pro Produkt (statt Durchschnitt) ===
-    preis_historie_produkte = []
-
-    for produkt in produkte_queryset:
-        # Nur Produkte mit mind. 2 Preiseinträgen
-        if produkt.preishistorie.count() >= 2:
-            # Hole Preishistorie für dieses spezifische Produkt
-            historie = list(produkt.preishistorie.values('datum', 'preis').order_by('datum'))
-
-            # Konvertiere Decimal zu Float für JavaScript
-            historie_converted = [
-                {
-                    'datum': h['datum'].isoformat(),  # Konvertiere Datum zu String
-                    'preis': float(h['preis']) if h['preis'] else 0.0
-                }
-                for h in historie
-            ]
-
-            preis_historie_produkte.append({
-                'produkt_id': produkt.id,
-                'produkt_name': produkt.name_normalisiert,
-                'historie': historie_converted
-            })
-
-    # === Statistiken ===
-    stats = produkte_queryset.aggregate(
-        gesamt_produkte=Count('id'),
-        gesamt_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis')
-    )
-
-    context = {
-        'produktgruppe': produktgruppe,
-        'ueberkategorie': ueberkategorie,
-        'produkte': produkte_mit_aenderungen,  # ✅ Jetzt JSON-serialisierbar
-        'preis_historie_produkte': preis_historie_produkte,
-        'stats': stats
-    }
-
-    return render(request, 'finance/_OLD_billa_preisentwicklung_produktgruppe.html', context)
-"""
-
-
-# ============================================================================
-# PREISENTWICKLUNG - EINZELNES PRODUKT
-# ❌ DEPRECATED
-# ============================================================================
-"""
-@login_required
-def billa_preisentwicklung_produkt(request, produkt_id):
-
-    produkt = get_object_or_404(BillaProdukt, pk=produkt_id)
-
-    # Preisentwicklung
-    preis_historie_raw = produkt.preishistorie.order_by('datum')
-
-    # ✅ Konvertiere zu JSON
-    preis_historie = [
-        {
-            'datum': h.datum.strftime('%Y-%m-%d'),
-            'preis': float(h.preis),
-            'menge': float(h.menge),
-            'filiale': h.filiale
-        }
-        for h in preis_historie_raw
-    ]
-
-    # Statistiken
-    stats = produkt.preishistorie.aggregate(
-        anzahl_datenpunkte=Count('id'),
+    # 2. Preisentwicklung der gesamten Überkategorie (erweitert mit min/max)
+    preis_historie_kategorie = BillaPreisHistorie.objects.filter(
+        produkt__ueberkategorie=ueberkategorie
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis'),
         min_preis=Min('preis'),
-        max_preis=Max('preis'),
-        avg_preis=Avg('preis')
-    )
+        max_preis=Max('preis')
+    ).order_by('datum')
 
-    # Kaufstatistiken
-    kauf_stats = produkt.artikel.aggregate(
-        anzahl_kaeufe=Count('id'),
-        gesamt_ausgaben=Sum('gesamtpreis'),
-        gesamt_menge=Sum('menge')
-    )
+    # JSON-serialisierbare Daten für Charts
+    preis_historie_simple = []
+    for entry in BillaPreisHistorie.objects.filter(
+            produkt__ueberkategorie=ueberkategorie
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis')
+    ).order_by('datum'):
+        preis_historie_simple.append({
+            'datum': entry['datum'].strftime('%Y-%m-%d'),
+            'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0
+        })
 
-    if stats['min_preis']:
-        stats['min_preis'] = float(stats['min_preis'])
-        stats['max_preis'] = float(stats['max_preis'])
-        stats['avg_preis'] = float(stats['avg_preis'])
-        diff = stats['max_preis'] - stats['min_preis']
-        stats['diff'] = diff
-        stats['diff_pct'] = (diff / stats['min_preis'] * 100) if stats['min_preis'] > 0 else 0
+    # Konvertiere erweiterte Preis-Historie (mit min/max)
+    preis_historie_detail = []
+    for entry in preis_historie_kategorie:
+        preis_historie_detail.append({
+            'datum': entry['datum'].strftime('%Y-%m-%d'),
+            'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0,
+            'min_preis': float(entry['min_preis']) if entry['min_preis'] else 0,
+            'max_preis': float(entry['max_preis']) if entry['max_preis'] else 0
+        })
 
-    stats.update(kauf_stats)
+    # ========================================================================
+    # TOP PRODUKTE dieser Überkategorie
+    # ========================================================================
 
-    # Letzte Käufe
-    letzte_kaeufe = produkt.artikel.select_related('einkauf').order_by('-einkauf__datum')[:20]
+    top_produkte = BillaProdukt.objects.filter(
+        ueberkategorie=ueberkategorie
+    ).order_by('-anzahl_kaeufe')[:10]
+
+    # ========================================================================
+    # Context zusammenstellen
+    # ========================================================================
+
+    stats['anzahl_produktgruppen'] = len(produktgruppen_list)
 
     context = {
-        'produkt': produkt,
-        'preis_historie': json.dumps(preis_historie),
+        'ueberkategorie': ueberkategorie,
+        'icon': icon,
         'stats': stats,
-        'letzte_kaeufe': letzte_kaeufe
+        'produktgruppen': produktgruppen_list,
+        'produktgruppen_mit_preisen': json.dumps(produktgruppen_mit_preisen),  # ✅ JSON!
+        'top_produkte': top_produkte,
+
+        # JSON-serialisierte Chart-Daten
+        'preis_historie_json': json.dumps(preis_historie_simple),
+        'preis_historie_detail_json': json.dumps(preis_historie_detail)
     }
 
-    return render(request, 'finance/_OLD_billa_preisentwicklung_produkt.html', context)
-"""
+    return render(request, 'finance/billa_ueberkategorie_detail.html', context)
+
 
 # ============================================================================
 # HILFSFUNKTIONEN
@@ -1487,91 +1387,8 @@ def billa_marke_detail(request, marke):
     return render(request, 'finance/billa_marke_detail.html', context)
 
 
-# ============================================================================
-# MARKEN - PREISENTWICKLUNG
-# ❌ DEPRECATED - Funktionalität jetzt in billa_marke_detail integriert
-# ============================================================================
-
-"""
-@login_required
-def billa_preisentwicklung_marke(request, marke):
-
-    # Prüfe ob Marke existiert
-    produkte_queryset = BillaProdukt.objects.filter(marke=marke)
-
-    if not produkte_queryset.exists():
-        from django.http import Http404
-        raise Http404("Marke nicht gefunden")
-
-    # === Berechne Preisänderungen für jedes Produkt ===
-    produkte_mit_aenderungen = []
-
-    for produkt in produkte_queryset.prefetch_related('preishistorie'):
-        preis_stats = produkt.preishistorie.aggregate(
-            min_preis=Min('preis'),
-            max_preis=Max('preis'),
-            count=Count('id')
-        )
-
-        if preis_stats['count'] >= 2 and preis_stats['min_preis']:
-            min_preis = preis_stats['min_preis']
-            max_preis = preis_stats['max_preis']
-            diff = max_preis - min_preis
-
-            if min_preis > 0:
-                diff_pct = (diff / min_preis * 100)
-                produkte_mit_aenderungen.append({
-                    'produkt': produkt,
-                    'min_preis': float(min_preis),
-                    'max_preis': float(max_preis),
-                    'diff': float(diff),
-                    'diff_pct': float(diff_pct),
-                    'produktgruppe': produkt.produktgruppe,
-                    'ueberkategorie': produkt.ueberkategorie
-                })
-
-    # Sortiere nach Preisänderung
-    produkte_mit_aenderungen.sort(key=lambda x: x['diff_pct'], reverse=True)
-
-    # === Preisentwicklung der gesamten Marke (Durchschnitt) ===
-    preis_historie_marke = BillaPreisHistorie.objects.filter(
-        produkt__marke=marke
-    ).values('datum').annotate(
-        durchschnitt=Avg('preis'),
-        min_preis=Min('preis'),
-        max_preis=Max('preis')
-    ).order_by('datum')
-
-    # Konvertiere zu Liste mit Float-Werten
-    preis_historie_converted = []
-    for eintrag in preis_historie_marke:
-        preis_historie_converted.append({
-            'datum': eintrag['datum'].isoformat(),
-            'durchschnitt': float(eintrag['durchschnitt']) if eintrag['durchschnitt'] else 0.0,
-            'min_preis': float(eintrag['min_preis']) if eintrag['min_preis'] else 0.0,
-            'max_preis': float(eintrag['max_preis']) if eintrag['max_preis'] else 0.0
-        })
-
-    # === Statistiken ===
-    stats = produkte_queryset.aggregate(
-        gesamt_produkte=Count('id'),
-        gesamt_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis')
-    )
-
-    context = {
-        'marke': marke,
-        'produkte': produkte_mit_aenderungen,
-        'preis_historie_marke': preis_historie_converted,
-        'stats': stats
-    }
-
-    return render(request, 'finance/_OLD_billa_preisentwicklung_marke.html', context)
-"""
-
-
 class BillaReceiptParser:
-    """Parser für Billa-Rechnungen (aus dem Command kopiert)"""
+    """Parser für Billa-Rechnungen"""
 
     def __init__(self):
         self.artikel_pattern = re.compile(r'^(.+?)\s+([ABCDG])\s+([\d.,-]+)\s*$')
@@ -1981,251 +1798,5 @@ def _create_einkauf_with_artikel(data):
 
     return einkauf
 
-# Füge diese View in finance/views_billa.py hinzu, direkt VOR der billa_einkauf_detail View:
-
-@login_required
-def billa_einkauefe_uebersicht(request):
-    """Übersicht aller Einkäufe"""
-
-    # Filter aus GET-Parametern
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    filiale_id = request.GET.get('filiale')
-
-    # Basis-Queryset
-    einkaufe = BillaEinkauf.objects.select_related('filiale')
-
-    # Datum-Filter
-    if start_date:
-        einkaufe = einkaufe.filter(datum__gte=start_date)
-    if end_date:
-        einkaufe = einkaufe.filter(datum__lte=end_date)
-
-    # Filialen-Filter
-    if filiale_id and filiale_id != 'alle':
-        einkaufe = einkaufe.filter(filiale__filial_nr=filiale_id)
-
-    # Sortierung
-    einkaufe = einkaufe.order_by('-datum', '-zeit')
-
-    # Statistiken
-    stats = einkaufe.aggregate(
-        anzahl=Count('id'),
-        gesamt_ausgaben=Sum('gesamt_preis'),
-        gesamt_ersparnis=Sum('gesamt_ersparnis'),
-        avg_warenkorb=Avg('gesamt_preis')
-    )
-
-    # Filialen für Filter
-    filialen = BillaFiliale.objects.filter(aktiv=True).order_by('filial_nr')
-
-    context = {
-        'einkaufe': einkaufe,
-        'stats': stats,
-        'filialen': filialen,
-        'selected_filiale': filiale_id or 'alle',
-        'start_date': start_date,
-        'end_date': end_date,
-    }
-
-    return render(request, 'finance/billa_einkauefe_uebersicht.html', context)
-
-@login_required
-def billa_einkauf_detail(request, einkauf_id):
-    """Detail-Ansicht eines Einkaufs"""
-    einkauf = get_object_or_404(BillaEinkauf, pk=einkauf_id)
-    artikel = einkauf.artikel.select_related('produkt').order_by('position')
-
-    context = {
-        'einkauf': einkauf,
-        'artikel': artikel
-    }
-
-    return render(request, 'finance/billa_einkauf_detail.html', context)
 
 
-@login_required
-def billa_ueberkategorie_detail(request, ueberkategorie):
-    """
-    Detailansicht einer Überkategorie mit integrierter Preisentwicklung
-    NEU: Analog zu Produktgruppen und Marken mit Tab-Navigation
-    """
-    from decimal import Decimal
-    from django.db.models import Q, Count, Sum, Avg, Min, Max
-    import json
-
-    # Prüfe ob Überkategorie existiert
-    if not BillaProdukt.objects.filter(ueberkategorie=ueberkategorie).exists():
-        from django.http import Http404
-        raise Http404("Überkategorie nicht gefunden")
-
-    # ========================================================================
-    # PRODUKTGRUPPEN dieser Überkategorie
-    # ========================================================================
-
-    # Aggregiere Produktgruppen
-    produktgruppen_base = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
-    ).exclude(
-        Q(produktgruppe__isnull=True) | Q(produktgruppe='')
-    ).values('produktgruppe').annotate(
-        anzahl_produkte=Count('id', distinct=True),
-        anzahl_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis')
-    ).order_by('-anzahl_kaeufe')
-
-    # Icons für Produktgruppen
-    KATEGORIE_ICONS = {
-        'Gemüse': 'bi-basket',
-        'Obst': 'bi-apple',
-        'Milchprodukte': 'bi-cup-straw',
-        'Fleisch & Wurst': 'bi-shop',
-        'Getränke': 'bi-cup',
-        'Brot & Gebäck': 'bi-bread-slice',
-        'Tiefkühl': 'bi-snow',
-        'Süßigkeiten': 'bi-candy',
-        'Konserven': 'bi-archive',
-        'Haushalt': 'bi-house',
-        'Körperpflege': 'bi-droplet',
-        'Sonstiges': 'bi-three-dots'
-    }
-    icon = KATEGORIE_ICONS.get(ueberkategorie, 'bi-box-seam')
-
-    produktgruppen_list = []
-    for gruppe in produktgruppen_base:
-        gruppe['icon'] = KATEGORIE_ICONS.get(ueberkategorie, 'bi-tag')
-        produktgruppen_list.append(gruppe)
-
-    # ========================================================================
-    # STATISTIKEN der Überkategorie
-    # ========================================================================
-
-    stats = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
-    ).aggregate(
-        gesamt_produkte=Count('id', distinct=True),
-        gesamt_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis'),
-        min_preis=Min('letzter_preis'),
-        max_preis=Max('letzter_preis'),
-        gesamt_ausgaben=Sum('artikel__gesamtpreis')
-    )
-
-    # ========================================================================
-    # PREISENTWICKLUNG - Detaillierte Analyse
-    # ========================================================================
-
-    # 1. Produktgruppen mit Preisänderungen
-    produktgruppen_mit_preisen = []
-
-    for gruppe in produktgruppen_base:
-        gruppe_name = gruppe['produktgruppe']
-
-        # Preisentwicklung dieser Produktgruppe
-        preis_stats = BillaPreisHistorie.objects.filter(
-            produkt__ueberkategorie=ueberkategorie,
-            produkt__produktgruppe=gruppe_name
-        ).aggregate(
-            min_preis=Min('preis'),
-            max_preis=Max('preis'),
-            avg_preis=Avg('preis'),
-            count=Count('id')
-        )
-
-        # Nur Gruppen mit Preishistorie einbeziehen
-        if preis_stats['count'] >= 2 and preis_stats['min_preis']:
-            min_preis = preis_stats['min_preis']
-            max_preis = preis_stats['max_preis']
-            diff = max_preis - min_preis
-            diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
-
-            # ✅ NEU: Preisverlauf für Charts (letzte 30 Einträge)
-            preis_historie_raw = BillaPreisHistorie.objects.filter(
-                produkt__ueberkategorie=ueberkategorie,
-                produkt__produktgruppe=gruppe_name
-            ).values('datum').annotate(
-                durchschnitt=Avg('preis')
-            ).order_by('datum')[:30]
-
-            preis_historie = [
-                {
-                    'datum': h['datum'].strftime('%d.%m.%Y'),
-                    'durchschnitt': float(h['durchschnitt']) if h['durchschnitt'] else 0
-                }
-                for h in preis_historie_raw
-            ]
-
-            produktgruppen_mit_preisen.append({
-                'name': gruppe_name,
-                'anzahl_produkte': gruppe['anzahl_produkte'],
-                'anzahl_kaeufe': gruppe['anzahl_kaeufe'],
-                'min_preis': float(min_preis),  # ✅ Float für JSON
-                'max_preis': float(max_preis),  # ✅ Float für JSON
-                'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0,
-                'diff': float(diff),  # ✅ Float für JSON
-                'diff_pct': float(diff_pct),  # ✅ Float für JSON
-                'preis_historie': preis_historie  # ✅ NEU: Für Charts
-            })
-
-    # Sortiere nach Preisänderung
-    produktgruppen_mit_preisen.sort(key=lambda x: x['diff_pct'], reverse=True)
-
-    # 2. Preisentwicklung der gesamten Überkategorie (erweitert mit min/max)
-    preis_historie_kategorie = BillaPreisHistorie.objects.filter(
-        produkt__ueberkategorie=ueberkategorie
-    ).values('datum').annotate(
-        durchschnitt=Avg('preis'),
-        min_preis=Min('preis'),
-        max_preis=Max('preis')
-    ).order_by('datum')
-
-    # JSON-serialisierbare Daten für Charts
-    preis_historie_simple = []
-    for entry in BillaPreisHistorie.objects.filter(
-            produkt__ueberkategorie=ueberkategorie
-    ).values('datum').annotate(
-        durchschnitt=Avg('preis')
-    ).order_by('datum'):
-        preis_historie_simple.append({
-            'datum': entry['datum'].strftime('%Y-%m-%d'),
-            'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0
-        })
-
-    # Konvertiere erweiterte Preis-Historie (mit min/max)
-    preis_historie_detail = []
-    for entry in preis_historie_kategorie:
-        preis_historie_detail.append({
-            'datum': entry['datum'].strftime('%Y-%m-%d'),
-            'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0,
-            'min_preis': float(entry['min_preis']) if entry['min_preis'] else 0,
-            'max_preis': float(entry['max_preis']) if entry['max_preis'] else 0
-        })
-
-    # ========================================================================
-    # TOP PRODUKTE dieser Überkategorie
-    # ========================================================================
-
-    top_produkte = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
-    ).order_by('-anzahl_kaeufe')[:10]
-
-    # ========================================================================
-    # Context zusammenstellen
-    # ========================================================================
-
-    stats['anzahl_produktgruppen'] = len(produktgruppen_list)
-
-    context = {
-        'ueberkategorie': ueberkategorie,
-        'icon': icon,
-        'stats': stats,
-        'produktgruppen': produktgruppen_list,
-        'produktgruppen_mit_preisen': json.dumps(produktgruppen_mit_preisen),  # ✅ JSON!
-        'top_produkte': top_produkte,
-
-        # JSON-serialisierte Chart-Daten
-        'preis_historie_json': json.dumps(preis_historie_simple),
-        'preis_historie_detail_json': json.dumps(preis_historie_detail)
-    }
-
-    return render(request, 'finance/billa_ueberkategorie_detail.html', context)

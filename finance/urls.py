@@ -81,7 +81,7 @@ urlpatterns = [
     path('billa/import/', views_billa.billa_import_upload, name='billa_import'),
 
     # Einkäufe
-    path('billa/einkauefe/', views_billa.billa_einkauefe_uebersicht, name='billa_einkauefe_uebersicht'),
+    path('billa/einkauefe/', views_billa.billa_einkauefe_liste, name='billa_einkauefe_liste'),
     path('billa/einkauf/<int:einkauf_id>/', views_billa.billa_einkauf_detail, name='billa_einkauf_detail'),
 
     # Produkte
