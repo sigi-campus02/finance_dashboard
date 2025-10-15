@@ -107,20 +107,30 @@ if 'DATABASE_URL' in os.environ:
         'options': '-c search_path=finance,public'
     }
 else:
-    # DEVELOPMENT (lokal) - nutzt .env Variablen
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': env('DB_NAME'),
-            'USER': env('DB_USER'),
-            'PASSWORD': env.get_value('DB_PASSWORD', default=''),
-            'HOST': env('DB_HOST'),
-            'PORT': env('DB_PORT'),
-            'OPTIONS': {
-                'options': '-c search_path=finance,public'
+    # DEVELOPMENT (lokal) - nutzt .env Variablen, fällt sonst auf SQLite zurück
+    default_engine = env('DB_ENGINE', default='django.db.backends.sqlite3')
+
+    if default_engine == 'django.db.backends.sqlite3':
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
             }
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': default_engine,
+                'NAME': env('DB_NAME'),
+                'USER': env('DB_USER'),
+                'PASSWORD': env.get_value('DB_PASSWORD', default=''),
+                'HOST': env('DB_HOST'),
+                'PORT': env('DB_PORT'),
+                'OPTIONS': {
+                    'options': '-c search_path=finance,public'
+                }
+            }
+        }
 
 
 # Password validation
