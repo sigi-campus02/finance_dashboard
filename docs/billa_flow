@@ -1,0 +1,17 @@
+billa/ -> billa/import/ ;
+billa/ -> billa/einkauefe/ -> billa/einkauf/<int:einkauf_id>/ -> billa/produkt/<int:produkt_id>/ ;
+billa/ -> billa/marken/ -> billa/marke/<str:marke>/ -> billa/preisentwicklung/marke/<str:marke>/ ;
+billa/ -> billa/marken/ -> billa/marke/<str:marke>/ -> billa/produkt/<int:produkt_id>/ ;
+
+billa/ -> billa/preisentwicklung/ -> billa/preisentwicklung/ueberkategorien/ -> billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/ -> billa/preisentwicklung/produktgruppe/<str:produktgruppe>/ ;
+billa/ -> billa/preisentwicklung/ -> billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/ -> billa/preisentwicklung/produktgruppe/<str:produktgruppe>/ ;
+billa/ -> billa/preisentwicklung/ -> billa/produkte/ ;
+billa/ -> billa/preisentwicklung/ -> billa/produktgruppen/ ;
+
+billa/ -> billa/produkte/ -> billa/produkt/<int:produkt_id>/ ;
+
+billa/ -> billa/produktgruppen/ -> billa/produktgruppe/<str:produktgruppe>/ -> billa/produkt/<int:produkt_id>/ ;
+billa/ -> billa/produktgruppen/ -> billa/produktgruppe/<str:produktgruppe>/ -> billa/einkauf/<int:einkauf_id>/ ;
+billa/ -> billa/produktgruppen/ -> billa/produktgruppen-mapper/ ;
+billa/ -> billa/produktgruppen/ -> billa/preisentwicklung/ ;
+billa/ -> billa/produktgruppen/ -> billa/produkte/ ;
