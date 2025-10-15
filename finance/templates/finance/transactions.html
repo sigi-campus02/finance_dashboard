@@ -53,6 +53,29 @@
         margin-top: 0.25rem;
         min-height: 1.5rem;
     }
+
+    .filter-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 0.2s ease;
+    }
+
+    .filter-toggle-btn .chevron-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .filter-toggle-btn[aria-expanded="true"] .chevron-icon {
+        transform: rotate(180deg);
+    }
+
+    @media (min-width: 768px) {
+        #transactionsFilter.collapse {
+            display: block !important;
+            height: auto !important;
+            visibility: visible;
+        }
+    }
 </style>
 
 
@@ -305,67 +328,81 @@
 
 <!-- Filter -->
 <div class="card mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3" id="filterForm">
-            <div class="col-md-2">
-                <label class="form-label">Jahr</label>
-                <select name="year" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    {% for y in years %}
-                    <option value="{{ y }}" {% if selected_year and y == selected_year|add:"0" %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Monat</label>
-                <select name="month" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    <option value="1" {% if selected_month == "1" %}selected{% endif %}>Jänner</option>
-                    <option value="2" {% if selected_month == "2" %}selected{% endif %}>Februar</option>
-                    <option value="3" {% if selected_month == "3" %}selected{% endif %}>März</option>
-                    <option value="4" {% if selected_month == "4" %}selected{% endif %}>April</option>
-                    <option value="5" {% if selected_month == "5" %}selected{% endif %}>Mai</option>
-                    <option value="6" {% if selected_month == "6" %}selected{% endif %}>Juni</option>
-                    <option value="7" {% if selected_month == "7" %}selected{% endif %}>Juli</option>
-                    <option value="8" {% if selected_month == "8" %}selected{% endif %}>August</option>
-                    <option value="9" {% if selected_month == "9" %}selected{% endif %}>September</option>
-                    <option value="10" {% if selected_month == "10" %}selected{% endif %}>Oktober</option>
-                    <option value="11" {% if selected_month == "11" %}selected{% endif %}>November</option>
-                    <option value="12" {% if selected_month == "12" %}selected{% endif %}>Dezember</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Konto</label>
-                <select name="account" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    {% for acc in accounts %}
-                    <option value="{{ acc.id }}" {% if selected_account and acc.id == selected_account|add:"0" %}selected{% endif %}>
-                        {{ acc.account }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Kategorie</label>
-                <select name="category" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">Alle</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category and cat.id == selected_category|add:"0" %}selected{% endif %}>
-                        {{ cat.category }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Suche</label>
-                <input type="text" name="search" class="form-control" placeholder="Payee oder Memo" value="{{ search_query|default:'' }}">
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-search"></i> Filtern
-                </button>
-            </div>
-        </form>
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
+        <button class="btn btn-sm btn-outline-primary d-md-none filter-toggle-btn"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#transactionsFilter"
+                aria-expanded="false"
+                aria-controls="transactionsFilter">
+            Optionen
+            <i class="bi bi-chevron-down chevron-icon"></i>
+        </button>
+    </div>
+    <div class="collapse d-md-block" id="transactionsFilter">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-2">
+                    <label class="form-label">Jahr</label>
+                    <select name="year" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if selected_year and y == selected_year|add:"0" %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Monat</label>
+                    <select name="month" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        <option value="1" {% if selected_month == "1" %}selected{% endif %}>Jänner</option>
+                        <option value="2" {% if selected_month == "2" %}selected{% endif %}>Februar</option>
+                        <option value="3" {% if selected_month == "3" %}selected{% endif %}>März</option>
+                        <option value="4" {% if selected_month == "4" %}selected{% endif %}>April</option>
+                        <option value="5" {% if selected_month == "5" %}selected{% endif %}>Mai</option>
+                        <option value="6" {% if selected_month == "6" %}selected{% endif %}>Juni</option>
+                        <option value="7" {% if selected_month == "7" %}selected{% endif %}>Juli</option>
+                        <option value="8" {% if selected_month == "8" %}selected{% endif %}>August</option>
+                        <option value="9" {% if selected_month == "9" %}selected{% endif %}>September</option>
+                        <option value="10" {% if selected_month == "10" %}selected{% endif %}>Oktober</option>
+                        <option value="11" {% if selected_month == "11" %}selected{% endif %}>November</option>
+                        <option value="12" {% if selected_month == "12" %}selected{% endif %}>Dezember</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Konto</label>
+                    <select name="account" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        {% for acc in accounts %}
+                        <option value="{{ acc.id }}" {% if selected_account and acc.id == selected_account|add:"0" %}selected{% endif %}>
+                            {{ acc.account }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Kategorie</label>
+                    <select name="category" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Alle</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category and cat.id == selected_category|add:"0" %}selected{% endif %}>
+                            {{ cat.category }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Suche</label>
+                    <input type="text" name="search" class="form-control" placeholder="Payee oder Memo" value="{{ search_query|default:'' }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filtern
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
 

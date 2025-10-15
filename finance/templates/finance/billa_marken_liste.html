@@ -2,6 +2,33 @@
 
 {% block title %}Billa - Marken Übersicht{% endblock %}
 
+{% block extra_css %}
+<style>
+    .filter-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 0.2s ease;
+    }
+
+    .filter-toggle-btn .chevron-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .filter-toggle-btn[aria-expanded="true"] .chevron-icon {
+        transform: rotate(180deg);
+    }
+
+    @media (min-width: 768px) {
+        #billaBrandsFilter.collapse {
+            display: block !important;
+            height: auto !important;
+            visibility: visible;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
 
@@ -27,79 +54,93 @@
 
     <!-- Filter & Suche -->
     <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <!-- Überkategorie Filter -->
-                <div class="col-md-3">
-                    <label class="form-label">Überkategorie</label>
-                    <select name="ueberkategorie" class="form-select">
-                        <option value="alle" {% if selected_ueberkategorie == 'alle' %}selected{% endif %}>
-                            Alle Kategorien
-                        </option>
-                        {% for ukat in ueberkategorien %}
-                        <option value="{{ ukat }}" {% if selected_ueberkategorie == ukat %}selected{% endif %}>
-                            {{ ukat }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter &amp; Suche</h5>
+            <button class="btn btn-sm btn-outline-primary d-md-none filter-toggle-btn"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#billaBrandsFilter"
+                    aria-expanded="false"
+                    aria-controls="billaBrandsFilter">
+                Optionen
+                <i class="bi bi-chevron-down chevron-icon"></i>
+            </button>
+        </div>
+        <div class="collapse d-md-block" id="billaBrandsFilter">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <!-- Überkategorie Filter -->
+                    <div class="col-md-3">
+                        <label class="form-label">Überkategorie</label>
+                        <select name="ueberkategorie" class="form-select">
+                            <option value="alle" {% if selected_ueberkategorie == 'alle' %}selected{% endif %}>
+                                Alle Kategorien
+                            </option>
+                            {% for ukat in ueberkategorien %}
+                            <option value="{{ ukat }}" {% if selected_ueberkategorie == ukat %}selected{% endif %}>
+                                {{ ukat }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-                <!-- Produktgruppe Filter -->
-                <div class="col-md-3">
-                    <label class="form-label">Produktgruppe</label>
-                    <select name="produktgruppe" class="form-select">
-                        <option value="alle" {% if selected_produktgruppe == 'alle' %}selected{% endif %}>
-                            Alle Produktgruppen
-                        </option>
-                        {% for pgruppe in produktgruppen %}
-                        <option value="{{ pgruppe }}" {% if selected_produktgruppe == pgruppe %}selected{% endif %}>
-                            {{ pgruppe }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
+                    <!-- Produktgruppe Filter -->
+                    <div class="col-md-3">
+                        <label class="form-label">Produktgruppe</label>
+                        <select name="produktgruppe" class="form-select">
+                            <option value="alle" {% if selected_produktgruppe == 'alle' %}selected{% endif %}>
+                                Alle Produktgruppen
+                            </option>
+                            {% for pgruppe in produktgruppen %}
+                            <option value="{{ pgruppe }}" {% if selected_produktgruppe == pgruppe %}selected{% endif %}>
+                                {{ pgruppe }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-                <!-- Suche -->
-                <div class="col-md-4">
-                    <label class="form-label">Suche</label>
-                    <input type="text" name="suche" class="form-control" 
-                           placeholder="Marke suchen..." value="{{ suche }}">
-                </div>
+                    <!-- Suche -->
+                    <div class="col-md-4">
+                        <label class="form-label">Suche</label>
+                        <input type="text" name="suche" class="form-control"
+                               placeholder="Marke suchen..." value="{{ suche }}">
+                    </div>
 
-                <!-- Sortierung -->
-                <div class="col-md-2">
-                    <label class="form-label">Sortierung</label>
-                    <select name="sort" class="form-select">
-                        <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
-                            Meiste Käufe
-                        </option>
-                        <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
-                            Wenigste Käufe
-                        </option>
-                        <option value="-durchschnittspreis" {% if sortierung == '-durchschnittspreis' %}selected{% endif %}>
-                            Teuerste
-                        </option>
-                        <option value="durchschnittspreis" {% if sortierung == 'durchschnittspreis' %}selected{% endif %}>
-                            Günstigste
-                        </option>
-                        <option value="marke" {% if sortierung == 'marke' %}selected{% endif %}>
-                            Name A-Z
-                        </option>
-                        <option value="-marke" {% if sortierung == '-marke' %}selected{% endif %}>
-                            Name Z-A
-                        </option>
-                    </select>
-                </div>
+                    <!-- Sortierung -->
+                    <div class="col-md-2">
+                        <label class="form-label">Sortierung</label>
+                        <select name="sort" class="form-select">
+                            <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
+                                Meiste Käufe
+                            </option>
+                            <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
+                                Wenigste Käufe
+                            </option>
+                            <option value="-durchschnittspreis" {% if sortierung == '-durchschnittspreis' %}selected{% endif %}>
+                                Teuerste
+                            </option>
+                            <option value="durchschnittspreis" {% if sortierung == 'durchschnittspreis' %}selected{% endif %}>
+                                Günstigste
+                            </option>
+                            <option value="marke" {% if sortierung == 'marke' %}selected{% endif %}>
+                                Name A-Z
+                            </option>
+                            <option value="-marke" {% if sortierung == '-marke' %}selected{% endif %}>
+                                Name Z-A
+                            </option>
+                        </select>
+                    </div>
 
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-funnel"></i> Filter anwenden
-                    </button>
-                    <a href="{% url 'finance:billa_marken_liste' %}" class="btn btn-outline-secondary">
-                        <i class="bi bi-x-circle"></i> Zurücksetzen
-                    </a>
-                </div>
-            </form>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i> Filter anwenden
+                        </button>
+                        <a href="{% url 'finance:billa_marken_liste' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Zurücksetzen
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
