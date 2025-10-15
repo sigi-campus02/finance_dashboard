@@ -30,6 +30,15 @@ def currency(amount):
     return format_currency(amount)
 
 
+@register.filter(name='thousand')
+def thousand_separator(value):
+    """Format a numeric value with German thousand separators."""
+    try:
+        return f"{int(value):,}".replace(",", ".")
+    except (ValueError, TypeError):
+        return value
+
+
 @register.simple_tag
 def icon_tag(icon_name, css_class=''):
     """
