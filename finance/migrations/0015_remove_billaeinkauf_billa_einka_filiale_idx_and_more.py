@@ -3,6 +3,35 @@
 from django.db import migrations
 
 
+def safe_remove_index(apps, schema_editor):
+    """Drop the legacy index only if it still exists."""
+
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT to_regclass('public.billa_einka_filiale_idx')"
+        )
+        exists = cursor.fetchone()[0]
+
+        if exists:
+            cursor.execute("DROP INDEX IF EXISTS billa_einka_filiale_idx")
+
+
+def safe_rename_index(apps, schema_editor):
+    """Rename the legacy index only if it is still present."""
+
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT to_regclass('public.billa_einka_datum_5f130f_idx')"
+        )
+        exists = cursor.fetchone()[0]
+
+        if exists:
+            cursor.execute(
+                "ALTER INDEX IF EXISTS billa_einka_datum_5f130f_idx "
+                "RENAME TO billa_einka_datum_641dea_idx"
+            )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,13 +39,33 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name="billaeinkauf",
-            name="billa_einka_filiale_idx",
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    safe_remove_index,
+                    migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.RemoveIndex(
+                    model_name="billaeinkauf",
+                    name="billa_einka_filiale_idx",
+                ),
+            ],
         ),
-        migrations.RenameIndex(
-            model_name="billaeinkauf",
-            new_name="billa_einka_datum_641dea_idx",
-            old_name="billa_einka_datum_5f130f_idx",
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    safe_rename_index,
+                    migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name="billaeinkauf",
+                    new_name="billa_einka_datum_641dea_idx",
+                    old_name="billa_einka_datum_5f130f_idx",
+                ),
+            ],
         ),
     ]
