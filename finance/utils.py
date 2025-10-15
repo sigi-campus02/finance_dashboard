@@ -1,6 +1,7 @@
-# finance/utils/__init__.py
-"""Utility-Funktionen für das Finance-Modul."""
-
+# finance/utils.py
+"""
+Utility-Funktionen für das Finance-Modul
+"""
 from decimal import Decimal
 
 # Icon-Mapping für verschiedene Account-Typen
@@ -121,7 +122,7 @@ def calculate_account_balance(account_id, end_date):
         Decimal: Kontostand
     """
     from django.db.models import Sum
-    from finance.models import FactTransactionsSigi
+    from .models import FactTransactionsSigi
 
     transactions = FactTransactionsSigi.objects.filter(
         account_id=account_id,
