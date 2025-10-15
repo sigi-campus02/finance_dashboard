@@ -10,11 +10,8 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'finance:billa_dashboard' %}">Billa</a></li>
             <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_uebersicht' %}">Preisentwicklung</a></li>
-            {% if produkt.ueberkategorie %}
-            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_ueberkategorie' produkt.ueberkategorie %}">{{ produkt.ueberkategorie }}</a></li>
-            {% endif %}
             {% if produkt.produktgruppe %}
-            <li class="breadcrumb-item"><a href="{% url 'finance:billa_preisentwicklung_produktgruppe' produkt.produktgruppe %}">{{ produkt.produktgruppe }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'finance:billa_produktgruppe_detail' produkt.produktgruppe %}#preisentwicklung">{{ produkt.produktgruppe }}</a></li>
             {% endif %}
             <li class="breadcrumb-item active">{{ produkt.name_normalisiert }}</li>
         </ol>

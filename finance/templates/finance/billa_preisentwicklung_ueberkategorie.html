@@ -118,7 +118,7 @@ if (produktgruppen.length === 0) {
         <td class="text-end">€${gruppe.diff.toFixed(2)}</td>
         <td class="text-end"><span class="badge ${badgeClass}">+${gruppe.diff_pct.toFixed(1)}%</span></td>
         <td class="text-end">
-            <a href="/billa/preisentwicklung/produktgruppe/${encodeURIComponent(gruppe.name)}/" 
+            <a href="/billa/produktgruppe/${encodeURIComponent(gruppe.name)}/#preisentwicklung"
                class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-graph-up"></i> Details
             </a>

@@ -99,10 +99,16 @@ urlpatterns = [
          name='billa_preisentwicklung_ueberkategorien'),
     path('billa/preisentwicklung/ueberkategorie/<str:ueberkategorie>/',
          views_billa.billa_preisentwicklung_ueberkategorie, name='billa_preisentwicklung_ueberkategorie'),
-    path('billa/preisentwicklung/produktgruppe/<str:produktgruppe>/', views_billa.billa_preisentwicklung_produktgruppe,
-         name='billa_preisentwicklung_produktgruppe'),
-    path('billa/preisentwicklung/marke/<str:marke>/', views_billa.billa_preisentwicklung_marke,
-         name='billa_preisentwicklung_marke'),  # NEU!
+
+    # ❌ DEPRECATED - Funktionalität in billa_produktgruppe_detail integriert
+    # path('billa/preisentwicklung/produktgruppe/<str:produktgruppe>/',
+    #      views_billa.billa_preisentwicklung_produktgruppe,
+    #      name='billa_preisentwicklung_produktgruppe'),
+
+    # ❌ DEPRECATED - Funktionalität in billa_marke_detail integriert
+    # path('billa/preisentwicklung/marke/<str:marke>/',
+    #      views_billa.billa_preisentwicklung_marke,
+    #      name='billa_preisentwicklung_marke'),
 
     # Mapper & Speichern
     path('billa/produktgruppen-mapper/', views_billa.produktgruppen_mapper, name='produktgruppen_mapper'),
