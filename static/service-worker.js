@@ -10,7 +10,7 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   // Manifest
-  '/static/manifest.json',
+  '/manifest.json',
   // Icons (passe die Namen an deine tatsächlichen Icon-Dateien an)
   '/static/icons/icon-192x192.png',
   '/static/icons/icon-512x512.png'
@@ -60,6 +60,14 @@ self.addEventListener('activate', event => {
       return self.clients.claim();
     })
   );
+});
+
+// Auf Nachrichten vom Client hören, um Updates sofort zu aktivieren
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[Service Worker] Skip waiting angefordert');
+    self.skipWaiting();
+  }
 });
 
 // Fetch - Network First für HTML, Cache First für Assets
