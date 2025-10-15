@@ -92,11 +92,36 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    .filter-section {
+    .filter-card .card-header {
         background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .filter-card .card-body {
+        background: #f8f9fa;
+    }
+
+    .filter-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 0.2s ease;
+    }
+
+    .filter-toggle-btn .chevron-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .filter-toggle-btn[aria-expanded="true"] .chevron-icon {
+        transform: rotate(180deg);
+    }
+
+    @media (min-width: 768px) {
+        #brandProductsFilter.collapse {
+            display: block !important;
+            height: auto !important;
+            visibility: visible;
+        }
     }
 </style>
 {% endblock %}
@@ -195,51 +220,67 @@
         <div class="tab-pane fade show active" id="uebersicht" role="tabpanel">
 
             <!-- Filter -->
-            <div class="filter-section">
-                <form method="get" class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Überkategorie</label>
-                        <select name="ueberkategorie" class="form-select" onchange="this.form.submit()">
-                            <option value="alle">Alle Kategorien</option>
-                            {% for kat in ueberkategorien %}
-                            <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
-                                {{ kat }}
-                            </option>
-                            {% endfor %}
-                        </select>
+            <div class="card filter-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
+                    <button class="btn btn-sm btn-outline-primary d-md-none filter-toggle-btn"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#brandProductsFilter"
+                            aria-expanded="false"
+                            aria-controls="brandProductsFilter">
+                        Optionen
+                        <i class="bi bi-chevron-down chevron-icon"></i>
+                    </button>
+                </div>
+                <div class="collapse d-md-block" id="brandProductsFilter">
+                    <div class="card-body">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Überkategorie</label>
+                                <select name="ueberkategorie" class="form-select" onchange="this.form.submit()">
+                                    <option value="alle">Alle Kategorien</option>
+                                    {% for kat in ueberkategorien %}
+                                    <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
+                                        {{ kat }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Produktgruppe</label>
+                                <select name="produktgruppe" class="form-select" onchange="this.form.submit()">
+                                    <option value="alle">Alle Gruppen</option>
+                                    {% for gruppe in alle_produktgruppen %}
+                                    <option value="{{ gruppe }}" {% if selected_produktgruppe == gruppe %}selected{% endif %}>
+                                        {{ gruppe }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sortierung</label>
+                                <select name="sort" class="form-select" onchange="this.form.submit()">
+                                    <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
+                                        Käufe (absteigend)
+                                    </option>
+                                    <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
+                                        Käufe (aufsteigend)
+                                    </option>
+                                    <option value="-durchschnittspreis" {% if sortierung == '-durchschnittspreis' %}selected{% endif %}>
+                                        Preis (absteigend)
+                                    </option>
+                                    <option value="durchschnittspreis" {% if sortierung == 'durchschnittspreis' %}selected{% endif %}>
+                                        Preis (aufsteigend)
+                                    </option>
+                                    <option value="name" {% if sortierung == 'name' %}selected{% endif %}>
+                                        Name (A-Z)
+                                    </option>
+                                </select>
+                            </div>
+                        </form>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Produktgruppe</label>
-                        <select name="produktgruppe" class="form-select" onchange="this.form.submit()">
-                            <option value="alle">Alle Gruppen</option>
-                            {% for gruppe in alle_produktgruppen %}
-                            <option value="{{ gruppe }}" {% if selected_produktgruppe == gruppe %}selected{% endif %}>
-                                {{ gruppe }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Sortierung</label>
-                        <select name="sort" class="form-select" onchange="this.form.submit()">
-                            <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
-                                Käufe (absteigend)
-                            </option>
-                            <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
-                                Käufe (aufsteigend)
-                            </option>
-                            <option value="-durchschnittspreis" {% if sortierung == '-durchschnittspreis' %}selected{% endif %}>
-                                Preis (absteigend)
-                            </option>
-                            <option value="durchschnittspreis" {% if sortierung == 'durchschnittspreis' %}selected{% endif %}>
-                                Preis (aufsteigend)
-                            </option>
-                            <option value="name" {% if sortierung == 'name' %}selected{% endif %}>
-                                Name (A-Z)
-                            </option>
-                        </select>
-                    </div>
-                </form>
+                </div>
             </div>
 
             <!-- Produktliste -->
