@@ -943,6 +943,7 @@ function loadMonthlyChart(year) {
                     },
                     interaction: {
                         mode: 'index',
+                        axis: 'y',
                         intersect: false,
                     },
                     scales: {
@@ -1032,6 +1033,31 @@ function loadMonthlyChart(year) {
                                 }
                             }
                         }
+                    },
+                    onHover: (event, elements, chart) => {
+                        const canvas = event?.native?.target || event?.target;
+                        if (canvas) {
+                            canvas.style.cursor = elements.length ? 'pointer' : 'default';
+                        }
+                    },
+                    onClick: (event, elements, chart) => {
+                        const points = chart.getElementsAtEventForMode(
+                            event,
+                            'index',
+                            { intersect: false, axis: 'y' },
+                            true
+                        );
+
+                        if (points.length) {
+                            const { x, y } = points[0].element;
+                            chart.tooltip.setActiveElements(points, { x, y });
+                            chart.setActiveElements(points);
+                        } else {
+                            chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+                            chart.setActiveElements([]);
+                        }
+
+                        chart.update();
                     }
                 }
             });
