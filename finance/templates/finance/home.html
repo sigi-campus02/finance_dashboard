@@ -1,0 +1,469 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Finance Dashboard - Startseite{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hero Section */
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .hero-content {
+        text-align: center;
+    }
+
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        opacity: 0.95;
+        font-weight: 300;
+    }
+
+    /* Section Headers */
+    .section-header {
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-icon {
+        font-size: 1.4rem;
+    }
+
+    /* Navigation Cards */
+    .nav-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .nav-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+        border: 2px solid transparent;
+    }
+
+    .nav-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--card-color, #667eea);
+        transition: width 0.3s ease;
+    }
+
+    .nav-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+        border-color: var(--card-color, #667eea);
+    }
+
+    .nav-card:hover::before {
+        width: 100%;
+        opacity: 0.05;
+    }
+
+    .card-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+
+    .card-content {
+        flex-grow: 1;
+        min-width: 0;
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: #2c3e50;
+    }
+
+    .card-description {
+        font-size: 0.85rem;
+        color: #6c757d;
+        line-height: 1.4;
+        display: none;
+    }
+
+    .card-stats {
+        display: none;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+        color: #495057;
+    }
+
+    .stat-icon {
+        color: var(--card-color, #667eea);
+    }
+
+    /* Color Themes für Cards */
+    .card-dashboard { --card-color: #667eea; }
+    .card-household { --card-color: #5b9bd5; }
+    .card-transactions { --card-color: #f39c12; }
+    .card-scheduled { --card-color: #9b59b6; }
+    .card-assets { --card-color: #27ae60; }
+    .card-billa { --card-color: #34a853; }
+
+    /* Quick Actions */
+    .quick-actions {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .quick-actions h5 {
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .quick-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: #495057;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .quick-action-btn:hover {
+        border-color: #667eea;
+        color: #667eea;
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .quick-action-icon {
+        font-size: 1.3rem;
+    }
+
+    /* Mobile Optimierungen */
+    @media (max-width: 768px) {
+        .hero-section {
+            margin: -1rem -1rem 1rem -1rem;
+            padding: 1.5rem 1rem;
+        }
+
+        .hero-title {
+            font-size: 1.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 0.9rem;
+        }
+
+        .nav-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .section-header {
+            margin: 1.5rem 0 0.75rem 0;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+        }
+
+        .section-icon {
+            font-size: 1.2rem;
+        }
+
+        .card-icon {
+            font-size: 1.75rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+        }
+
+        .quick-actions {
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .quick-actions h5 {
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .quick-action-btn {
+            padding: 0.65rem 0.85rem;
+            font-size: 0.9rem;
+        }
+
+        .quick-action-icon {
+            font-size: 1.2rem;
+        }
+
+        .nav-card {
+            padding: 0.85rem;
+        }
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .nav-card {
+        animation: fadeInUp 0.6s ease-out backwards;
+    }
+
+    .nav-card:nth-child(1) { animation-delay: 0.1s; }
+    .nav-card:nth-child(2) { animation-delay: 0.2s; }
+    .nav-card:nth-child(3) { animation-delay: 0.3s; }
+    .nav-card:nth-child(4) { animation-delay: 0.4s; }
+    .nav-card:nth-child(5) { animation-delay: 0.5s; }
+    .nav-card:nth-child(6) { animation-delay: 0.6s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="container hero-content">
+        <h1 class="hero-title">
+            <i class="bi bi-currency-euro"></i> Finance Dashboard
+        </h1>
+        <p class="hero-subtitle">Deine zentrale Anlaufstelle für alle Finanzen</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h5 class="mb-3"><i class="bi bi-lightning-charge-fill"></i> Schnellzugriff</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <a href="{% url 'finance:add_transaction' %}" class="quick-action-btn w-100">
+                    <i class="bi bi-plus-circle-fill quick-action-icon"></i>
+                    <span>Neue Transaktion</span>
+                </a>
+            </div>
+            {% if user.username != 'robert' %}
+            <div class="{% if user.username != 'robert' %}col-md-6{% else %}col-12{% endif %}">
+                <a href="{% url 'finance:billa_import' %}" class="quick-action-btn w-100">
+                    <i class="bi bi-upload quick-action-icon"></i>
+                    <span>Rechnung hochladen</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Hauptbereiche -->
+    {% if user.username != 'robert' %}
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="section-icon">📊</span>
+            Übersichten & Analysen
+        </h2>
+    </div>
+
+    <div class="nav-grid">
+        <!-- Dashboard -->
+        <a href="{% url 'finance:dashboard' %}" class="nav-card card-dashboard">
+            <div class="card-icon">📈</div>
+            <div class="card-content">
+                <div class="card-title">Dashboard</div>
+                <div class="card-description">
+                    Deine persönliche Finanzübersicht mit allen wichtigen Kennzahlen und Trends
+                </div>
+            </div>
+        </a>
+
+        <!-- Haushalt Dashboard -->
+        <a href="{% url 'finance:household_dashboard' %}" class="nav-card card-household">
+            <div class="card-icon">🏠</div>
+            <div class="card-content">
+                <div class="card-title">Haushalt Dashboard</div>
+                <div class="card-description">
+                    Detaillierte Analyse deiner Haushaltsausgaben mit Kategorien und Trends
+                </div>
+            </div>
+        </a>
+
+        <!-- Vermögen -->
+        <a href="{% url 'finance:asset_overview' %}" class="nav-card card-assets">
+            <div class="card-icon">💰</div>
+            <div class="card-content">
+                <div class="card-title">Vermögensübersicht</div>
+                <div class="card-description">
+                    Verwalte deine Investments, Konten und verfolge die Entwicklung deines Vermögens
+                </div>
+            </div>
+        </a>
+    </div>
+    {% else %}
+    <!-- Hauptbereiche für Robert -->
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="section-icon">📊</span>
+            Übersicht
+        </h2>
+    </div>
+
+    <div class="nav-grid">
+        <!-- Haushalt Dashboard -->
+        <a href="{% url 'finance:household_dashboard' %}" class="nav-card card-household">
+            <div class="card-icon">🏠</div>
+            <div class="card-content">
+                <div class="card-title">Haushalt Dashboard</div>
+                <div class="card-description">
+                    Detaillierte Analyse der Haushaltsausgaben mit Kategorien und Trends
+                </div>
+            </div>
+        </a>
+
+        <!-- Haushalt Transaktionen -->
+        <a href="{% url 'finance:household_transactions' %}" class="nav-card card-transactions">
+            <div class="card-icon">📝</div>
+            <div class="card-content">
+                <div class="card-title">Haushalt Transaktionen</div>
+                <div class="card-description">
+                    Alle Haushaltsbuchungen im Überblick - filtern, suchen und analysieren
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Transaktionsverwaltung -->
+    {% if user.username != 'robert' %}
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="section-icon">💳</span>
+            Transaktionsverwaltung
+        </h2>
+    </div>
+
+    <div class="nav-grid">
+        <!-- Transaktionen -->
+        <a href="{% url 'finance:transactions' %}" class="nav-card card-transactions">
+            <div class="card-icon">📝</div>
+            <div class="card-content">
+                <div class="card-title">Transaktionen</div>
+                <div class="card-description">
+                    Alle deine Transaktionen im Überblick - filtern, suchen und analysieren
+                </div>
+            </div>
+        </a>
+
+        <!-- Geplante Transaktionen -->
+        <a href="{% url 'finance:scheduled_transactions' %}" class="nav-card card-scheduled">
+            <div class="card-icon">🔄</div>
+            <div class="card-content">
+                <div class="card-title">Geplante Transaktionen</div>
+                <div class="card-description">
+                    Verwalte wiederkehrende Zahlungen wie Miete, Abos und regelmäßige Ausgaben
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Billa Bereich -->
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="section-icon">🛒</span>
+            Supermarkt Analysen
+        </h2>
+    </div>
+
+    <div class="nav-grid">
+        <!-- Billa Dashboard -->
+        <a href="{% url 'finance:billa_dashboard' %}" class="nav-card card-billa">
+            <div class="card-icon">📊</div>
+            <div class="card-content">
+                <div class="card-title">Billa Dashboard</div>
+                <div class="card-description">
+                    Detaillierte Analysen deiner Billa-Einkäufe mit Produkten, Marken und Preisentwicklung
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<script>
+    // Smooth scroll für bessere UX
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Card hover animation enhancement
+    document.querySelectorAll('.nav-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px) scale(1.02)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = '';
+        });
+    });
+</script>
+{% endblock %}

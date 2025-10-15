@@ -139,7 +139,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-primary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'finance:dashboard' %}">
+            <a class="navbar-brand" href="{% url 'finance:home' %}">
                 <i class="bi bi-currency-euro"></i> Finance Dashboard
             </a>
             <!-- Toggler nur auf Mobile sichtbar -->
@@ -162,21 +162,19 @@
                             <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-list-ul"></i> Transaktionen
+                    {% if user.username != 'robert' %}
+                    <li>
+                        <a class="nav-link" href="{% url 'finance:transactions' %}">
+                        <i class="bi bi-list"></i> Alle Transaktionen
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
-                            {% if user.username != 'robert' %}
-                            <li><a class="dropdown-item" href="{% url 'finance:transactions' %}">
-                                <i class="bi bi-list"></i> Alle Transaktionen
-                            </a></li>
-                            {% endif %}
-                            <li><a class="dropdown-item" href="{% url 'finance:household_transactions' %}">
-                                <i class="bi bi-house-door"></i> Transaktionen Haushalt
-                            </a></li>
-                        </ul>
                     </li>
+                    {% endif %}
+                    <li>
+                        <a class="nav-link" href="{% url 'finance:household_transactions' %}">
+                        <i class="bi bi-house-door"></i> Transaktionen Haushalt
+                        </a>
+                    </li>
+                
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
@@ -305,12 +303,16 @@
                                 Übersicht
                             </a>
                         </li>
+                        {% endif %}
+                        
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}"
                                href="{% url 'finance:household_dashboard' %}">
                                 <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
                             </a>
                         </li>
+                    
+                        {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
                                href="{% url 'finance:transactions' %}">
@@ -319,6 +321,7 @@
                             </a>
                         </li>
                         {% endif %}
+                    
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'household_transactions' %}active{% endif %}"
                                href="{% url 'finance:household_transactions' %}">
@@ -326,6 +329,7 @@
                                 Transaktionen Haushalt
                             </a>
                         </li>
+                    
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
@@ -339,6 +343,7 @@
                                 </a></li>
                             </ul>
                         </li>
+                    
                         {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
@@ -347,6 +352,7 @@
                                 Scheduled Transactions
                             </a>
                         </li>
+                            
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
                                href="{% url 'finance:asset_overview' %}">

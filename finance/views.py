@@ -52,6 +52,9 @@ CATEGORY_COLORS = {
     },
 }
 
+def home(request):
+    """Startseite mit Übersicht aller Bereiche"""
+    return render(request, 'finance/home.html')
 
 def generate_color_shades(rgb_tuple, num_shades=5):
     """
