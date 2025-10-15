@@ -1,12 +1,10 @@
 psycopg2-binary>=2.9
 django-environ>=0.11
-pandas>=2.0
 python-dateutil>=2.8
 Django>=5.2
 gunicorn
 whitenoise
 dj-database-url
-environ~=1.0
 django-axes
 openai>=1.0.0
 Pillow>=10.0.0

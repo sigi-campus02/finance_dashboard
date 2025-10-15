@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import json
 import numpy as np
-from django.db.models import Sum, Count, Q, Value, CharField, Min, Max, Avg
+from django.db.models import Sum, Count, Q, Value, CharField, Min
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta, date
 from django.contrib.auth.decorators import login_required
@@ -2756,15 +2756,6 @@ def api_categorygroup_stats(request):
         'total_spending': round(sum(monthly_totals.values()), 2) if monthly_totals else 0
     })
 
-
-# Füge diese Views zu finance/views.py hinzu
-
-# ===== WICHTIG: Diese Imports müssen ganz oben in views.py stehen =====
-from datetime import datetime
-from django.db.models import Sum, Count, Min, Max, Avg, Q
-
-
-# Falls bereits vorhanden, überspringe die Imports
 
 # ===== SUPERMARKT-BEREICH API VIEWS (KORRIGIERT) =====
 

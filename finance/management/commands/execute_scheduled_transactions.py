@@ -1,7 +1,6 @@
 # Speichere unter: finance/management/commands/execute_scheduled_transactions.py
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from finance.models import ScheduledTransaction
 from datetime import date
 

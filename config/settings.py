@@ -14,7 +14,6 @@ from pathlib import Path
 import environ
 import os
 import dj_database_url
-import secrets
 
 
 env = environ.Env(DEBUG=(bool, False))
