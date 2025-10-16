@@ -48,9 +48,9 @@
     </div>
 
     <!-- Stats Cards - AGGREGIERT über alle Varianten -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card shadow-sm">
+    <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <div class="col">
+            <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-cart text-success" style="font-size: 2rem;"></i>
                     <h3 class="mt-2">{{ stats_gesamt.anzahl_kaeufe }}</h3>
@@ -58,8 +58,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm">
+        <div class="col">
+            <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-arrow-down-circle text-success" style="font-size: 2rem;"></i>
                     <h3 class="mt-2">€{{ stats_gesamt.min_preis|floatformat:2 }}</h3>
@@ -67,8 +67,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm">
+        <div class="col">
+            <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-arrow-up-circle text-danger" style="font-size: 2rem;"></i>
                     <h3 class="mt-2">€{{ stats_gesamt.max_preis|floatformat:2 }}</h3>
@@ -76,8 +76,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm">
+        <div class="col">
+            <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-graph-up text-primary" style="font-size: 2rem;"></i>
                     <h3 class="mt-2">€{{ stats_gesamt.avg_preis|floatformat:2 }}</h3>
@@ -281,6 +281,7 @@
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 <script>
 // ✅ Preisverlauf Chart mit Chart.js - ALLE Varianten
 const preisHistorie = {{ preis_historie|safe }};
@@ -440,4 +441,5 @@ if (preisHistorie && preisHistorie.length > 0) {
         '<div class="alert alert-info">Keine Preisentwicklungsdaten verfügbar.</div>';
 }
 </script>
+
 {% endblock %}
