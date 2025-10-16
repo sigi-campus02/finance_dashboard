@@ -11,26 +11,35 @@ from billa.models import (
 
 logger = logging.getLogger(__name__)
 
+
 @login_required
 def billa_produkt_detail(request, produkt_id):
-    """Detail-Ansicht eines Produkts mit Preisentwicklung"""
-    produkt = get_object_or_404(BillaProdukt, pk=produkt_id)
+    """
+    Detail-Ansicht eines Produkts - zeigt ALLE Varianten mit gleichem name_korrigiert
+    """
+    import json
+    from django.db.models import Min, Max, Avg, Count, Sum
 
-    # ✅ Preisentwicklung als JSON
-    preis_historie_raw = produkt.preishistorie.order_by('datum')
+    # Hole das ursprüngliche Produkt
+    hauptprodukt = get_object_or_404(BillaProdukt, pk=produkt_id)
 
-    preis_historie_json = [
-        {
-            'datum': h.datum.strftime('%Y-%m-%d'),
-            'preis': float(h.preis),
-            'menge': float(h.menge),
-            'filiale': h.filiale.name if h.filiale else 'Unbekannt'  # ✅ String statt Objekt
-        }
-        for h in preis_historie_raw
-    ]
+    # Hole ALLE Produkte mit dem gleichen name_korrigiert
+    alle_varianten = BillaProdukt.objects.filter(
+        name_korrigiert=hauptprodukt.name_korrigiert
+    ).order_by('-anzahl_kaeufe')
 
-    # Statistiken
-    stats = produkt.artikel.aggregate(
+    anzahl_varianten = alle_varianten.count()
+
+    # ========================================================================
+    # AGGREGIERTE STATISTIKEN über alle Varianten
+    # ========================================================================
+
+    # Alle Artikel von allen Varianten
+    alle_artikel = BillaArtikel.objects.filter(
+        produkt__name_korrigiert=hauptprodukt.name_korrigiert
+    )
+
+    stats_gesamt = alle_artikel.aggregate(
         anzahl_kaeufe=Count('id'),
         min_preis=Min('preis_pro_einheit'),
         max_preis=Max('preis_pro_einheit'),
@@ -38,16 +47,73 @@ def billa_produkt_detail(request, produkt_id):
         gesamt_ausgaben=Sum('gesamtpreis')
     )
 
-    # Letzte Käufe
-    letzte_kaeufe = produkt.artikel.select_related(
-        'einkauf'
-    ).order_by('-einkauf__datum')[:20]
+    # ========================================================================
+    # PREISENTWICKLUNG über alle Varianten
+    # ========================================================================
+
+    # Kombinierte Preisentwicklung aller Varianten
+    preis_historie_raw = BillaPreisHistorie.objects.filter(
+        produkt__name_korrigiert=hauptprodukt.name_korrigiert
+    ).order_by('datum')
+
+    # JSON für Chart vorbereiten
+    preis_historie_json = []
+    for h in preis_historie_raw:
+        preis_historie_json.append({
+            'datum': h.datum.strftime('%Y-%m-%d'),
+            'preis': float(h.preis),
+            'menge': float(h.menge),
+            'filiale': h.filiale.name if h.filiale else 'Unbekannt',
+            'produkt_id': h.produkt.id  # Um Varianten zu unterscheiden
+        })
+
+    # ========================================================================
+    # LETZTE KÄUFE über alle Varianten
+    # ========================================================================
+
+    letzte_kaeufe = alle_artikel.select_related(
+        'einkauf', 'produkt'
+    ).order_by('-einkauf__datum')[:30]
+
+    # ========================================================================
+    # STATISTIKEN PRO VARIANTE
+    # ========================================================================
+
+    varianten_stats = []
+    for variante in alle_varianten:
+        variante_artikel = variante.artikel.aggregate(
+            anzahl=Count('id'),
+            ausgaben=Sum('gesamtpreis'),
+            avg_preis=Avg('preis_pro_einheit')
+        )
+
+        varianten_stats.append({
+            'variante': variante,
+            'anzahl_kaeufe': variante_artikel['anzahl'] or 0,
+            'ausgaben': variante_artikel['ausgaben'] or 0,
+            'avg_preis': variante_artikel['avg_preis']
+        })
+
+    # ========================================================================
+    # FILIALEN-VERTEILUNG
+    # ========================================================================
+
+    filialen_stats = alle_artikel.values(
+        'einkauf__filiale__name'
+    ).annotate(
+        anzahl=Count('id'),
+        ausgaben=Sum('gesamtpreis')
+    ).order_by('-anzahl')
 
     context = {
-        'produkt': produkt,
-        'preis_historie': json.dumps(preis_historie_json),  # ✅ JSON
-        'stats': stats,
-        'letzte_kaeufe': letzte_kaeufe
+        'hauptprodukt': hauptprodukt,
+        'alle_varianten': alle_varianten,
+        'anzahl_varianten': anzahl_varianten,
+        'stats_gesamt': stats_gesamt,
+        'preis_historie': json.dumps(preis_historie_json),
+        'letzte_kaeufe': letzte_kaeufe,
+        'varianten_stats': varianten_stats,
+        'filialen_stats': filialen_stats,
     }
 
     return render(request, 'billa/billa_produkt_detail.html', context)

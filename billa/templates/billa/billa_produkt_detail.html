@@ -1,11 +1,11 @@
 {% extends 'finance/base.html' %}
 {% load static %}
 
-{% block title %}{{ produkt.name_korrigiert }}{% endblock %}
+{% block title %}{{ hauptprodukt.name_korrigiert }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    
+
     <!-- ✅ Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
@@ -18,36 +18,43 @@
                 <a href="{% url 'billa:billa_produkte_liste' %}">Produkte</a>
             </li>
             <li class="breadcrumb-item active" aria-current="page">
-                {{ produkt.name_korrigiert|truncatewords:5 }}
+                {{ hauptprodukt.name_korrigiert|truncatewords:5 }}
             </li>
         </ol>
     </nav>
 
-    <!-- Header -->
+    <!-- Header mit Varianten-Info -->
     <div class="header-section mb-4">
-        <h1 class="mb-2">{{ produkt.name_korrigiert }}</h1>
-        <div class="d-flex align-items-center gap-3">
-            {% if produkt.ueberkategorie %}
-            <span class="badge bg-secondary px-3 py-2">
-                <i class="bi bi-tag-fill"></i> {{ produkt.ueberkategorie }}
+        <h1 class="mb-2">
+            {{ hauptprodukt.name_korrigiert }}
+            {% if anzahl_varianten > 1 %}
+            <span class="badge bg-primary ms-2" style="font-size: 0.5em;">
+                {{ anzahl_varianten }} Varianten
             </span>
             {% endif %}
-            {% if produkt.produktgruppe %}
+        </h1>
+        <div class="d-flex align-items-center gap-3">
+            {% if hauptprodukt.ueberkategorie %}
+            <span class="badge bg-secondary px-3 py-2">
+                <i class="bi bi-tag-fill"></i> {{ hauptprodukt.ueberkategorie }}
+            </span>
+            {% endif %}
+            {% if hauptprodukt.produktgruppe %}
             <span class="badge bg-info px-3 py-2">
-                <i class="bi bi-tag"></i> {{ produkt.produktgruppe }}
+                <i class="bi bi-tag"></i> {{ hauptprodukt.produktgruppe }}
             </span>
             {% endif %}
         </div>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Stats Cards - AGGREGIERT über alle Varianten -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-cart text-success" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">{{ stats.anzahl_kaeufe }}</h3>
-                    <p class="text-muted mb-0">Käufe</p>
+                    <h3 class="mt-2">{{ stats_gesamt.anzahl_kaeufe }}</h3>
+                    <p class="text-muted mb-0">Käufe gesamt</p>
                 </div>
             </div>
         </div>
@@ -55,7 +62,7 @@
             <div class="card shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-arrow-down-circle text-success" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">€{{ stats.min_preis|floatformat:2 }}</h3>
+                    <h3 class="mt-2">€{{ stats_gesamt.min_preis|floatformat:2 }}</h3>
                     <p class="text-muted mb-0">Min. Preis</p>
                 </div>
             </div>
@@ -64,7 +71,7 @@
             <div class="card shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-arrow-up-circle text-danger" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">€{{ stats.max_preis|floatformat:2 }}</h3>
+                    <h3 class="mt-2">€{{ stats_gesamt.max_preis|floatformat:2 }}</h3>
                     <p class="text-muted mb-0">Max. Preis</p>
                 </div>
             </div>
@@ -73,17 +80,89 @@
             <div class="card shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-graph-up text-primary" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">€{{ stats.avg_preis|floatformat:2 }}</h3>
+                    <h3 class="mt-2">€{{ stats_gesamt.avg_preis|floatformat:2 }}</h3>
                     <p class="text-muted mb-0">Ø Preis</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Preisentwicklung Chart -->
+    <!-- NEU: Varianten-Übersicht (wenn mehrere vorhanden) -->
+    {% if anzahl_varianten > 1 %}
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
-            <h4 class="mb-0"><i class="bi bi-graph-up"></i> Preisentwicklung</h4>
+            <h4 class="mb-0">
+                <i class="bi bi-boxes"></i> Produkt-Varianten ({{ anzahl_varianten }})
+            </h4>
+            <small class="text-muted">Verschiedene Einträge in der Datenbank für dasselbe Produkt</small>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name (Original)</th>
+                            <th class="text-center">Käufe</th>
+                            <th class="text-end">Ausgaben</th>
+                            <th class="text-end">Ø Preis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in varianten_stats %}
+                        <tr {% if item.variante.id == hauptprodukt.id %}class="table-primary"{% endif %}>
+                            <td>
+                                <code>#{{ item.variante.id }}</code>
+                                {% if item.variante.id == hauptprodukt.id %}
+                                <span class="badge bg-primary ms-1">Aktuelle Ansicht</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ item.variante.name_original|truncatewords:10 }}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark">{{ item.anzahl_kaeufe }}</span>
+                            </td>
+                            <td class="text-end">€{{ item.ausgaben|floatformat:2 }}</td>
+                            <td class="text-end">
+                                {% if item.avg_preis %}
+                                €{{ item.avg_preis|floatformat:2 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2"><strong>Gesamt</strong></td>
+                            <td class="text-center">
+                                <strong>{{ stats_gesamt.anzahl_kaeufe }}</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong>€{{ stats_gesamt.gesamt_ausgaben|floatformat:2 }}</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong>€{{ stats_gesamt.avg_preis|floatformat:2 }}</strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Preisentwicklung Chart - ALLE Varianten -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h4 class="mb-0">
+                <i class="bi bi-graph-up"></i> Preisentwicklung
+                {% if anzahl_varianten > 1 %}
+                <small class="text-muted">(alle Varianten kombiniert)</small>
+                {% endif %}
+            </h4>
         </div>
         <div class="card-body">
             <div style="height: 350px; position: relative;">
@@ -92,10 +171,48 @@
         </div>
     </div>
 
-    <!-- Kaufhistorie Tabelle -->
+    <!-- NEU: Filialen-Statistik -->
+    {% if filialen_stats %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h4 class="mb-0"><i class="bi bi-shop"></i> Käufe nach Filiale</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Filiale</th>
+                            <th class="text-center">Anzahl Käufe</th>
+                            <th class="text-end">Ausgaben</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for filiale in filialen_stats %}
+                        <tr>
+                            <td>{{ filiale.einkauf__filiale__name|default:"Unbekannt" }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark">{{ filiale.anzahl }}</span>
+                            </td>
+                            <td class="text-end">€{{ filiale.ausgaben|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Kaufhistorie Tabelle - ALLE Varianten -->
     <div class="card shadow-sm">
         <div class="card-header bg-white">
-            <h4 class="mb-0"><i class="bi bi-clock-history"></i> Letzte Käufe ({{ letzte_kaeufe.count }})</h4>
+            <h4 class="mb-0">
+                <i class="bi bi-clock-history"></i> Letzte Käufe ({{ letzte_kaeufe|length }})
+                {% if anzahl_varianten > 1 %}
+                <small class="text-muted">(alle Varianten)</small>
+                {% endif %}
+            </h4>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -104,6 +221,9 @@
                         <tr>
                             <th>Datum</th>
                             <th>Filiale</th>
+                            {% if anzahl_varianten > 1 %}
+                            <th>Variante</th>
+                            {% endif %}
                             <th class="text-center">Menge</th>
                             <th class="text-end">Preis</th>
                             <th class="text-end">Rabatt</th>
@@ -118,7 +238,14 @@
                                     {{ kauf.einkauf.datum|date:"d.m.Y" }}
                                 </a>
                             </td>
-                            <td>{{ kauf.einkauf.filiale }}</td>
+                            <td>{{ kauf.einkauf.filiale.name|default:"Unbekannt" }}</td>
+                            {% if anzahl_varianten > 1 %}
+                            <td>
+                                <small class="text-muted">
+                                    <code>#{{ kauf.produkt.id }}</code>
+                                </small>
+                            </td>
+                            {% endif %}
                             <td class="text-center">{{ kauf.menge|floatformat:3 }} {{ kauf.einheit }}</td>
                             <td class="text-end">
                                 <strong>€ {{ kauf.gesamtpreis|floatformat:2 }}</strong>
@@ -140,7 +267,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="{% if anzahl_varianten > 1 %}7{% else %}6{% endif %}" class="text-center text-muted py-4">
                                 Keine Kaufhistorie verfügbar
                             </td>
                         </tr>
@@ -155,73 +282,159 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ✅ Preisverlauf Chart mit Chart.js
+// ✅ Preisverlauf Chart mit Chart.js - ALLE Varianten
 const preisHistorie = {{ preis_historie|safe }};
 
 if (preisHistorie && preisHistorie.length > 0) {
     const ctx = document.getElementById('price-chart');
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: preisHistorie.map(h => {
-                const d = new Date(h.datum);
-                return d.toLocaleDateString('de-DE', { 
-                    day: '2-digit', 
-                    month: '2-digit',
-                    year: '2-digit'
-                });
-            }),
-            datasets: [{
-                label: 'Preis',
-                data: preisHistorie.map(h => h.preis),
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+
+    // Gruppiere nach Variante (produkt_id) wenn mehrere vorhanden
+    const anzahlVarianten = {{ anzahl_varianten }};
+
+    if (anzahlVarianten > 1) {
+        // Mehrere Varianten - zeige verschiedene Linien
+        const variantenData = {};
+
+        preisHistorie.forEach(h => {
+            const varId = h.produkt_id;
+            if (!variantenData[varId]) {
+                variantenData[varId] = [];
+            }
+            variantenData[varId].push(h);
+        });
+
+        // Farben für Varianten
+        const colors = [
+            '#667eea',
+            '#f093fb',
+            '#4facfe',
+            '#43e97b',
+            '#fa709a'
+        ];
+
+        const datasets = Object.keys(variantenData).map((varId, index) => {
+            const data = variantenData[varId];
+            return {
+                label: `Variante #${varId}`,
+                data: data.map(h => ({
+                    x: new Date(h.datum),
+                    y: h.preis
+                })),
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length] + '20',
                 tension: 0.4,
-                fill: true,
-                borderWidth: 3,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: '#667eea',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => 'Preis: €' + ctx.parsed.y.toFixed(2),
-                        afterLabel: (ctx) => {
-                            const h = preisHistorie[ctx.dataIndex];
-                            return 'Filiale: ' + h.filiale;
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            };
+        });
+
+        new Chart(ctx, {
+            type: 'line',
+            data: { datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.dataset.label + ': €' + ctx.parsed.y.toFixed(2)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'dd.MM.yy'
+                            }
+                        },
+                        ticks: {
+                            maxTicksLimit: 12,
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: (value) => '€' + value.toFixed(2)
                         }
                     }
                 }
+            }
+        });
+    } else {
+        // Einzelne Variante - wie vorher
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: preisHistorie.map(h => {
+                    const d = new Date(h.datum);
+                    return d.toLocaleDateString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit'
+                    });
+                }),
+                datasets: [{
+                    label: 'Preis',
+                    data: preisHistorie.map(h => h.preis),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
             },
-            scales: {
-                x: {
-                    ticks: { 
-                        maxTicksLimit: 12,
-                        maxRotation: 45,
-                        minRotation: 45
-                    },
-                    grid: {
-                        display: false
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => 'Preis: €' + ctx.parsed.y.toFixed(2),
+                            afterLabel: (ctx) => {
+                                const h = preisHistorie[ctx.dataIndex];
+                                return 'Filiale: ' + h.filiale;
+                            }
+                        }
                     }
                 },
-                y: {
-                    beginAtZero: false,
-                    ticks: {
-                        callback: (value) => '€' + value.toFixed(2)
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 12,
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: (value) => '€' + value.toFixed(2)
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 } else {
     document.getElementById('price-chart').parentElement.innerHTML = 
         '<div class="alert alert-info">Keine Preisentwicklungsdaten verfügbar.</div>';
