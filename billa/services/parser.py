@@ -31,7 +31,7 @@ class BillaReceiptParser:
         self.rabatt_pattern = re.compile(
             r'^(?:(\d+)\s+x\s+)?'  # ← NEU: Optional "24 x "
             r'(NIMM MEHR|EXTREM AKTION|GRATIS AKTION|AKTIONSNACHLASS|'
-            r'FILIALAKTION|Preiskorrektur|Jö Äpp Extrem Bon)\s+'
+            r'FILIALAKTION|Preiskorrektur|Jö Äpp Extrem Bon|ABVERKAUF)\s+'
             r'([ABCDG])?\s*'
             r'([-]?[\d.,-]+)\s*$'
         )
