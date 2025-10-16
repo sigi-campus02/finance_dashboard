@@ -18,7 +18,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
 
         # Mapping von Produktgruppe zu Überkategorie
-        # Basierend auf der Struktur aus billa_produktgruppenmapper.html
+        # Basierend auf der Struktur aus billa_produktgruppen_mapper.html
         produktgruppe_zu_ueberkategorie = {
             # Gemüse
             'Paprika': 'Gemüse',

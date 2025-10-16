@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         // AJAX-Request
-        fetch('{% url "billa:billa_produktgruppen_speichern" %}', {
+        fetch('{% url "billa:produktgruppen_speichern" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

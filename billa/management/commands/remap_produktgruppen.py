@@ -23,7 +23,7 @@ class Command(BaseCommand):
         force = options['force']
 
         # === PRODUKTGRUPPEN-MAPPING ===
-        # Die gleiche Struktur wie in billa_produktgruppenmapper.html
+        # Die gleiche Struktur wie in billa_produktgruppen_mapper.html
         produktgruppen_mapping = {
             # == == == == == GEMÜSE == == == == ==
             'Gemüse': {

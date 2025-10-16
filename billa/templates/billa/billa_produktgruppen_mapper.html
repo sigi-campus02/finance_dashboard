@@ -368,7 +368,7 @@ const ProduktgruppenMapper = () => {
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
     try {
-      const response = await fetch('{% url "billa:billa_produktgruppen_speichern" %}', {
+      const response = await fetch('{% url "billa:produktgruppen_speichern" %}', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
