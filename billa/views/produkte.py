@@ -72,6 +72,7 @@ def billa_produkte_liste(request):
 
     if suche:
         produkte = produkte.filter(
+            Q(name_korrigiert__icontains=suche) |
             Q(name_normalisiert__icontains=suche) |
             Q(name_original__icontains=suche)
         )
@@ -135,13 +136,21 @@ def produktgruppen_mapper(request):
         'id',
         'name_original',
         'name_normalisiert',
+        'name_korrigiert',
         'ueberkategorie',
         'produktgruppe'
     )
 
+    # Konvertiere zu Liste und setze name_korrigiert falls leer
+    produkte_liste = []
+    for p in produkte:
+        if not p['name_korrigiert']:
+            p['name_korrigiert'] = p['name_normalisiert']
+        produkte_liste.append(p)
+
     context = {
-        'produkte_json': json.dumps(list(produkte), ensure_ascii=False),
-        'anzahl_produkte': len(produkte)
+        'produkte_json': json.dumps(produkte_liste, ensure_ascii=False),
+        'anzahl_produkte': len(produkte_liste)
     }
 
     return render(request, 'billa/billa_produktgruppen_mapper.html', context)
@@ -150,32 +159,63 @@ def produktgruppen_mapper(request):
 @login_required
 @require_POST
 def produktgruppen_speichern(request):
-    """Speichert die Produktgruppen-Zuordnung (inkl. Überkategorien)"""
+    """Speichert die Produktgruppen-Zuordnung und name_korrigiert"""
+
     try:
         data = json.loads(request.body)
-        produkte = data.get('produkte', [])
+        updates = data.get('updates', [])
 
-        updated_count = 0
-        for produkt_data in produkte:
-            result = BillaProdukt.objects.filter(id=produkt_data['id']).update(
-                ueberkategorie=produkt_data.get('ueberkategorie'),  # NEU
-                produktgruppe=produkt_data.get('produktgruppe')
-            )
-            updated_count += result
+        erfolg_count = 0
+        fehler_count = 0
+        fehler_details = []
+
+        for update in updates:
+            try:
+                produkt_id = update.get('id')
+                ueberkategorie = update.get('ueberkategorie', '').strip() or None
+                produktgruppe = update.get('produktgruppe', '').strip() or None
+                name_korrigiert = update.get('name_korrigiert', '').strip()  # NEU
+
+                produkt = BillaProdukt.objects.get(id=produkt_id)
+                produkt.ueberkategorie = ueberkategorie
+                produkt.produktgruppe = produktgruppe
+
+                # NEU: name_korrigiert speichern
+                if name_korrigiert:
+                    produkt.name_korrigiert = name_korrigiert
+                else:
+                    # Falls leer: auf name_normalisiert zurücksetzen
+                    produkt.name_korrigiert = produkt.name_normalisiert
+
+                produkt.save()
+                erfolg_count += 1
+
+            except BillaProdukt.DoesNotExist:
+                fehler_count += 1
+                fehler_details.append(f"Produkt mit ID {produkt_id} nicht gefunden")
+            except Exception as e:
+                fehler_count += 1
+                fehler_details.append(f"Fehler bei Produkt {produkt_id}: {str(e)}")
 
         return JsonResponse({
-            'status': 'success',
-            'updated': updated_count,
-            'message': f'{updated_count} Produkte aktualisiert'
+            'success': True,
+            'message': f'{erfolg_count} Produkt(e) erfolgreich aktualisiert',
+            'erfolg_count': erfolg_count,
+            'fehler_count': fehler_count,
+            'fehler_details': fehler_details[:10]  # Maximal 10 Fehler anzeigen
         })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Ungültige JSON-Daten'
+        }, status=400)
     except Exception as e:
         return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
+            'success': False,
+            'message': f'Fehler beim Speichern: {str(e)}'
+        }, status=500)
 
-
-# Füge diese Views zu finance/views_billa.py hinzu
 
 @login_required
 def billa_produktgruppen_liste(request):

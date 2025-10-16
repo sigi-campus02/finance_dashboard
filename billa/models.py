@@ -186,6 +186,15 @@ class BillaProdukt(models.Model):
         verbose_name="Normalisierter Name"
     )
 
+    name_korrigiert = models.CharField(
+        max_length=500,
+        db_index=True,
+        null=True,
+        blank=True,
+        verbose_name="Korrigierter Name",
+        help_text="Manuell korrigierter/vereinheitlichter Produktname"
+    )
+
     # Überkategorie (ersetzt die alte kategorie)
     ueberkategorie = models.CharField(
         max_length=100,
@@ -238,10 +247,17 @@ class BillaProdukt(models.Model):
         indexes = [
             models.Index(fields=['name_normalisiert']),
             models.Index(fields=['ueberkategorie']),
+            models.Index(fields=['name_korrigiert']),
         ]
 
     def __str__(self):
-        return self.name_normalisiert
+        return self.name_korrigiert or self.name_normalisiert
+
+    @property
+    def display_name(self):
+        """Gibt den korrigierten Namen zurück, falls vorhanden, sonst normalisiert"""
+        return self.name_korrigiert or self.name_normalisiert
+
 
     def update_statistiken(self):
         """Aktualisiert die Statistiken für dieses Produkt"""

@@ -320,8 +320,10 @@ const ProduktgruppenMapper = () => {
       const gefunden = findeProduktGruppeUndUeberkategorie(produkt.name_normalisiert);
       return {
         ...produkt,
+        name_korrigiert: produkt.name_korrigiert || produkt.name_normalisiert,
         ueberkategorie: produkt.ueberkategorie || gefunden.ueberkategorie,
         produktgruppe: produkt.produktgruppe || gefunden.produktgruppe
+
       };
     });
 
@@ -353,13 +355,25 @@ const ProduktgruppenMapper = () => {
       ));
     };
 
+    // NEU: Handler zum Ändern von korrigiertem Namen
+    const aendereNameKorrigiert = (produktId, neuerName) => {
+      setProduktListe(produktListe.map(p =>
+        p.id === produktId
+          ? { ...p, name_korrigiert: neuerName }
+          : p
+      ));
+    };
+
+
   const gefiltert = produktListe.filter(p => {
     const matchFilter = filter === 'alle' || 
       (filter === 'mit' && p.ueberkategorie) || 
       (filter === 'ohne' && !p.ueberkategorie);
     
-    const matchSuche = !suchbegriff || 
-      p.name_normalisiert?.toLowerCase().includes(suchbegriff.toLowerCase());
+    const matchSuche = !suchbegriff ||
+      p.name_normalisiert?.toLowerCase().includes(suchbegriff.toLowerCase()) ||
+      p.name_original?.toLowerCase().includes(suchbegriff.toLowerCase()) ||
+      p.name_korrigiert?.toLowerCase().includes(suchbegriff.toLowerCase());
     
     return matchFilter && matchSuche;
   });
@@ -374,7 +388,14 @@ const ProduktgruppenMapper = () => {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrf
         },
-        body: JSON.stringify({ produkte: produktListe })
+        body: JSON.stringify({
+          updates: produktListe.map(p => ({
+            id: p.id,
+            ueberkategorie: p.ueberkategorie,
+            produktgruppe: p.produktgruppe,
+            name_korrigiert: p.name_korrigiert  // NEU: diese Zeile hinzufügen
+          }))
+        })
       });
       
       if (response.ok) {
@@ -437,7 +458,9 @@ const ProduktgruppenMapper = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-3 text-left">Produktname</th>
+                <th className="p-3 text-left">Original</th>
+                <th className="p-3 text-left">Normalisiert</th>
+                <th className="p-3 text-left">Korrigiert</th>
                 <th className="p-3 text-left">Überkategorie</th>
                 <th className="p-3 text-left">Produktgruppe</th>
               </tr>
@@ -449,9 +472,19 @@ const ProduktgruppenMapper = () => {
                   : [];
                 
                 return (
-                  <tr key={produkt.id} className="border-t hover:bg-gray-50">
-                    <td className="p-3 font-medium">{produkt.name_normalisiert}</td>
-                    <td className="p-3">
+                    <tr key={produkt.id} className="border-t hover:bg-gray-50">
+                      <td className="p-3 text-sm text-gray-500">{produkt.name_original}</td>
+                      <td className="p-3 text-sm">{produkt.name_normalisiert}</td>
+                      <td className="p-3">
+                        <input
+                          type="text"
+                          value={produkt.name_korrigiert || ''}
+                          onChange={(e) => aendereNameKorrigiert(produkt.id, e.target.value)}
+                          placeholder="Korrigierter Name..."
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="p-3">
                       <select
                         value={produkt.ueberkategorie || ''}
                         onChange={(e) => aendereUeberkategorie(produkt.id, e.target.value)}
