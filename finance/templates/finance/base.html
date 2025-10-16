@@ -291,8 +291,9 @@
                     </li>
                         
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:manage_devices' %}">
-                            <i class="bi bi-devices"></i> Geräteverwaltung
+                        <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
+                           href="{% url 'finance:manage_devices' %}">
+                            <i class="bi bi-laptop"></i> Geräteverwaltung
                         </a>
                     </li>
                     {% endif %}
@@ -472,8 +473,9 @@
                         </li>
                         
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'finance:manage_devices' %}">
-                                <i class="bi bi-devices"></i> Geräteverwaltung
+                            <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
+                               href="{% url 'finance:manage_devices' %}">
+                                <i class="bi bi-laptop"></i> Geräteverwaltung
                             </a>
                         </li>
                         {% endif %}
