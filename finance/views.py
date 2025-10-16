@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import json
+from django.contrib.auth import logout
 import numpy as np
 from django.db.models import Sum, Count, Q, Value, CharField, Min
 from django.db.models.functions import TruncMonth
@@ -23,8 +24,6 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 import logging
 from .receipt_analyzer import ReceiptAnalyzer
-from django.contrib.auth import login as auth_login
-import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +117,15 @@ def delete_device(request, device_id):
         messages.error(request, 'Gerät nicht gefunden')
 
     return redirect('finance:manage_devices')
+
+
+@login_required
+def custom_logout(request):
+    """Logout und lösche Device Cookie"""
+    logout(request)
+    response = redirect('login')
+    response.delete_cookie('device_id')
+    return response
 
 
 def home(request):

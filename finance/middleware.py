@@ -8,7 +8,6 @@ from django.utils.deprecation import MiddlewareMixin
 class DeviceAuthenticationMiddleware(MiddlewareMixin):
     """
     Middleware zur Überprüfung ob das angemeldete Gerät autorisiert ist.
-    Nur registrierte und aktive Geräte dürfen auf geschützte Bereiche zugreifen.
     """
 
     def __init__(self, get_response):
@@ -20,19 +19,18 @@ class DeviceAuthenticationMiddleware(MiddlewareMixin):
         if not request.user.is_authenticated:
             return None
 
-        # Öffentliche URLs die immer erlaubt sind
+        # Öffentliche URLs
         public_paths = self._get_public_paths(request)
-
         if request.path in public_paths:
             return None
 
-        # Prüfe Device-Token
-        device_token = request.session.get('device_token')
+        # **VERBESSERT: Prüfe persistent Cookie statt Session**
+        device_token = request.COOKIES.get('device_id') or request.session.get('device_token')
 
-        # Kein Token vorhanden (sollte nicht passieren nach Login, aber zur Sicherheit)
         if not device_token:
-            # Lösche Session und force re-login
-            request.session.flush()
+            # Kein Token → Logout und redirect
+            from django.contrib.auth import logout
+            logout(request)
             return redirect('login')
 
         # Prüfe ob Device existiert und aktiv ist
@@ -42,31 +40,31 @@ class DeviceAuthenticationMiddleware(MiddlewareMixin):
                 user=request.user,
                 is_active=True
             )
-            # Update last_used (Performance-optimiert ohne full save)
+            # Update last_used
             RegisteredDevice.objects.filter(pk=device.pk).update(last_used=device.last_used)
 
         except RegisteredDevice.DoesNotExist:
             # Device nicht gefunden oder deaktiviert
-            # User ausloggen und Fehlermeldung anzeigen
             from django.contrib.auth import logout
             logout(request)
 
-            return render(request, 'device_not_authorized.html', {
+            # **WICHTIG: Lösche ungültigen Cookie**
+            response = render(request, 'device_not_authorized.html', {
                 'show_reactivation_hint': True
             })
+            response.delete_cookie('device_id')
+            return response
 
-        # Alles OK, Request durchlassen
         return None
 
     def _get_public_paths(self, request):
-        """Gibt alle öffentlichen Pfade zurück die nicht geprüft werden"""
+        """Gibt alle öffentlichen Pfade zurück"""
         public_paths = [
             reverse('login'),
             reverse('logout'),
-            '/admin/login/',  # Admin Login separat
+            '/admin/login/',
         ]
 
-        # Optional: Service Worker und Manifest
         try:
             public_paths.extend([
                 reverse('service-worker'),
@@ -75,7 +73,6 @@ class DeviceAuthenticationMiddleware(MiddlewareMixin):
         except:
             pass
 
-        # Static und Media Files
         if request.path.startswith('/static/') or request.path.startswith('/media/'):
             public_paths.append(request.path)
 
