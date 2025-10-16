@@ -182,9 +182,10 @@ class BillaReceiptParser:
         """
         Extrahiert Artikel aus den Zeilen.
 
-        Verwendet explizite Start/End-Marker für mehr Robustheit:
-        - Start: Nach "Datum:" Zeile
-        - End: Vor "Zwischensumme" Zeile
+        Wichtig:
+        - Liest ALLE Artikelbereiche (auch nach Zwischensummen)
+        - Stoppt erst bei "Summe EUR"
+        - Überspringt allgemeine Rabatte (erkennbar an Prozent-Pattern)
         """
         artikel_liste = []
         position = 0
@@ -194,9 +195,11 @@ class BillaReceiptParser:
         end_idx = len(lines)
 
         for idx, line in enumerate(lines):
+            # Start: Nach Datum-Zeile
             if re.search(r'Datum:\s*\d{2}\.\d{2}\.\d{4}', line):
                 start_idx = idx + 1
-            if 'Zwischensumme' in line and 'EUR' in line:
+            # Ende: Bei finaler Summe (nicht bei Zwischensumme!)
+            if line.strip().startswith('Summe') and 'EUR' in line:
                 end_idx = idx
                 break
 
@@ -205,8 +208,37 @@ class BillaReceiptParser:
         while i < end_idx:
             line = lines[i].strip()
 
-            # Überspringe leere Zeilen und irrelevante Inhalte
-            if not line or any(x in line for x in ['BILLA BON', 'JÖ', 'x-FACH', 'TEUERSTES']):
+            # Überspringe leere Zeilen
+            if not line:
+                i += 1
+                continue
+
+            # ===== NEU: Überspringe allgemeine Rabatte =====
+            # Erkennbar an: "X% -Betrag" am Ende (z.B. "Lieblingsprodukt 25% -1.65")
+            if re.search(r'\d+%\s+-?[\d.,]+\s*$', line):
+                i += 1
+                continue
+
+            # Überspringe bekannte allgemeine Rabatt-Patterns
+            if any(pattern in line for pattern in [
+                'x Lieblingsprodukt',
+                'Marke Clever',
+                'Ja! Natürlich Bon',
+                'Fleisch Rabatt',
+                'das teuersteProdukt',
+                'auf Alles',
+                'x-FACH'
+            ]):
+                i += 1
+                continue
+
+            # ===== NEU: Überspringe Zwischensummen =====
+            if 'Zwischensumme' in line and 'EUR' in line:
+                i += 1
+                continue
+
+            # Überspringe irrelevante Zeilen
+            if any(x in line for x in ['BILLA BON', 'JÖ', 'LIEBLINGSPRODUKT', 'TEUERSTES']):
                 i += 1
                 continue
 
@@ -246,11 +278,11 @@ class BillaReceiptParser:
                 i += 1
                 continue
 
-            # Fall 2: Mengenartikel (z.B. "3 x 1.99")
+            # Fall 2: Mengenartikel (z.B. "2 x 3.99")
             menge_match = self.menge_pattern.match(line)
             if menge_match and i + 1 < end_idx:
-                anzahl = Decimal(menge_match.group(1))
-                einzelpreis = Decimal(menge_match.group(2))
+                menge = Decimal(menge_match.group(1))
+                einzelpreis = Decimal(menge_match.group(2).replace(',', '.'))
 
                 i += 1
                 artikel_line = lines[i].strip()
@@ -259,8 +291,9 @@ class BillaReceiptParser:
                 if artikel_match:
                     artikel = self._create_artikel(
                         artikel_match, position,
-                        menge=anzahl, einheit='Stk',
-                        einzelpreis=einzelpreis
+                        menge=menge, einheit='Stk',
+                        einzelpreis=einzelpreis,
+                        ist_gewichtsartikel=False
                     )
 
                     # Prüfe auf Rabatt
@@ -276,12 +309,12 @@ class BillaReceiptParser:
                 i += 1
                 continue
 
-            # Fall 3: Normaler Artikel (Einzelpreis = Gesamtpreis)
+            # Fall 3: Standard-Artikel
             artikel_match = self.artikel_pattern.match(line)
             if artikel_match:
                 artikel = self._create_artikel(artikel_match, position)
 
-                # Prüfe auf Rabatt
+                # Prüfe auf Rabatt in nächster Zeile
                 if i + 1 < end_idx:
                     rabatt = self._check_rabatt(lines[i + 1])
                     if rabatt:
