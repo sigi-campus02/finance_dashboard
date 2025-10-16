@@ -90,7 +90,7 @@ class Command(BaseCommand):
         self.stdout.write('=' * 70 + '\n')
 
         top = BillaArtikel.objects.values(
-            'produkt__name_normalisiert',
+            'produkt__name_korrigiert',
             'produkt__ueberkategorie'  # ← GEÄNDERT von kategorie
         ).annotate(
             anzahl=Count('id'),
@@ -101,7 +101,7 @@ class Command(BaseCommand):
         for idx, item in enumerate(top, 1):
             ueberkategorie = item['produkt__ueberkategorie'] or 'Sonstiges'  # ← GEÄNDERT
             self.stdout.write(
-                f"{idx:2d}. {item['produkt__name_normalisiert']:50s} "
+                f"{idx:2d}. {item['produkt__name_korrigiert']:50s} "
                 f"[{ueberkategorie}]"
             )
             self.stdout.write(
@@ -116,7 +116,7 @@ class Command(BaseCommand):
             # Spezifisches Produkt
             try:
                 produkt = BillaProdukt.objects.get(
-                    name_normalisiert__icontains=produkt_name
+                    name_korrigiert__icontains=produkt_name
                 )
             except BillaProdukt.DoesNotExist:
                 self.stdout.write(
@@ -125,18 +125,18 @@ class Command(BaseCommand):
                 return
             except BillaProdukt.MultipleObjectsReturned:
                 produkte = BillaProdukt.objects.filter(
-                    name_normalisiert__icontains=produkt_name
+                    name_korrigiert__icontains=produkt_name
                 )
                 self.stdout.write(
                     self.style.WARNING("⚠️  Mehrere Produkte gefunden:")
                 )
                 for p in produkte:
-                    self.stdout.write(f"  - {p.name_normalisiert}")
+                    self.stdout.write(f"  - {p.name_korrigiert}")
                 return
 
             self.stdout.write('=' * 70)
             self.stdout.write(
-                self.style.SUCCESS(f'📈 PREISENTWICKLUNG: {produkt.name_normalisiert}')
+                self.style.SUCCESS(f'📈 PREISENTWICKLUNG: {produkt.name_korrigiert}')
             )
             self.stdout.write('=' * 70 + '\n')
 
@@ -195,7 +195,7 @@ class Command(BaseCommand):
 
             for idx, item in enumerate(produkte_mit_aenderung[:limit], 1):
                 self.stdout.write(
-                    f"{idx:2d}. {item['produkt'].name_normalisiert:50s}"
+                    f"{idx:2d}. {item['produkt'].name_korrigiert:50s}"
                 )
                 self.stdout.write(
                     f"    Min: € {item['min_preis']:6.2f} | "

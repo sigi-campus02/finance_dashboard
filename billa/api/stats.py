@@ -18,7 +18,7 @@ def billa_api_preisverlauf(request, produkt_id):
     )
 
     data = {
-        'produkt': produkt.name_normalisiert,
+        'produkt': produkt.name_korrigiert,
         'historie': list(preis_historie)
     }
 

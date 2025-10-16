@@ -173,12 +173,12 @@ class Command(BaseCommand):
                     produkt.save(update_fields=['ueberkategorie'])
 
                 self.stdout.write(
-                    f'✅ {produkt.name_normalisiert[:50]:50s} | '
+                    f'✅ {produkt.name_korrigiert[:50]:50s} | '
                     f'{produktgruppe:20s} → {ueberkategorie}'
                 )
                 updated += 1
             else:
-                not_found.append((produkt.name_normalisiert, produktgruppe))
+                not_found.append((produkt.name_korrigiert, produktgruppe))
 
         self.stdout.write('\n' + '=' * 80)
 

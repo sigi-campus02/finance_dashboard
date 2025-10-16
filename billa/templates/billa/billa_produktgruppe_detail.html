@@ -230,7 +230,7 @@
                                 {% for produkt in produkte %}
                                 <tr>
                                     <td>
-                                        <strong>{{ produkt.name_normalisiert }}</strong>
+                                        <strong>{{ produkt.name_korrigiert }}</strong>
                                         {% if produkt.marke %}
                                         <br><small class="text-muted">{{ produkt.marke }}</small>
                                         {% endif %}
@@ -336,7 +336,7 @@
                                 {% for item in produkte_mit_preisen %}
                                 <tr>
                                     <td>
-                                        <strong>{{ item.produkt.name_normalisiert }}</strong>
+                                        <strong>{{ item.produkt.name_korrigiert }}</strong>
                                         {% if item.produkt.marke %}
                                         <br><small class="text-muted">{{ item.produkt.marke }}</small>
                                         {% endif %}
@@ -418,7 +418,7 @@
                                         <br><small class="text-muted">{{ artikel.einkauf.filiale.name }}</small>
                                     </td>
                                     <td>
-                                        <strong>{{ artikel.produkt.name_normalisiert }}</strong>
+                                        <strong>{{ artikel.produkt.name_korrigiert }}</strong>
                                         {% if artikel.produkt.marke %}
                                         <br><small class="text-muted">{{ artikel.produkt.marke }}</small>
                                         {% endif %}

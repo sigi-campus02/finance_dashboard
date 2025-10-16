@@ -204,10 +204,10 @@
                                 <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
                                     Seltenste zuerst
                                 </option>
-                                <option value="name_normalisiert" {% if sortierung == 'name_normalisiert' %}selected{% endif %}>
+                                <option value="name_korrigiert" {% if sortierung == 'name_korrigiert' %}selected{% endif %}>
                                     Name A-Z
                                 </option>
-                                <option value="-name_normalisiert" {% if sortierung == '-name_normalisiert' %}selected{% endif %}>
+                                <option value="-name_korrigiert" {% if sortierung == '-name_korrigiert' %}selected{% endif %}>
                                     Name Z-A
                                 </option>
                             </select>
@@ -259,7 +259,7 @@
                 <!-- Produkt Name (klickbar) -->
                 <a href="{% url 'billa:billa_produkt_detail' produkt.id %}" class="produkt-link">
                     <div class="produkt-name">
-                        <i class="bi bi-box"></i> {{ produkt.name_normalisiert }}
+                        <i class="bi bi-box"></i> {{ produkt.name_korrigiert }}
                     </div>
                 </a>
 

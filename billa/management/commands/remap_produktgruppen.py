@@ -359,7 +359,7 @@ class Command(BaseCommand):
             stats['gesamt'] += 1
 
             # Finde passende Gruppe
-            ueberkategorie, produktgruppe = find_matching_group(produkt.name_normalisiert)
+            ueberkategorie, produktgruppe = find_matching_group(produkt.name_korrigiert)
 
             if ueberkategorie and produktgruppe:
                 # Prüfe ob bereits zugeordnet und nicht force
@@ -377,11 +377,11 @@ class Command(BaseCommand):
                 # Ausgabe nur bei Änderungen
                 if stats['aktualisiert'] % 10 == 0:
                     self.stdout.write(
-                        f'✅ {stats["aktualisiert"]:4d} | {produkt.name_normalisiert[:40]:40s} → {ueberkategorie}'
+                        f'✅ {stats["aktualisiert"]:4d} | {produkt.name_korrigiert[:40]:40s} → {ueberkategorie}'
                     )
             else:
                 stats['nicht_gefunden'] += 1
-                nicht_gefunden_liste.append(produkt.name_normalisiert)
+                nicht_gefunden_liste.append(produkt.name_korrigiert)
 
         # === ABSCHLUSS ===
         self.stdout.write('\n' + '=' * 80)

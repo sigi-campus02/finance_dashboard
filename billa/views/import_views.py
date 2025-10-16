@@ -152,12 +152,12 @@ def _create_einkauf_with_artikel(data):
     for artikel_data in artikel_liste:
         artikel_data['einkauf'] = einkauf
 
-        produkt_name_norm = artikel_data['produkt_name_normalisiert']
+        produkt_name_norm = artikel_data['produkt_name_korrigiert']
         produkt_name_original = artikel_data['produkt_name']
 
         # Finde oder erstelle Produkt
         produkt, created = BillaProdukt.objects.get_or_create(
-            name_normalisiert=produkt_name_norm,
+            name_korrigiert=produkt_name_norm,
             defaults={
                 'name_original': produkt_name_original,
                 'letzter_preis': artikel_data['gesamtpreis'],

@@ -309,7 +309,7 @@
                                 {% for produkt in produkte %}
                                 <tr>
                                     <td>
-                                        <strong>{{ produkt.name_normalisiert }}</strong>
+                                        <strong>{{ produkt.name_korrigiert }}</strong>
                                     </td>
                                     <td>
                                         <span class="badge bg-light text-dark">
@@ -416,7 +416,7 @@
                                 {% for item in produkte_mit_preisen %}
                                 <tr>
                                     <td>
-                                        <strong>{{ item.produkt.name_normalisiert }}</strong>
+                                        <strong>{{ item.produkt.name_korrigiert }}</strong>
                                     </td>
                                     <td>
                                         <small class="text-muted">{{ item.produkt.produktgruppe|default:"-" }}</small>

@@ -647,7 +647,7 @@ if (topProdukte && topProdukte.length > 0) {
     const top10 = topProdukte.slice(0, 10);
 
     const topProdukteTrace = {
-        x: top10.map(p => shortenName(p.produkt__name_normalisiert)),
+        x: top10.map(p => shortenName(p.produkt__name_korrigiert)),
         y: top10.map(p => p.anzahl),
         type: 'bar',
         marker: {
@@ -661,7 +661,7 @@ if (topProdukte && topProdukte.length > 0) {
         textposition: 'outside',
         textfont: { size: isMobile ? 9 : 12 },
         hovertemplate: '<b>%{customdata}</b><br>%{y} Käufe<extra></extra>',
-        customdata: top10.map(p => p.produkt__name_normalisiert)
+        customdata: top10.map(p => p.produkt__name_korrigiert)
     };
 
     Plotly.newPlot('chart-top-products', [topProdukteTrace], {
@@ -693,7 +693,7 @@ if (topAusgaben && topAusgaben.length > 0) {
     const top10 = topAusgaben.slice(0, 10);
 
     const topAusgabenTrace = {
-        x: top10.map(p => shortenName(p.produkt__name_normalisiert)),
+        x: top10.map(p => shortenName(p.produkt__name_korrigiert)),
         y: top10.map(p => parseFloat(p.ausgaben)),
         type: 'bar',
         marker: {
@@ -707,7 +707,7 @@ if (topAusgaben && topAusgaben.length > 0) {
         textposition: 'outside',
         textfont: { size: isMobile ? 9 : 12 },
         hovertemplate: '<b>%{customdata}</b><br>€%{y:.2f}<extra></extra>',
-        customdata: top10.map(p => p.produkt__name_normalisiert)
+        customdata: top10.map(p => p.produkt__name_korrigiert)
     };
 
     Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
