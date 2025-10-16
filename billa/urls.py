@@ -36,4 +36,6 @@ urlpatterns = [
     # Billa API Endpoints
     path('api/preisverlauf/<int:produkt_id>/', stats.billa_api_preisverlauf, name='billa_api_preisverlauf'),
     path('api/stats/', stats.billa_api_stats, name='api_stats'),
+
+    path('api/bulk-update-by-name/', views.bulk_update_by_name, name='bulk_update_by_name'),
 ]

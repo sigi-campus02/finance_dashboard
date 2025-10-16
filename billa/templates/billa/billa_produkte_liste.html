@@ -244,7 +244,7 @@
     <!-- Ergebnis-Anzahl -->
     <div class="mb-3 d-flex justify-content-between align-items-center">
         <p class="text-muted mb-0">
-            <strong>{{ produkte.count }}</strong> Produkte gefunden
+            <strong>{{ produkte|length }}</strong> Produkte gefunden (gruppiert nach Name)
         </p>
         <small class="text-muted">
             <i class="bi bi-info-circle"></i> Tipp: Änderungen werden automatisch gespeichert
@@ -255,11 +255,18 @@
     <div class="row">
         {% for produkt in produkte %}
         <div class="col-md-6 col-lg-4">
-            <div class="produkt-card" data-produkt-id="{{ produkt.id }}">
-                <!-- Produkt Name (klickbar) -->
-                <a href="{% url 'billa:billa_produkt_detail' produkt.id %}" class="produkt-link">
+            <div class="produkt-card" data-name-korrigiert="{{ produkt.name_korrigiert }}">
+                <!-- Zeige erste_id für Detail-Link -->
+                <a href="{% url 'billa:billa_produkt_detail' produkt.erste_id %}" class="produkt-link">
                     <div class="produkt-name">
                         <i class="bi bi-box"></i> {{ produkt.name_korrigiert }}
+
+                        <!-- NEU: Badge für Varianten -->
+                        {% if produkt.anzahl_varianten > 1 %}
+                        <span class="badge bg-info ms-2" title="{{ produkt.anzahl_varianten }} Varianten in der Datenbank">
+                            {{ produkt.anzahl_varianten }} Varianten
+                        </span>
+                        {% endif %}
                     </div>
                 </a>
 
@@ -269,10 +276,10 @@
                         <!-- Überkategorie -->
                         <div class="col-6">
                             <label>Überkategorie</label>
-                            <select 
+                            <select
                                 class="form-select form-select-sm kategorie-dropdown"
                                 data-field="ueberkategorie"
-                                data-produkt-id="{{ produkt.id }}"
+                                data-name-korrigiert="{{ produkt.name_korrigiert }}"
                             >
                                 <option value="">- Keine -</option>
                                 {% for kat in ueberkategorien %}
@@ -289,7 +296,7 @@
                             <select 
                                 class="form-select form-select-sm kategorie-dropdown produktgruppe-dropdown"
                                 data-field="produktgruppe"
-                                data-produkt-id="{{ produkt.id }}"
+                                data-name-korrigiert="{{ produkt.name_korrigiert }}"
                                 data-current-value="{{ produkt.produktgruppe|default:'' }}"
                                 data-current-ueberkategorie="{{ produkt.ueberkategorie|default:'' }}"
                             >
@@ -300,7 +307,7 @@
                     </div>
 
                     <!-- Status-Anzeige -->
-                    <div class="save-status text-center" data-status-for="{{ produkt.id }}">
+                    <div class="save-status text-center" data-status-for="{{ produkt.name_korrigiert }}">
                         <!-- Hier erscheinen Statusmeldungen -->
                     </div>
                 </div>
@@ -308,7 +315,7 @@
                 <!-- Statistiken -->
                 <div class="produkt-stats">
                     <div class="stat-item">
-                        <div class="stat-value">{{ produkt.anzahl_kaeufe }}</div>
+                        <div class="stat-value">{{ produkt.gesamt_kaeufe }}</div>
                         <div class="stat-label">Käufe</div>
                     </div>
                     <div class="stat-item">
@@ -372,37 +379,36 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!ueberkategorieSelect || !produktgruppeSelect) return;
         
         // Initial die Produktgruppen laden
-        const currentUeberkategorie = produktgruppeSelect.dataset.currentUeberkategorie;
         const currentProduktgruppe = produktgruppeSelect.dataset.currentValue;
-        
+
         updateProduktgruppenDropdown(ueberkategorieSelect.value, produktgruppeSelect, currentProduktgruppe);
-        
+
         // Event-Listener für Überkategorie-Änderung
         ueberkategorieSelect.addEventListener('change', function() {
             const selectedUeberkategorie = this.value;
             updateProduktgruppenDropdown(selectedUeberkategorie, produktgruppeSelect, '');
-            
+
             // Speichern auslösen
             saveChangesDebounced(card);
         });
-        
+
         // Event-Listener für Produktgruppe-Änderung
         produktgruppeSelect.addEventListener('change', function() {
             saveChangesDebounced(card);
         });
     }
-    
+
     function updateProduktgruppenDropdown(ueberkategorie, dropdown, selectedValue) {
         // Leere die Dropdown
         dropdown.innerHTML = '<option value="">- Keine -</option>';
-        
+
         if (!ueberkategorie) {
             // Wenn keine Überkategorie ausgewählt, alle Produktgruppen anzeigen
             const alleGruppen = new Set();
             Object.values(produktgruppenByUeberkategorie).forEach(gruppen => {
                 gruppen.forEach(gruppe => alleGruppen.add(gruppe));
             });
-            
+
             Array.from(alleGruppen).sort().forEach(gruppe => {
                 const option = document.createElement('option');
                 option.value = gruppe;
@@ -415,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Nur Produktgruppen dieser Überkategorie anzeigen
             const gruppen = produktgruppenByUeberkategorie[ueberkategorie] || [];
-            
+
             gruppen.forEach(gruppe => {
                 const option = document.createElement('option');
                 option.value = gruppe;
@@ -427,44 +433,43 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    
+
     // Debounce für Speichern
     let saveTimeouts = {};
-    
+
     function saveChangesDebounced(card) {
-        const produktId = card.dataset.produktId;
-        const statusDiv = card.querySelector(`[data-status-for="${produktId}"]`);
-        
+        const nameKorrigiert = card.dataset.nameKorrigiert;  // ← GEÄNDERT
+        const statusDiv = card.querySelector(`[data-status-for="${nameKorrigiert}"]`);  // ← GEÄNDERT
+
         // Status anzeigen
         statusDiv.innerHTML = '<small class="text-muted"><i class="bi bi-hourglass-split"></i> Speichere...</small>';
-        
+
         // Alten Timer löschen
-        if (saveTimeouts[produktId]) {
-            clearTimeout(saveTimeouts[produktId]);
+        if (saveTimeouts[nameKorrigiert]) {  // ← GEÄNDERT
+            clearTimeout(saveTimeouts[nameKorrigiert]);
         }
-        
+
         // Neuen Timer setzen
-        saveTimeouts[produktId] = setTimeout(() => {
+        saveTimeouts[nameKorrigiert] = setTimeout(() => {  // ← GEÄNDERT
             saveChanges(card);
         }, 500);
     }
-    
+
     function saveChanges(card) {
-        const produktId = card.dataset.produktId;
-        const statusDiv = card.querySelector(`[data-status-for="${produktId}"]`);
+        const nameKorrigiert = card.dataset.nameKorrigiert;  // ← GEÄNDERT
+        const statusDiv = card.querySelector(`[data-status-for="${nameKorrigiert}"]`);  // ← GEÄNDERT
         const ueberkategorieSelect = card.querySelector('[data-field="ueberkategorie"]');
         const produktgruppeSelect = card.querySelector('[data-field="produktgruppe"]');
-        
+
+        // ← GEÄNDERT: Sende name_korrigiert statt ID
         const data = {
-            produkte: [{
-                id: produktId,
-                ueberkategorie: ueberkategorieSelect.value,
-                produktgruppe: produktgruppeSelect.value
-            }]
+            name_korrigiert: nameKorrigiert,
+            ueberkategorie: ueberkategorieSelect.value,
+            produktgruppe: produktgruppeSelect.value
         };
-        
-        // AJAX-Request
-        fetch('{% url "billa:produktgruppen_speichern" %}', {
+
+        // AJAX-Request an NEUE URL
+        fetch('{% url "billa:bulk_update_by_name" %}', {  // ← NEUE URL
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -475,7 +480,12 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(result => {
             if (result.status === 'success') {
-                statusDiv.innerHTML = '<small class="text-success"><i class="bi bi-check-circle-fill"></i> Gespeichert!</small>';
+                // Zeige wie viele Produkte aktualisiert wurden
+                const msg = result.updated > 1
+                    ? `${result.updated} Varianten gespeichert!`
+                    : 'Gespeichert!';
+
+                statusDiv.innerHTML = `<small class="text-success"><i class="bi bi-check-circle-fill"></i> ${msg}</small>`;
                 card.classList.add('success-flash');
                 
                 // Status nach 2 Sekunden ausblenden

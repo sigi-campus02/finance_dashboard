@@ -55,31 +55,63 @@ def billa_produkt_detail(request, produkt_id):
 
 @login_required
 def billa_produkte_liste(request):
-    """Liste aller Produkte mit Inline-Bearbeitung"""
-
+    """
+    Liste aller Produkte - GRUPPIERT nach name_korrigiert
+    """
     import json
+    from django.db.models import Q, Count, Sum, Avg, Min
 
     # Filter
     ueberkategorie = request.GET.get('ueberkategorie')
+    produktgruppe = request.GET.get('produktgruppe')
     suche = request.GET.get('suche')
     sortierung = request.GET.get('sort', '-anzahl_kaeufe')
 
-    produkte = BillaProdukt.objects.all()
+    # ========================================================================
+    # GRUPPIERUNG nach name_korrigiert
+    # ========================================================================
+    produkte_grouped = BillaProdukt.objects.values(
+        'name_korrigiert',
+        'ueberkategorie',
+        'produktgruppe'
+    ).annotate(
+        anzahl_varianten=Count('id'),
+        gesamt_kaeufe=Sum('anzahl_kaeufe'),
+        durchschnittspreis=Avg('durchschnittspreis'),
+        letzter_preis=Avg('letzter_preis'),
+        erste_id=Min('id')  # Für Detail-Link
+    )
 
     # Filter nach Überkategorie
     if ueberkategorie and ueberkategorie != 'alle':
-        produkte = produkte.filter(ueberkategorie=ueberkategorie)
+        produkte_grouped = produkte_grouped.filter(ueberkategorie=ueberkategorie)
 
+    # Filter nach Produktgruppe
+    if produktgruppe and produktgruppe != 'alle':
+        produkte_grouped = produkte_grouped.filter(produktgruppe=produktgruppe)
+
+    # Suche
     if suche:
-        produkte = produkte.filter(
-            Q(name_korrigiert__icontains=suche) |
-            Q(name_normalisiert__icontains=suche) |
-            Q(name_original__icontains=suche)
+        produkte_grouped = produkte_grouped.filter(
+            Q(name_korrigiert__icontains=suche)
         )
 
-    produkte = produkte.order_by(sortierung)
+    # Sortierung
+    sortierung_map = {
+        '-anzahl_kaeufe': '-gesamt_kaeufe',
+        'anzahl_kaeufe': 'gesamt_kaeufe',
+        '-durchschnittspreis': '-durchschnittspreis',
+        'durchschnittspreis': 'durchschnittspreis',
+        'name_korrigiert': 'name_korrigiert',
+        '-name_korrigiert': '-name_korrigiert'
+    }
+    produkte_grouped = produkte_grouped.order_by(
+        sortierung_map.get(sortierung, '-gesamt_kaeufe')
+    )
 
-    # Alle Überkategorien für Filter und Dropdowns
+    # ========================================================================
+    # Filter-Optionen
+    # ========================================================================
     alle_ueberkategorien = BillaProdukt.objects.values_list(
         'ueberkategorie', flat=True
     ).distinct().exclude(
@@ -88,45 +120,89 @@ def billa_produkte_liste(request):
         ueberkategorie=''
     ).order_by('ueberkategorie')
 
-    # Alle Produktgruppen für Dropdowns (gruppiert nach Überkategorie)
-    produktgruppen_raw = BillaProdukt.objects.exclude(
+    alle_produktgruppen = BillaProdukt.objects.values_list(
+        'produktgruppe', flat=True
+    ).distinct().exclude(
         produktgruppe__isnull=True
     ).exclude(
         produktgruppe=''
-    ).exclude(
-        ueberkategorie__isnull=True
-    ).exclude(
-        ueberkategorie=''
-    ).values('ueberkategorie', 'produktgruppe').distinct().order_by('ueberkategorie', 'produktgruppe')
+    ).order_by('produktgruppe')
 
-    # Gruppiere Produktgruppen nach Überkategorie
+    # ========================================================================
+    # Produktgruppen-Mapping für JavaScript
+    # ========================================================================
     produktgruppen_by_ueberkategorie = {}
-    for item in produktgruppen_raw:
-        ukat = item['ueberkategorie']
-        pgruppe = item['produktgruppe']
-        if ukat not in produktgruppen_by_ueberkategorie:
-            produktgruppen_by_ueberkategorie[ukat] = []
-        if pgruppe not in produktgruppen_by_ueberkategorie[ukat]:
-            produktgruppen_by_ueberkategorie[ukat].append(pgruppe)
-
-    # Display-Name für ausgewählte Überkategorie
-    selected_kategorie_display = 'Alle Kategorien'
-    if ueberkategorie and ueberkategorie != 'alle':
-        selected_kategorie_display = ueberkategorie
+    for ukat in alle_ueberkategorien:
+        gruppen = BillaProdukt.objects.filter(
+            ueberkategorie=ukat
+        ).values_list('produktgruppe', flat=True).distinct().exclude(
+            produktgruppe__isnull=True
+        ).exclude(
+            produktgruppe=''
+        ).order_by('produktgruppe')
+        produktgruppen_by_ueberkategorie[ukat] = list(gruppen)
 
     context = {
-        'produkte': produkte,
+        'produkte': produkte_grouped,
         'ueberkategorien': list(alle_ueberkategorien),
-        'produktgruppen_by_ueberkategorie': json.dumps(produktgruppen_by_ueberkategorie),  # Als JSON
+        'produktgruppen': list(alle_produktgruppen),
         'selected_ueberkategorie': ueberkategorie or 'alle',
-        'selected_kategorie_display': selected_kategorie_display,
+        'selected_produktgruppe': produktgruppe or 'alle',
+        'selected_kategorie_display': ueberkategorie or 'Alle Kategorien',
         'suche': suche or '',
-        'sortierung': sortierung
+        'sortierung': sortierung,
+        'produktgruppen_by_ueberkategorie': json.dumps(produktgruppen_by_ueberkategorie)
     }
 
     return render(request, 'billa/billa_produkte_liste.html', context)
 
 
+# ============================================================================
+# NEUE View für Bulk Update
+# ============================================================================
+
+@login_required
+@require_POST
+def bulk_update_by_name(request):
+    """
+    Updated ALLE BillaProdukt Objekte mit gleichem name_korrigiert
+    """
+    try:
+        data = json.loads(request.body)
+        name_korrigiert = data.get('name_korrigiert')
+        ueberkategorie = data.get('ueberkategorie')
+        produktgruppe = data.get('produktgruppe')
+
+        if not name_korrigiert:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'name_korrigiert fehlt'
+            }, status=400)
+
+        # Update alle Produkte mit diesem name_korrigiert
+        update_dict = {
+            'ueberkategorie': ueberkategorie if ueberkategorie else None,
+            'produktgruppe': produktgruppe if produktgruppe else None
+        }
+
+        updated_count = BillaProdukt.objects.filter(
+            name_korrigiert=name_korrigiert
+        ).update(**update_dict)
+
+        logger.info(f"Bulk update: {updated_count} Produkte mit name_korrigiert='{name_korrigiert}' aktualisiert")
+
+        return JsonResponse({
+            'status': 'success',
+            'updated': updated_count,
+            'message': f'{updated_count} Produkt(e) aktualisiert'
+        })
+
+    except Exception as e:
+        logger.error(f"Fehler beim Bulk Update: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 @login_required
 def produktgruppen_mapper(request):
     """Produktgruppen-Mapping Tool"""
