@@ -10,7 +10,7 @@ from django.contrib import messages
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
     DimAccount, DimCategory, DimPayee, DimCategoryGroup, DimFlag,
-    ScheduledTransaction
+    ScheduledTransaction, RegisteredDevice
 )
 from .forms import TransactionForm
 from collections import defaultdict
@@ -23,6 +23,8 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 import logging
 from .receipt_analyzer import ReceiptAnalyzer
+from django.contrib.auth import login as auth_login
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,72 @@ CATEGORY_COLORS = {
         'name': 'Langfristige Investments'
     },
 }
+
+
+@login_required
+def manage_devices(request):
+    """Zeigt alle registrierten Geräte des Users"""
+    devices = request.user.devices.all().order_by('-last_used')
+    current_device_token = request.session.get('device_token')
+
+    if request.method == 'POST':
+        device_id = request.POST.get('device_id')
+        action = request.POST.get('action')
+
+        try:
+            device = RegisteredDevice.objects.get(id=device_id, user=request.user)
+
+            if action == 'rename':
+                new_name = request.POST.get('new_name', '').strip()
+                if new_name:
+                    device.device_name = new_name
+                    device.save()
+                    messages.success(request, f'Gerät umbenannt zu: {new_name}')
+
+            elif action == 'deactivate':
+                # Verhindere, dass User sich selbst aussperrt
+                if str(device.device_token) == current_device_token:
+                    messages.error(request, 'Du kannst das aktuelle Gerät nicht deaktivieren!')
+                else:
+                    device.is_active = False
+                    device.save()
+                    messages.warning(request, f'Gerät "{device.device_name}" wurde deaktiviert')
+
+            elif action == 'activate':
+                device.is_active = True
+                device.save()
+                messages.success(request, f'Gerät "{device.device_name}" wurde aktiviert')
+
+        except RegisteredDevice.DoesNotExist:
+            messages.error(request, 'Gerät nicht gefunden')
+
+        return redirect('finance:manage_devices')
+
+    return render(request, 'finance/manage_devices.html', {
+        'devices': devices,
+        'current_device_token': current_device_token
+    })
+
+
+@login_required
+def delete_device(request, device_id):
+    """Löscht ein Gerät (nicht das aktuelle)"""
+    current_device_token = request.session.get('device_token')
+
+    try:
+        device = RegisteredDevice.objects.get(id=device_id, user=request.user)
+
+        if str(device.device_token) == current_device_token:
+            messages.error(request, 'Du kannst das aktuelle Gerät nicht löschen!')
+        else:
+            device_name = device.device_name
+            device.delete()
+            messages.success(request, f'Gerät "{device_name}" wurde entfernt')
+    except RegisteredDevice.DoesNotExist:
+        messages.error(request, 'Gerät nicht gefunden')
+
+    return redirect('finance:manage_devices')
+
 
 def home(request):
     """Startseite mit Übersicht aller Bereiche"""
@@ -3391,3 +3459,5 @@ def api_billa_transactions_detail(request):
         'monthly_summary': {k: v for k, v in sorted(monthly_summary.items())},
         'transactions': transactions
     })
+
+

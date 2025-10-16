@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'axes.middleware.AxesMiddleware',  # ← Für Brute-Force Schutz
+    'finance.middleware.DeviceAuthenticationMiddleware',  # ← Für Geräte-Authentifizierung
 ]
 
 ROOT_URLCONF = 'config.urls'

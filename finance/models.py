@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from django.contrib.auth.models import User
+import uuid
 
 
 # ===== DIMENSION MODELS =====
@@ -888,3 +890,20 @@ class BillaFiliale(models.Model):
         """Gibt den vollen Namen mit Filialnummer zurück"""
         typ_name = "Billa Plus" if self.typ == 'billa_plus' else "Billa"
         return f"{self.filial_nr} - {typ_name} - {self.name}"
+
+
+class RegisteredDevice(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='devices')
+    device_name = models.CharField(max_length=100, default='Neues Gerät')
+    device_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    device_fingerprint = models.CharField(max_length=255)  # ✅ KEIN unique=True!
+    is_active = models.BooleanField(default=True)
+    last_used = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'finance"."registered_devices'
+        unique_together = ['user', 'device_fingerprint']  # ✅ Kombination ist unique
+
+    def __str__(self):
+        return f"{self.user.username} - {self.device_name}"

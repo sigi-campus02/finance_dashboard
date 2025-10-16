@@ -154,16 +154,21 @@
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-primary">
         <div class="container-fluid">
+        
             <a class="navbar-brand" href="{% url 'finance:home' %}">
                 <i class="bi bi-currency-euro"></i> Finance Dashboard
             </a>
+        
             <!-- Toggler nur auf Mobile sichtbar -->
             <button class="navbar-toggler d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+        
             <!-- Navigation nur auf Mobile sichtbar (d-md-none) -->
             <div class="collapse d-md-none" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                
+                    <!-- PRIVAT -->
                     {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:dashboard' %}">
@@ -171,12 +176,16 @@
                         </a>
                     </li>
                     {% endif %}
+                
+                    <!-- Haushalt -->
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}"
                            href="{% url 'finance:household_dashboard' %}">
                             <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
                         </a>
                     </li>
+                
+                    <!-- PRIVAT -->
                     {% if user.username != 'robert' %}
                     <li>
                         <a class="nav-link" href="{% url 'finance:transactions' %}">
@@ -184,12 +193,15 @@
                         </a>
                     </li>
                     {% endif %}
+                
+                    <!-- Haushalt -->
                     <li>
                         <a class="nav-link" href="{% url 'finance:household_transactions' %}">
                         <i class="bi bi-house-door"></i> Transaktionen Haushalt
                         </a>
                     </li>
                 
+                    <!-- Haushalt -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
@@ -204,7 +216,7 @@
                         </ul>
                     </li>
 
-                    <!-- ✅ Billa Dropdown in Mobile Navigation - ERWEITERT -->
+                    <!-- Haushalt -->
                     <li class="nav-item">
                         <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
                            href="#"
@@ -264,18 +276,27 @@
                         </div>
                     </li>
 
+                    <!-- PRIVAT -->
                     {% if user.username != 'robert' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:scheduled_transactions' %}">
                             <i class="bi bi-calendar-event"></i> Scheduled Transactions
                         </a>
                     </li>
+                        
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:asset_overview' %}">
                             <i class="bi bi-wallet2"></i> Vermögen
                         </a>
                     </li>
+                        
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'finance:manage_devices' %}">
+                            <i class="bi bi-devices"></i> Geräteverwaltung
+                        </a>
+                    </li>
                     {% endif %}
+                    
                     {% if user.is_authenticated %}
                     <li class="nav-item">
                         <form method="post" action="{% url 'logout' %}" class="d-inline">
@@ -310,6 +331,8 @@
             <nav class="col-md-2 d-none d-md-block sidebar">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
+                    
+                        <!-- PRIVAT -->
                         {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
@@ -320,6 +343,7 @@
                         </li>
                         {% endif %}
                         
+                        <!-- Haushalt -->
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}"
                                href="{% url 'finance:household_dashboard' %}">
@@ -327,6 +351,7 @@
                             </a>
                         </li>
                     
+                        <!-- PRIVAT -->
                         {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
@@ -337,6 +362,7 @@
                         </li>
                         {% endif %}
                     
+                        <!-- Haushalt -->
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'household_transactions' %}active{% endif %}"
                                href="{% url 'finance:household_transactions' %}">
@@ -359,6 +385,7 @@
                             </ul>
                         </li>
                     
+                        <!-- PRIVAT -->
                         {% if user.username != 'robert' %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
@@ -375,6 +402,7 @@
                                 Vermögen
                             </a>
                         </li>
+                            
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'adjust_investments' %}active{% endif %}"
                                href="{% url 'finance:adjust_investments' %}">
@@ -382,8 +410,8 @@
                                 Investment-Anpassung
                             </a>
                         </li>
-                        
-                        <!-- ✅ Billa Dropdown in der Sidebar - ERWEITERT -->
+                            
+                        <!-- Haushalt -->
                         <li class="nav-item">
                             <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
                                href="#"
@@ -442,12 +470,10 @@
                                 </ul>
                             </div>
                         </li>
-                        {% else %}
+                        
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
-                               href="{% url 'finance:scheduled_transactions' %}">
-                                <i class="bi bi-calendar-event"></i>
-                                Scheduled Transactions
+                            <a class="nav-link" href="{% url 'finance:manage_devices' %}">
+                                <i class="bi bi-devices"></i> Geräteverwaltung
                             </a>
                         </li>
                         {% endif %}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import ScheduledTransaction
-
+from .models import RegisteredDevice
 
 @admin.register(ScheduledTransaction)
 class ScheduledTransactionAdmin(admin.ModelAdmin):
@@ -103,3 +103,16 @@ class ScheduledTransactionAdmin(admin.ModelAdmin):
         self.message_user(request, f"{count} Transaktion(en) deaktiviert.")
 
     deactivate.short_description = "Deaktivieren"
+
+
+@admin.register(RegisteredDevice)
+class RegisteredDeviceAdmin(admin.ModelAdmin):
+    list_display = ['user', 'device_name', 'is_active', 'last_used', 'created_at']
+    list_filter = ['is_active', 'user']
+    search_fields = ['user__username', 'device_name']
+    actions = ['deactivate_devices', 'activate_devices']
+
+    def deactivate_devices(self, request, queryset):
+        queryset.update(is_active=False)
+
+    deactivate_devices.short_description = "Deaktiviere ausgewählte Geräte"

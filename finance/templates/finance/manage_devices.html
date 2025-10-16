@@ -1,0 +1,117 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Meine Geräte{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="bi bi-devices"></i> Meine registrierten Geräte</h2>
+            <p class="text-muted">Verwalte die Geräte, die auf dein Konto zugreifen können.</p>
+            <hr>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mb-3">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        {% for device in devices %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card {% if device.device_token|stringformat:'s' == current_device_token %}border-primary{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">
+                            <i class="bi bi-{% if 'Handy' in device.device_name or 'iPhone' in device.device_name %}phone{% elif 'Mac' in device.device_name %}laptop{% else %}pc-display{% endif %}"></i>
+                            {{ device.device_name }}
+                        </h5>
+                        {% if device.device_token|stringformat:'s' == current_device_token %}
+                        <span class="badge bg-primary">Aktuell</span>
+                        {% elif device.is_active %}
+                        <span class="badge bg-success">Aktiv</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Deaktiviert</span>
+                        {% endif %}
+                    </div>
+
+                    <p class="card-text small text-muted mb-2">
+                        <i class="bi bi-calendar-check"></i> Erstellt: {{ device.created_at|date:"d.m.Y H:i" }}<br>
+                        <i class="bi bi-clock-history"></i> Letzte Nutzung: {{ device.last_used|date:"d.m.Y H:i" }}
+                    </p>
+
+                    <div class="btn-group w-100" role="group">
+                        <!-- Umbenennen -->
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#renameModal{{ device.id }}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+
+                        {% if device.device_token|stringformat:'s' != current_device_token %}
+                        <!-- Aktivieren/Deaktivieren -->
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="device_id" value="{{ device.id }}">
+                            <input type="hidden" name="action" value="{% if device.is_active %}deactivate{% else %}activate{% endif %}">
+                            <button type="submit" class="btn btn-sm btn-outline-{% if device.is_active %}warning{% else %}success{% endif %}" 
+                                    onclick="return confirm('Wirklich {% if device.is_active %}deaktivieren{% else %}aktivieren{% endif %}?')">
+                                <i class="bi bi-{% if device.is_active %}pause-circle{% else %}play-circle{% endif %}"></i>
+                            </button>
+                        </form>
+
+                        <!-- Löschen -->
+                        <a href="{% url 'finance:delete_device' device.id %}" 
+                           class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Gerät wirklich löschen?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rename Modal -->
+        <div class="modal fade" id="renameModal{{ device.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h5 class="modal-title">Gerät umbenennen</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="device_id" value="{{ device.id }}">
+                            <input type="hidden" name="action" value="rename">
+                            <div class="mb-3">
+                                <label class="form-label">Neuer Name</label>
+                                <input type="text" name="new_name" class="form-control" value="{{ device.device_name }}" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">Speichern</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not devices %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Noch keine Geräte registriert.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

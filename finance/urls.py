@@ -8,6 +8,10 @@ urlpatterns = [
     # Haupt-Seiten
     path('', views.home, name='home'),
 
+    # Geräteverwaltung
+    path('devices/', views.manage_devices, name='manage_devices'),
+    path('devices/delete/<int:device_id>/', views.delete_device, name='delete_device'),
+
     path('dashboard/', views.dashboard, name='dashboard'),
 
     path('transactions/', views.transactions_list, name='transactions'),

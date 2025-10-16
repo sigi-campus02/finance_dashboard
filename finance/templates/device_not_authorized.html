@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerät nicht autorisiert</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .auth-card { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body class="d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card auth-card">
+                    <div class="card-body text-center p-5">
+                        <i class="bi bi-shield-exclamation text-danger" style="font-size: 5rem;"></i>
+
+                        <h2 class="mt-4 mb-3">Gerät nicht autorisiert</h2>
+
+                        <div class="alert alert-danger text-start">
+                            <strong><i class="bi bi-exclamation-triangle"></i> Zugriff verweigert</strong>
+                            <p class="mb-0 mt-2">
+                                Dieses Gerät ist nicht für den Zugriff auf diesen Account autorisiert oder wurde deaktiviert.
+                            </p>
+                        </div>
+
+                        {% if show_reactivation_hint %}
+                        <div class="alert alert-info text-start">
+                            <strong><i class="bi bi-info-circle"></i> Mögliche Gründe:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Das Gerät wurde von einem anderen autorisierten Gerät aus deaktiviert</li>
+                                <li>Deine Session ist abgelaufen</li>
+                                <li>Das Gerät wurde aus Sicherheitsgründen gesperrt</li>
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if device %}
+                        <hr class="my-4">
+                        <div class="text-start bg-light p-3 rounded">
+                            <p class="mb-1"><strong><i class="bi bi-device-hdd"></i> Gerät:</strong> {{ device.device_name }}</p>
+                            <p class="mb-0"><strong><i class="bi bi-clock-history"></i> Letzte Nutzung:</strong> {{ device.last_used|date:"d.m.Y H:i" }} Uhr</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4 d-grid gap-2">
+                            <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Zurück zum Login
+                            </a>
+                        </div>
+
+                        <div class="mt-4">
+                            <small class="text-muted">
+                                <i class="bi bi-question-circle"></i>
+                                Kontaktiere einen Administrator, wenn du glaubst, dass dies ein Fehler ist.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
