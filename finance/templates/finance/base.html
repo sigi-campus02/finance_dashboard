@@ -283,13 +283,20 @@
                             <i class="bi bi-calendar-event"></i> Scheduled Transactions
                         </a>
                     </li>
-                        
+
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'finance:asset_overview' %}">
                             <i class="bi bi-wallet2"></i> Vermögen
                         </a>
                     </li>
-                        
+
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'adjust_investments' %}active{% endif %}"
+                           href="{% url 'finance:adjust_investments' %}">
+                            <i class="bi bi-graph-up-arrow"></i> Investment-Anpassung
+                        </a>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
                            href="{% url 'finance:manage_devices' %}">
