@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finance-dashboard-v2';
+const CACHE_NAME = 'finance-dashboard-v3';
 
 // URLs die gecacht werden sollen
 const urlsToCache = [
