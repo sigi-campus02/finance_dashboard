@@ -8,7 +8,8 @@ import re
 import pdfplumber
 from datetime import datetime
 from decimal import Decimal
-
+import logging
+logger = logging.getLogger(__name__)
 
 class BillaReceiptParser:
     """
@@ -28,8 +29,11 @@ class BillaReceiptParser:
 
         # Rabatt-Pattern für Standard-Aktionen
         self.rabatt_pattern = re.compile(
-            r'^(NIMM MEHR|EXTREM AKTION|GRATIS AKTION|AKTIONSNACHLASS|'
-            r'FILIALAKTION|Preiskorrektur|Jö Äpp Extrem Bon)\s+([ABCDG])?\s*([\d.,-]+)\s*$'
+            r'^(?:(\d+)\s+x\s+)?'  # ← NEU: Optional "24 x "
+            r'(NIMM MEHR|EXTREM AKTION|GRATIS AKTION|AKTIONSNACHLASS|'
+            r'FILIALAKTION|Preiskorrektur|Jö Äpp Extrem Bon)\s+'
+            r'([ABCDG])?\s*'
+            r'([-]?[\d.,-]+)\s*$'
         )
 
     def parse_pdf(self, pdf_path):
@@ -267,10 +271,27 @@ class BillaReceiptParser:
 
                     # Prüfe auf Rabatt in nächster Zeile
                     if i + 1 < end_idx:
-                        rabatt = self._check_rabatt(lines[i + 1])
-                        if rabatt:
-                            artikel.update(rabatt)
-                            i += 1
+                        rabatt_info = self._check_rabatt(lines[i + 1])
+                        if rabatt_info:
+                            # Prüfe ob Mengenrabatt
+                            if 'rabatt_menge' in rabatt_info:
+                                # Mengenrabatt: Prüfe ob Menge stimmt
+                                if rabatt_info['rabatt_menge'] == int(menge):
+                                    artikel['rabatt'] = rabatt_info['rabatt']
+                                    artikel[
+                                        'rabatt_typ'] = f"{rabatt_info['rabatt_menge']}x {rabatt_info['rabatt_typ']}"
+                                    i += 1  # Überspringe Rabattzeile
+                                else:
+                                    # Warnung bei Mismatch
+                                    logger.warning(
+                                        f"Mengenrabatt {rabatt_info['rabatt_menge']} != "
+                                        f"Menge {menge} bei {artikel['produkt_name']}"
+                                    )
+                            else:
+                                # Normaler Rabatt
+                                artikel['rabatt'] = rabatt_info['rabatt']
+                                artikel['rabatt_typ'] = rabatt_info['rabatt_typ']
+                                i += 1
 
                     artikel_liste.append(artikel)
                     position += 1
@@ -298,10 +319,27 @@ class BillaReceiptParser:
 
                     # Prüfe auf Rabatt
                     if i + 1 < end_idx:
-                        rabatt = self._check_rabatt(lines[i + 1])
-                        if rabatt:
-                            artikel.update(rabatt)
-                            i += 1
+                        rabatt_info = self._check_rabatt(lines[i + 1])
+                        if rabatt_info:
+                            # Prüfe ob Mengenrabatt
+                            if 'rabatt_menge' in rabatt_info:
+                                # Mengenrabatt: Prüfe ob Menge stimmt
+                                if rabatt_info['rabatt_menge'] == int(menge):
+                                    artikel['rabatt'] = rabatt_info['rabatt']
+                                    artikel[
+                                        'rabatt_typ'] = f"{rabatt_info['rabatt_menge']}x {rabatt_info['rabatt_typ']}"
+                                    i += 1  # Überspringe Rabattzeile
+                                else:
+                                    # Warnung bei Mismatch
+                                    logger.warning(
+                                        f"Mengenrabatt {rabatt_info['rabatt_menge']} != "
+                                        f"Menge {menge} bei {artikel['produkt_name']}"
+                                    )
+                            else:
+                                # Normaler Rabatt
+                                artikel['rabatt'] = rabatt_info['rabatt']
+                                artikel['rabatt_typ'] = rabatt_info['rabatt_typ']
+                                i += 1
 
                     artikel_liste.append(artikel)
                     position += 1
@@ -316,9 +354,18 @@ class BillaReceiptParser:
 
                 # Prüfe auf Rabatt in nächster Zeile
                 if i + 1 < end_idx:
-                    rabatt = self._check_rabatt(lines[i + 1])
-                    if rabatt:
-                        artikel.update(rabatt)
+                    rabatt_info = self._check_rabatt(lines[i + 1])
+                    if rabatt_info:
+                        # Auch hier Mengenrabatt-Check (falls relevant)
+                        if 'rabatt_menge' in rabatt_info:
+                            # Bei Standard-Artikeln (Menge=1) ist Mengenrabatt unwahrscheinlich
+                            # aber für Konsistenz trotzdem prüfen
+                            logger.warning(
+                                f"Mengenrabatt bei Standard-Artikel: {artikel['produkt_name']}"
+                            )
+                        # Normaler Rabatt
+                        artikel['rabatt'] = rabatt_info['rabatt']
+                        artikel['rabatt_typ'] = rabatt_info['rabatt_typ']
                         i += 1
 
                 artikel_liste.append(artikel)
@@ -396,11 +443,22 @@ class BillaReceiptParser:
         # Standard-Rabatte
         match = self.rabatt_pattern.match(line_stripped)
         if match:
-            betrag = match.group(3).replace(',', '.')
-            return {
-                'rabatt_typ': match.group(1),
-                'rabatt': abs(Decimal(betrag))
+            menge = match.group(1)  # NEU: "24" oder None
+            rabatt_name = match.group(2)  # "EXTREM AKTION"
+            betrag_str = match.group(4)  # "-14.40"
+            betrag_gesamt = abs(Decimal(betrag_str.replace(',', '.')))
+
+            result = {
+                'rabatt_typ': rabatt_name,
+                'rabatt': betrag_gesamt
             }
+
+            # NEU: Wenn Mengenrabatt
+            if menge:
+                result['rabatt_menge'] = int(menge)
+                result['rabatt_pro_stueck'] = betrag_gesamt / Decimal(menge)
+
+            return result
 
         return None
 
