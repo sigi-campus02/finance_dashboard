@@ -299,7 +299,7 @@
             </div>
             {% if user.username != 'robert' %}
             <div class="{% if user.username != 'robert' %}col-md-6{% else %}col-12{% endif %}">
-                <a href="{% url 'finance:billa_import' %}" class="quick-action-btn w-100">
+                <a href="{% url 'billa:billa_import' %}" class="quick-action-btn w-100">
                     <i class="bi bi-upload quick-action-icon"></i>
                     <span>Rechnung hochladen</span>
                 </a>
@@ -429,7 +429,7 @@
 
     <div class="nav-grid">
         <!-- Billa Dashboard -->
-        <a href="{% url 'finance:billa_dashboard' %}" class="nav-card card-billa">
+        <a href="{% url 'billa:billa_dashboard' %}" class="nav-card card-billa">
             <div class="card-icon">📊</div>
             <div class="card-content">
                 <div class="card-title">Billa Dashboard</div>

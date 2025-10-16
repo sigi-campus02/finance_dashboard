@@ -16,6 +16,7 @@ urlpatterns = [
     path('manifest.json', views.manifest, name='manifest'),
 
     path('', include('finance.urls')),
+    path('billa/', include('billa.urls')),
 ]
 
 if settings.DEBUG:

@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'axes', # ← Für Brute-Force Schutz
-    'finance',  # ← Unsere App
+    'finance',
+    'billa',
 ]
 
 MIDDLEWARE = [
@@ -267,7 +268,7 @@ if USE_R2_STORAGE:
     # R2 Credentials
     AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', 'billa-rechnungen')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', 'billainvoices')
     AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
 
     # R2-spezifische Settings

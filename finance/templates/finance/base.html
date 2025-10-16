@@ -232,43 +232,43 @@
                             <ul class="nav flex-column ms-3">
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
-                                       href="{% url 'finance:billa_dashboard' %}">
+                                       href="{% url 'billa:billa_dashboard' %}">
                                         <i class="bi bi-graph-up"></i> Dashboard
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_import' %}active{% endif %}"
-                                       href="{% url 'finance:billa_import' %}">
+                                       href="{% url 'billa:billa_import' %}">
                                         <i class="bi bi-upload"></i> Rechnung hochladen
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_einkauefe_liste' %}active{% endif %}"
-                                       href="{% url 'finance:billa_einkauefe_liste' %}">
+                                       href="{% url 'billa:billa_einkauefe_liste' %}">
                                         <i class="bi bi-cart-check"></i> Einkäufe
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_marken_liste' %}active{% endif %}"
-                                       href="{% url 'finance:billa_marken_liste' %}">
+                                       href="{% url 'billa:billa_marken_liste' %}">
                                         <i class="bi bi-tag-fill"></i> Marken
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_ueberkategorien_liste' %}active{% endif %}"
-                                       href="{% url 'finance:billa_ueberkategorien_liste' %}">
+                                       href="{% url 'billa:billa_ueberkategorien_liste' %}">
                                         <i class="bi bi-layers-fill"></i> Überkategorien
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
-                                       href="{% url 'finance:billa_produktgruppen_liste' %}">
+                                       href="{% url 'billa:billa_produktgruppen_liste' %}">
                                         <i class="bi bi-grid-3x3-gap"></i> Produktgruppen
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'billa_produkte_liste' %}active{% endif %}"
-                                       href="{% url 'finance:billa_produkte_liste' %}">
+                                       href="{% url 'billa:billa_produkte_liste' %}">
                                         <i class="bi bi-box-seam"></i> Produkte
                                     </a>
                                 </li>
@@ -428,43 +428,43 @@
                                 <ul class="nav flex-column">
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_dashboard' %}active{% endif %}"
-                                           href="{% url 'finance:billa_dashboard' %}">
+                                           href="{% url 'billa:billa_dashboard' %}">
                                             <i class="bi bi-graph-up"></i> Dashboard
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_import' %}active{% endif %}"
-                                           href="{% url 'finance:billa_import' %}">
+                                           href="{% url 'billa:billa_import' %}">
                                             <i class="bi bi-upload"></i> Rechnung hochladen
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_einkauefe_liste' %}active{% endif %}"
-                                           href="{% url 'finance:billa_einkauefe_liste' %}">
+                                           href="{% url 'billa:billa_einkauefe_liste' %}">
                                             <i class="bi bi-cart-check"></i> Einkäufe
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_marken_liste' %}active{% endif %}"
-                                           href="{% url 'finance:billa_marken_liste' %}">
+                                           href="{% url 'billa:billa_marken_liste' %}">
                                             <i class="bi bi-tag-fill"></i> Marken
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_ueberkategorien_liste' %}active{% endif %}"
-                                           href="{% url 'finance:billa_ueberkategorien_liste' %}">
+                                           href="{% url 'billa:billa_ueberkategorien_liste' %}">
                                             <i class="bi bi-layers-fill"></i> Überkategorien
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_produktgruppen_liste' %}active{% endif %}"
-                                           href="{% url 'finance:billa_produktgruppen_liste' %}">
+                                           href="{% url 'billa:billa_produktgruppen_liste' %}">
                                             <i class="bi bi-grid-3x3-gap"></i> Produktgruppen
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-item {% if request.resolver_match.url_name == 'billa_produkte_liste' %}active{% endif %}"
-                                           href="{% url 'finance:billa_produkte_liste' %}">
+                                           href="{% url 'billa:billa_produkte_liste' %}">
                                             <i class="bi bi-box-seam"></i> Produkte
                                         </a>
                                     </li>

@@ -1,0 +1,825 @@
+{% extends "finance/base.html" %}
+{% load static %}
+
+{% block title %}Billa Einkaufsanalyse{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+        height: 100%;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+    
+    /* Mobile: Größere Schrift für Stats */
+    @media (min-width: 768px) {
+        .stat-value {
+            font-size: 2rem;
+        }
+        .stat-card {
+            padding: 20px;
+        }
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        min-height: 400px;
+        position: relative;
+    }
+    
+    @media (min-width: 768px) {
+        .chart-container {
+            padding: 20px;
+            min-height: 450px;
+        }
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    
+    .filter-toggle {
+        width: 100%;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        text-align: left;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-toggle:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+    }
+    
+    .filter-toggle i {
+        transition: transform 0.3s ease;
+    }
+    
+    .filter-toggle[aria-expanded="true"] i {
+        transform: rotate(180deg);
+    }
+    
+    .filter-content {
+        padding: 20px;
+    }
+    
+    /* Navigation Cards - Icon rechts */
+    .nav-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        height: 100%;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        gap: 0.75rem;
+    }
+    
+    .nav-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+    }
+    
+    .nav-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        text-decoration: none;
+        color: white;
+    }
+    
+    .nav-card-content {
+        order: 1;
+        flex: 1;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .nav-card-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0;
+        display: block;
+        opacity: 0.95;
+        order: 2;
+        flex-shrink: 0;
+    }
+    
+    .nav-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+    
+    .nav-card-description {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        line-height: 1.4;
+    }
+    
+    /* Gradient Colors */
+    .gradient-upload { 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+    }
+    .gradient-purchases { 
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+    }
+    .gradient-brands { 
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+    }
+    .gradient-categories { 
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); 
+    }
+    .gradient-groups { 
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); 
+    }
+    .gradient-products { 
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); 
+    }
+    
+    .section-divider {
+        border-top: 2px solid #e9ecef;
+        margin: 2rem 0;
+        padding-top: 1rem;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Custom Legend für Monatliche Ausgaben */
+    .custom-legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 15px;
+        margin-top: 15px;
+        font-size: 0.85rem;
+        padding: 0 5px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        padding: 6px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .legend-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .legend-item:active {
+        background-color: #e9ecef;
+    }
+    
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .legend-label {
+        flex: 1;
+        font-size: 0.85rem;
+        line-height: 1.2;
+    }
+    
+    @media (max-width: 576px) {
+        .custom-legend {
+            font-size: 0.75rem;
+            gap: 6px 8px;
+        }
+        
+        .legend-item {
+            padding: 5px 6px;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .legend-label {
+            font-size: 0.75rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-cart3"></i> Billa Dashboard
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1>🛒 Billa Einkaufsanalyse</h1>
+            <p class="text-muted mb-0">Deine persönliche Übersicht über alle Billa-Einkäufe</p>
+        </div>
+    </div>
+
+     <!-- ✅ NAVIGATION CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'billa:billa_import' %}" class="nav-card gradient-upload">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Rechnung hochladen</div>
+                    <div class="nav-card-description">
+                        PDF-Belege von Billa importieren und automatisch analysieren lassen
+                    </div>
+                </div>
+                <span class="nav-card-icon">📤</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'billa:billa_einkauefe_liste' %}" class="nav-card gradient-purchases">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Einkäufe</div>
+                    <div class="nav-card-description">
+                        Alle deine Billa-Einkäufe mit Details zu Datum, Filiale und Ausgaben
+                    </div>
+                </div>
+                <span class="nav-card-icon">🛒</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'billa:billa_marken_liste' %}" class="nav-card gradient-brands">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Marken</div>
+                    <div class="nav-card-description">
+                        {{ anzahl_marken|default:"Keine" }} Marken erkannt - Analysiere deine Markenpräferenzen
+                    </div>
+                </div>
+                <span class="nav-card-icon">🏷️</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'billa:billa_ueberkategorien_liste' %}" class="nav-card gradient-categories">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Überkategorien</div>
+                    <div class="nav-card-description">
+                        Hauptkategorien wie Obst, Gemüse, Milchprodukte und mehr
+                    </div>
+                </div>
+                <span class="nav-card-icon">📦</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'billa:billa_produktgruppen_liste' %}" class="nav-card gradient-groups">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Produktgruppen</div>
+                    <div class="nav-card-description">
+                        Detaillierte Gruppierung deiner Einkäufe nach Produkttypen
+                    </div>
+                </div>
+                <span class="nav-card-icon">🗂️</span>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'billa:billa_produkte_liste' %}" class="nav-card gradient-products">
+                <div class="nav-card-content">
+                    <div class="nav-card-title">Produkte</div>
+                    <div class="nav-card-description">
+                        Alle gekauften Produkte mit Preisentwicklung und Statistiken
+                    </div>
+                </div>
+                <span class="nav-card-icon">📦</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Section Divider -->
+    <div class="section-divider">
+        <h3 class="section-title">
+            <i class="bi bi-bar-chart-line"></i>
+            Statistiken & Analysen
+        </h3>
+    </div>
+
+    <!-- ✅ COLLAPSIBLE FILTER -->
+    <div class="filter-section">
+        <button class="filter-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
+            <span><i class="bi bi-funnel me-2"></i>Filter & Zeitraum</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse" id="filterCollapse">
+            <div class="filter-content">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3 col-6">
+                        <label for="start_date" class="form-label">Von:</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label for="end_date" class="form-label">Bis:</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                    </div>
+                    <div class="col-md-3 col-12">
+                        <label for="filiale" class="form-label">Filiale:</label>
+                        <select name="filiale" id="filiale" class="form-select">
+                            <option value="alle" {% if selected_filiale == 'alle' %}selected{% endif %}>
+                                Alle Filialen
+                            </option>
+                            {% for filiale in filialen %}
+                            <option value="{{ filiale.filial_nr }}" 
+                                    {% if selected_filiale == filiale.filial_nr %}selected{% endif %}>
+                                {{ filiale }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-12 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-check-circle"></i> Anwenden
+                        </button>
+                        <a href="{% url 'billa:billa_dashboard' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ KOMPAKTE STAT CARDS (2x2 auf Mobile) -->
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Einkäufe</div>
+                <div class="stat-value">{{ stats.anzahl|default:0 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Gesamt</div>
+                <div class="stat-value">€{{ stats.gesamt_ausgaben|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Ø Warenkorb</div>
+                <div class="stat-value">€{{ stats.avg_warenkorb|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Ersparnis</div>
+                <div class="stat-value text-success">€{{ stats.gesamt_ersparnis|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row mt-4">
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>📊 Tägliche Ausgaben</h5>
+                <div id="chart-daily"></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>📊 Monatliche Ausgaben</h5>
+                <div id="chart-monthly"></div>
+                <div id="custom-legend-monthly" class="custom-legend"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>🏷️ Top 10 Produkte (Häufigkeit)</h5>
+                <div id="chart-top-products"></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>💰 Top 10 Produkte (Ausgaben)</h5>
+                <div id="chart-top-spending"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>🎯 Ausgaben nach Kategorie</h5>
+                <div id="chart-kategorie"></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>💸 Ersparnisse nach Rabatt-Typ</h5>
+                <div id="chart-rabatte"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+// Daten aus Django Template
+const dailyData = {{ daily_spending|safe }};
+const monthlyData = {{ monthly_spending|safe }};
+const topProdukte = {{ top_produkte_anzahl|safe }};
+const topAusgaben = {{ top_produkte_ausgaben|safe }};
+const kategorieData = {{ ausgaben_kategorie|safe }};
+const rabatteData = {{ rabatte|safe }};
+
+// Mobile Detection
+const isMobile = window.innerWidth < 768;
+
+// Plotly Layout Config (responsive)
+const layoutConfig = {
+    responsive: true,
+    displayModeBar: false,
+    font: {
+        family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        size: isMobile ? 10 : 12
+    }
+};
+
+// Helper: Produktnamen kürzen für bessere Lesbarkeit
+const shortenName = (name) => {
+    const maxLength = isMobile ? 25 : 35;
+    return name.length > maxLength ? name.substring(0, maxLength - 3) + '...' : name;
+};
+
+// ✅ 1. TÄGLICHE AUSGABEN - Mobile optimiert
+if (dailyData && dailyData.length > 0) {
+    const dailyTrace = {
+        x: dailyData.map(d => d.tag),
+        y: dailyData.map(d => parseFloat(d.ausgaben)),
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: {
+            color: '#FF6B6B',
+            width: isMobile ? 2 : 3,
+            shape: 'spline'
+        },
+        marker: {
+            size: isMobile ? 4 : 5,
+            color: '#FF6B6B'
+        },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(255, 107, 107, 0.2)',
+        hovertemplate: '<b>%{x|%d.%m}</b><br>€%{y:.2f}<extra></extra>'
+    };
+
+    const dailyLayout = {
+        ...layoutConfig,
+        margin: { 
+            t: 10, 
+            b: isMobile ? 40 : 60, 
+            l: isMobile ? 45 : 60, 
+            r: 10 
+        },
+        xaxis: {
+            title: isMobile ? '' : 'Datum',
+            tickangle: isMobile ? -90 : -45,
+            tickformat: '%d.%m',
+            automargin: true,
+            showgrid: false,
+            nticks: isMobile ? 8 : 15
+        },
+        yaxis: {
+            title: isMobile ? '€' : 'Ausgaben (€)',
+            tickprefix: '€',
+            showgrid: true,
+            gridcolor: '#f0f0f0'
+        },
+        height: isMobile ? 300 : 400,
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+        hovermode: 'closest'
+    };
+
+    Plotly.newPlot('chart-daily', [dailyTrace], dailyLayout);
+} else {
+    document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// ✅ 2. MONATLICHE AUSGABEN - Mobile optimiert (Legende außerhalb)
+const monthlyStackedData = JSON.parse('{{ monthly_spending_stacked|safe }}');
+
+if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate.length > 0) {
+    const colorPalette = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+        '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#52BE80',
+        '#F1948A', '#F39C12', '#3498DB', '#9B59B6', '#E74C3C'
+    ];
+
+    let traces = monthlyStackedData.kategorien.map((kategorie, index) => {
+        const farbe = kategorie === 'Sonstiges'
+            ? '#95A5A6'
+            : colorPalette[index % colorPalette.length];
+
+        return {
+            x: monthlyStackedData.monate,
+            y: monthlyStackedData.daten[kategorie],
+            name: kategorie,
+            type: 'bar',
+            marker: {
+                color: farbe
+            },
+            hovertemplate: '<b>%{fullData.name}</b><br>€%{y:.2f}<extra></extra>'
+        };
+    });
+
+    traces = traces.reverse();
+
+    const monthlyLayout = {
+        ...layoutConfig,
+        barmode: 'stack',
+        margin: { 
+            t: 10, 
+            b: isMobile ? 110 : 160, 
+            l: isMobile ? 45 : 60, 
+            r: 10 
+        },
+        xaxis: {
+            title: isMobile ? '' : 'Monat',
+            tickangle: isMobile ? -90 : -45,
+            showgrid: false,
+            automargin: true
+        },
+        yaxis: {
+            title: isMobile ? '€' : 'Ausgaben (€)',
+            tickprefix: '€',
+            gridcolor: '#eee'
+        },
+        legend: {
+            orientation: 'h',
+            yanchor: 'top',
+            y: isMobile ? -0.18 : -0.25,
+            xanchor: 'left',
+            x: 0,
+            font: { size: isMobile ? 8 : 9 },
+            tracegroupgap: 5,
+            itemwidth: 40,
+            valign: 'top'
+        },
+        hovermode: 'closest',
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+        height: isMobile ? 350 : 400,
+        autosize: true
+    };
+
+    Plotly.newPlot('chart-monthly', traces, monthlyLayout, { 
+        displayModeBar: false,
+        staticPlot: isMobile // Verhindert Tooltip-Probleme auf Mobile
+    });
+} else {
+    document.getElementById('chart-monthly').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 3. Top 10 Produkte nach Häufigkeit
+if (topProdukte && topProdukte.length > 0) {
+    const top10 = topProdukte.slice(0, 10);
+
+    const topProdukteTrace = {
+        x: top10.map(p => shortenName(p.produkt__name_normalisiert)),
+        y: top10.map(p => p.anzahl),
+        type: 'bar',
+        marker: {
+            color: '#4ECDC4',
+            line: {
+                color: '#2C9A91',
+                width: 1
+            }
+        },
+        text: top10.map(p => p.anzahl),
+        textposition: 'outside',
+        textfont: { size: isMobile ? 9 : 12 },
+        hovertemplate: '<b>%{customdata}</b><br>%{y} Käufe<extra></extra>',
+        customdata: top10.map(p => p.produkt__name_normalisiert)
+    };
+
+    Plotly.newPlot('chart-top-products', [topProdukteTrace], {
+        ...layoutConfig,
+        margin: { 
+            t: 20, 
+            b: isMobile ? 120 : 150, 
+            l: isMobile ? 40 : 60, 
+            r: 20 
+        },
+        xaxis: {
+            title: '',
+            tickangle: -45,
+            automargin: true,
+            tickfont: { size: isMobile ? 9 : 10 }
+        },
+        yaxis: {
+            title: isMobile ? '' : 'Anzahl Käufe',
+            showgrid: true
+        },
+        height: isMobile ? 350 : 450
+    });
+} else {
+    document.getElementById('chart-top-products').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 4. Top 10 Produkte nach Ausgaben
+if (topAusgaben && topAusgaben.length > 0) {
+    const top10 = topAusgaben.slice(0, 10);
+
+    const topAusgabenTrace = {
+        x: top10.map(p => shortenName(p.produkt__name_normalisiert)),
+        y: top10.map(p => parseFloat(p.ausgaben)),
+        type: 'bar',
+        marker: {
+            color: '#FF6B6B',
+            line: {
+                color: '#D63447',
+                width: 1
+            }
+        },
+        text: top10.map(p => '€' + parseFloat(p.ausgaben).toFixed(isMobile ? 0 : 2)),
+        textposition: 'outside',
+        textfont: { size: isMobile ? 9 : 12 },
+        hovertemplate: '<b>%{customdata}</b><br>€%{y:.2f}<extra></extra>',
+        customdata: top10.map(p => p.produkt__name_normalisiert)
+    };
+
+    Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
+        ...layoutConfig,
+        margin: { 
+            t: 20, 
+            b: isMobile ? 120 : 150, 
+            l: isMobile ? 40 : 60, 
+            r: 20 
+        },
+        xaxis: {
+            title: '',
+            tickangle: -45,
+            automargin: true,
+            tickfont: { size: isMobile ? 9 : 10 }
+        },
+        yaxis: {
+            title: isMobile ? '€' : 'Ausgaben (€)',
+            tickprefix: '€',
+            showgrid: true
+        },
+        height: isMobile ? 350 : 450
+    });
+} else {
+    document.getElementById('chart-top-spending').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 5. Ausgaben nach Kategorie (Pie Chart)
+if (kategorieData && kategorieData.length > 0) {
+    const sortedKategorieData = [...kategorieData].sort((a, b) => b.ausgaben - a.ausgaben);
+
+    const kategorieTrace = {
+        values: sortedKategorieData.map(k => parseFloat(k.ausgaben)),
+        labels: sortedKategorieData.map(k => k.produkt__ueberkategorie || 'Nicht zugeordnet'),
+        type: 'pie',
+        textinfo: isMobile ? 'percent' : 'label+percent',
+        textposition: 'inside',
+        insidetextorientation: 'radial',
+        textfont: { size: isMobile ? 9 : 12 },
+        hovertemplate: '<b>%{label}</b><br>€%{value:.2f}<br>%{percent}<extra></extra>',
+        marker: {
+            line: { color: '#ffffff', width: 1 }
+        }
+    };
+
+    Plotly.newPlot('chart-kategorie', [kategorieTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: !isMobile,
+        legend: isMobile ? {} : {
+            orientation: 'v',
+            x: 1.05,
+            y: 0.5,
+            font: { size: 10 }
+        },
+        paper_bgcolor: '#fff',
+        plot_bgcolor: '#fff',
+        height: isMobile ? 300 : 400
+    });
+} else {
+    document.getElementById('chart-kategorie').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// 6. Ersparnisse nach Rabatt-Typ (Pie Chart)
+if (rabatteData && rabatteData.length > 0) {
+    const sortedRabatteData = [...rabatteData].sort((a, b) => b.ersparnis - a.ersparnis);
+
+    const rabatteTrace = {
+        values: sortedRabatteData.map(r => parseFloat(r.ersparnis)),
+        labels: sortedRabatteData.map(r => r.rabatt_typ || 'Unbekannt'),
+        type: 'pie',
+        textinfo: isMobile ? 'percent' : 'label+percent',
+        textposition: 'inside',
+        insidetextorientation: 'radial',
+        textfont: { size: isMobile ? 9 : 12 },
+        hovertemplate: '<b>%{label}</b><br>€%{value:.2f}<br>%{percent}<extra></extra>',
+        marker: {
+            line: { color: '#ffffff', width: 1 }
+        }
+    };
+
+    Plotly.newPlot('chart-rabatte', [rabatteTrace], {
+        ...layoutConfig,
+        margin: { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: !isMobile,
+        legend: isMobile ? {} : {
+            orientation: 'v',
+            x: 1.05,
+            y: 0.5,
+            font: { size: 10 }
+        },
+        paper_bgcolor: '#fff',
+        plot_bgcolor: '#fff',
+        height: isMobile ? 300 : 400
+    });
+} else {
+    document.getElementById('chart-rabatte').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// Responsive resize handling
+window.addEventListener('resize', function() {
+    const newIsMobile = window.innerWidth < 768;
+    if (newIsMobile !== isMobile) {
+        location.reload(); // Reload bei Device-Wechsel für korrekte Darstellung
+    }
+    
+    Plotly.Plots.resize('chart-daily');
+    Plotly.Plots.resize('chart-monthly');
+    Plotly.Plots.resize('chart-top-products');
+    Plotly.Plots.resize('chart-top-spending');
+    Plotly.Plots.resize('chart-kategorie');
+    Plotly.Plots.resize('chart-rabatte');
+});
+</script>
+{% endblock %}

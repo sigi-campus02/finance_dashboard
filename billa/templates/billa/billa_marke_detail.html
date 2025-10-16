@@ -1,0 +1,664 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}{{ marke }} - Billa{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-section {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .header-icon {
+        font-size: 3rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #f5576c;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 2rem;
+    }
+
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        padding: 1rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: #f5576c;
+        background: transparent;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #f5576c;
+        border-bottom: 3px solid #f5576c;
+        background: transparent;
+    }
+
+    .price-change-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+
+    .tab-content {
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .filter-card .card-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .filter-card .card-body {
+        background: #f8f9fa;
+    }
+
+    .filter-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 0.2s ease;
+    }
+
+    .filter-toggle-btn .chevron-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .filter-toggle-btn[aria-expanded="true"] .chevron-icon {
+        transform: rotate(180deg);
+    }
+
+    @media (min-width: 768px) {
+        #brandProductsFilter.collapse {
+            display: block !important;
+            height: auto !important;
+            visibility: visible;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- ✅ Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'billa:billa_dashboard' %}">
+                    <i class="bi bi-cart3"></i> Billa
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'billa:billa_marken_liste' %}">Marken</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">{{ marke }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="header-section">
+        <div class="header-icon">
+            <i class="bi bi-tag-fill"></i>
+        </div>
+        <h1 class="mb-2">{{ marke }}</h1>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-light text-dark px-3 py-2">
+                <i class="bi bi-boxes"></i> {{ stats.anzahl_produkte }} Produkt{{ stats.anzahl_produkte|pluralize:"e" }}
+            </span>
+            <span class="badge bg-light text-dark px-3 py-2">
+                <i class="bi bi-cart"></i> {{ stats.gesamt_kaeufe }} Käufe
+            </span>
+        </div>
+    </div>
+
+    <!-- Statistiken -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ stats.anzahl_produkte|default:0 }}</span>
+            <div class="stat-label">Produkte</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ stats.gesamt_kaeufe|default:0 }}</span>
+            <div class="stat-label">Gesamt Käufe</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">
+                {% if stats.durchschnittspreis %}
+                €{{ stats.durchschnittspreis|floatformat:2 }}
+                {% else %}
+                -
+                {% endif %}
+            </span>
+            <div class="stat-label">Ø Preis</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">
+                {% if stats.gesamt_ausgaben %}
+                €{{ stats.gesamt_ausgaben|floatformat:2 }}
+                {% else %}
+                -
+                {% endif %}
+            </span>
+            <div class="stat-label">Gesamt Ausgaben</div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#uebersicht" role="tab">
+                <i class="bi bi-grid-3x3-gap"></i> Übersicht
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#preisentwicklung" role="tab">
+                <i class="bi bi-graph-up"></i> Preisentwicklung
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#produktgruppen" role="tab">
+                <i class="bi bi-tags"></i> Produktgruppen
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+
+        <!-- ============================================================ -->
+        <!-- TAB 1: ÜBERSICHT -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade show active" id="uebersicht" role="tabpanel">
+
+            <!-- Filter -->
+            <div class="card filter-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
+                    <button class="btn btn-sm btn-outline-primary d-md-none filter-toggle-btn"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#brandProductsFilter"
+                            aria-expanded="false"
+                            aria-controls="brandProductsFilter">
+                        Optionen
+                        <i class="bi bi-chevron-down chevron-icon"></i>
+                    </button>
+                </div>
+                <div class="collapse d-md-block" id="brandProductsFilter">
+                    <div class="card-body">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Überkategorie</label>
+                                <select name="ueberkategorie" class="form-select" onchange="this.form.submit()">
+                                    <option value="alle">Alle Kategorien</option>
+                                    {% for kat in ueberkategorien %}
+                                    <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
+                                        {{ kat }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Produktgruppe</label>
+                                <select name="produktgruppe" class="form-select" onchange="this.form.submit()">
+                                    <option value="alle">Alle Gruppen</option>
+                                    {% for gruppe in alle_produktgruppen %}
+                                    <option value="{{ gruppe }}" {% if selected_produktgruppe == gruppe %}selected{% endif %}>
+                                        {{ gruppe }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sortierung</label>
+                                <select name="sort" class="form-select" onchange="this.form.submit()">
+                                    <option value="-anzahl_kaeufe" {% if sortierung == '-anzahl_kaeufe' %}selected{% endif %}>
+                                        Käufe (absteigend)
+                                    </option>
+                                    <option value="anzahl_kaeufe" {% if sortierung == 'anzahl_kaeufe' %}selected{% endif %}>
+                                        Käufe (aufsteigend)
+                                    </option>
+                                    <option value="-durchschnittspreis" {% if sortierung == '-durchschnittspreis' %}selected{% endif %}>
+                                        Preis (absteigend)
+                                    </option>
+                                    <option value="durchschnittspreis" {% if sortierung == 'durchschnittspreis' %}selected{% endif %}>
+                                        Preis (aufsteigend)
+                                    </option>
+                                    <option value="name" {% if sortierung == 'name' %}selected{% endif %}>
+                                        Name (A-Z)
+                                    </option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Produktliste -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-box-seam"></i>
+                        Produkte ({{ produkte.count }})
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Produkt</th>
+                                    <th>Kategorie</th>
+                                    <th>Gruppe</th>
+                                    <th class="text-center">Käufe</th>
+                                    <th class="text-end">Letzter Preis</th>
+                                    <th class="text-end">Ø Preis</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for produkt in produkte %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ produkt.name_normalisiert }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ produkt.ueberkategorie|default:"-" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ produkt.produktgruppe|default:"-" }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">
+                                            {{ produkt.anzahl_kaeufe }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if produkt.letzter_preis %}
+                                        €{{ produkt.letzter_preis|floatformat:2 }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if produkt.durchschnittspreis %}
+                                        €{{ produkt.durchschnittspreis|floatformat:2 }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'billa:billa_produkt_detail' produkt.id %}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preisentwicklung Chart (Übersicht) -->
+            {% if preis_historie_json %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-graph-up"></i>
+                        Durchschnittliche Preisentwicklung
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="preisUebersichtChart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 2: PREISENTWICKLUNG (DETAILLIERT) -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="preisentwicklung" role="tabpanel">
+
+            {% if produkte_mit_preisen %}
+            <!-- Erweiterte Preisentwicklung Chart -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-bar-chart-line"></i>
+                        Preisentwicklung mit Min/Max
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="preisDetailChart" style="max-height: 350px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Tabelle: Produkte nach Preisänderung sortiert -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-sort-down"></i>
+                        Produkte nach Preisänderung
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Produkt</th>
+                                    <th>Gruppe</th>
+                                    <th class="text-center">Käufe</th>
+                                    <th class="text-end">Min. Preis</th>
+                                    <th class="text-end">Max. Preis</th>
+                                    <th class="text-end">Differenz</th>
+                                    <th class="text-end">Änderung</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in produkte_mit_preisen %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.produkt.name_normalisiert }}</strong>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ item.produkt.produktgruppe|default:"-" }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark">
+                                            {{ item.produkt.anzahl_kaeufe }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end text-success">
+                                        €{{ item.min_preis|floatformat:2 }}
+                                    </td>
+                                    <td class="text-end text-danger">
+                                        €{{ item.max_preis|floatformat:2 }}
+                                    </td>
+                                    <td class="text-end">
+                                        €{{ item.diff|floatformat:2 }}
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="price-change-badge
+                                            {% if item.diff_pct > 50 %}bg-danger text-white
+                                            {% elif item.diff_pct > 20 %}bg-warning text-dark
+                                            {% else %}bg-info text-white{% endif %}">
+                                            +{{ item.diff_pct|floatformat:1 }}%
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'billa:billa_produkt_detail' item.produkt.id %}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-graph-up"></i> Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                Keine ausreichenden Preisdaten für diese Marke verfügbar.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 3: PRODUKTGRUPPEN -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="produktgruppen" role="tabpanel">
+
+            {% if produktgruppen %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-tags"></i>
+                        Produktgruppen ({{ produktgruppen|length }})
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for gruppe in produktgruppen %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="{{ gruppe.icon }}"></i>
+                                        {{ gruppe.produktgruppe }}
+                                    </h5>
+                                    <p class="card-text">
+                                        <small class="text-muted">{{ gruppe.ueberkategorie }}</small>
+                                    </p>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="badge bg-light text-dark">
+                                            {{ gruppe.anzahl_produkte }} Produkte
+                                        </span>
+                                        <span class="badge bg-primary">
+                                            {{ gruppe.anzahl_kaeufe }} Käufe
+                                        </span>
+                                    </div>
+                                    <a href="{% url 'billa:billa_produktgruppe_detail' gruppe.produktgruppe %}"
+                                       class="btn btn-sm btn-outline-primary mt-3 w-100">
+                                        <i class="bi bi-arrow-right"></i> Zur Gruppe
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                Keine Produktgruppen für diese Marke gefunden.
+            </div>
+            {% endif %}
+        </div>
+
+    </div><!-- End Tab Content -->
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ============================================================================
+// TAB URL-HASH HANDLING
+// ============================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // URL Hash Handler für Tabs
+    var hash = window.location.hash;
+    if (hash) {
+        var tabTrigger = document.querySelector('a[href="' + hash + '"]');
+        if (tabTrigger) {
+            var tab = new bootstrap.Tab(tabTrigger);
+            tab.show();
+        }
+    }
+
+    // Tab-Wechsel in URL speichern
+    document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(function(tab) {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            window.location.hash = e.target.getAttribute('href');
+        });
+    });
+});
+
+// ============================================================================
+// CHART 1: ÜBERSICHT (Durchschnitt)
+// ============================================================================
+{% if preis_historie_json %}
+const uebersichtData = {{ preis_historie_json|safe }};
+
+if (uebersichtData && uebersichtData.length > 0) {
+    const ctx1 = document.getElementById('preisUebersichtChart');
+    if (ctx1) {
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: uebersichtData.map(d => d.datum),
+                datasets: [{
+                    label: 'Ø Preis',
+                    data: uebersichtData.map(d => d.durchschnitt),
+                    borderColor: '#f5576c',
+                    backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return '€' + value.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+{% endif %}
+
+// ============================================================================
+// CHART 2: PREISENTWICKLUNG (Min/Max/Avg)
+// ============================================================================
+{% if preis_historie_detail_json %}
+const detailData = {{ preis_historie_detail_json|safe }};
+
+if (detailData && detailData.length > 0) {
+    const ctx2 = document.getElementById('preisDetailChart');
+    if (ctx2) {
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: detailData.map(d => d.datum),
+                datasets: [
+                    {
+                        label: 'Max. Preis',
+                        data: detailData.map(d => d.max_preis),
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        fill: false,
+                        tension: 0.4,
+                        borderDash: [5, 5]
+                    },
+                    {
+                        label: 'Ø Preis',
+                        data: detailData.map(d => d.durchschnitt),
+                        borderColor: '#f5576c',
+                        backgroundColor: 'rgba(245, 87, 108, 0.2)',
+                        fill: '+1',
+                        tension: 0.4,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Min. Preis',
+                        data: detailData.map(d => d.min_preis),
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: false,
+                        tension: 0.4,
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return '€' + value.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+{% endif %}
+</script>
+{% endblock %}

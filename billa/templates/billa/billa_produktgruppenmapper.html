@@ -1,0 +1,495 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Produktgruppen Mapper{% endblock %}
+
+{% block content %}
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const ProduktgruppenMapper = () => {
+  const [produktListe, setProduktListe] = useState([]);
+  const [filter, setFilter] = useState('alle');
+  const [suchbegriff, setSuchbegriff] = useState('');
+  const [stats, setStats] = useState({ mitGruppe: 0, ohneGruppe: 0, gesamt: 0 });
+
+  // Produktgruppen-Definitionen mit Überkategorien
+    // Vollständige Produktgruppen-Definitionen mit Überkategorien
+    const produktGruppenMitUeberkategorie = {
+      // ========== GEMÜSE ==========
+      'Gemüse': {
+        'Paprika': ['paprika', 'spitzpaprika'],
+        'Tomaten': ['tomat', 'paradeiser', 'cherry', 'rispenparadeiser', 'markttomaten', 'rispenpara'],
+        'Gurken': ['gurke', 'gurk'],
+        'Salat': ['salat', 'rucola', 'eisberg', 'lollo', 'vogerlsalat', 'krauthäuptel'],
+        'Zwiebeln': ['zwiebel', 'schalott', 'zwieb'],
+        'Kartoffeln': ['kartoffel', 'erdäpfel', 'erdapfel', 'süßkartoffel', 'heurige'],
+        'Karotten': ['karott', 'möhre', 'wurzel'],
+        'Knoblauch': ['knoblauch'],
+        'Kräuter': ['petersilie', 'schnittlauch', 'basilikum', 'koriander', 'dill', 'thymian', 'rosmarin', 'salbei', 'kerbel', 'lorbeerbl', '8 kräutermix'],
+        'Radieschen': ['radieschen'],
+        'Zucchini': ['zucchini'],
+        'Auberginen': ['aubergine', 'melanzani'],
+        'Brokkoli': ['brokkoli', 'brocoli'],
+        'Blumenkohl': ['blumenkohl', 'karfiol'],
+        'Mais': ['mais', 'zuckermais'],
+        'Erbsen': ['erbse', 'kichererbs'],
+        'Bohnen': ['bohne', 'bohn', 'sojabohne', 'kidneybohne', 'riesenbohne', 'fisolen', 'edamame'],
+        'Spinat': ['spinat', 'jungspinat', 'blattspinat'],
+        'Lauch': ['lauch', 'porree'],
+        'Kürbis': ['kürbis', 'hokkaido', 'butternuss'],
+        'Ingwer': ['ingwer'],
+        'Chili': ['chili', 'chiliwurzerl', 'peperoni'],
+        'Spargel': ['spargel'],
+        'Rüben': ['rübe', 'rote rübe', 'rote bete'],
+        'Fenchel': ['fenchel'],
+        'Kohl': ['kohl', 'kohlrabi', 'weißkohl', 'rotkohl', 'blumenkohl', 'rosenkohl', 'grünkohl', 'chinakohl', 'pak choi'],
+        'Sellerie': ['sellerie', 'stangensellerie'],
+        'Gemüse Allgemein': ['gemüse', 'suppengemüse'],
+        'Sprossen': ['sprossen', 'sprossengarten', 'kresse'],
+        'Linsen': ['linsen', 'berglinsen'],
+        'Polenta': ['polenta'],
+        'Pilze': ['pilze', 'champignon', 'eierschwammerl', 'schwammerl'],
+      },
+    
+      // ========== OBST ==========
+      'Obst': {
+        'Äpfel': ['apfel', 'äpfel'],
+        'Bananen': ['banane'],
+        'Orangen': ['orange', 'apfelsine'],
+        'Zitronen': ['zitrone', 'limette', 'lime'],
+        'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
+        'Trauben': ['traube', 'weintraube'],
+        'Birnen': ['birne'],
+        'Kiwi': ['kiwi'],
+        'Mango': ['mango'],
+        'Ananas': ['ananas'],
+        'Pfirsich': ['pfirsich', 'nektarine'],
+        'Melone': ['melone', 'wassermelone', 'honigmelone'],
+        'Avocado': ['avocado'],
+        'Granatapfel': ['granatapfel'],
+        'Zwetschken': ['zwetschke', 'zwetsch', 'pflaume'],
+        'Pomelo': ['pomelo'],
+      },
+    
+      // ========== MILCHPRODUKTE ==========
+      'Milchprodukte': {
+        'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
+        'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt', 'fruchtjoghu', 'billa bio fairtrade kokos'],
+        'Käse': ['traungold', 'alpenprinz', 'käse', 'gruyere', 'baron', 'schlossdamer', 'brie', 'jerome', 'moosbacher', 'schärd.', 'dachsteiner', 'halloumi','baronesse', 'gouda', 'emmentaler','mozzarella', 'burrata', 'cheddar', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse', 'bergkäse', 'edamer', 'tilsiter', 'parm.', 'regg.', 'almkönig', 'goudette'],
+        'Butter': ['butter', 'kräuterbutter', 'rama', 'lätta', 'margarine', 'viospread'],
+        'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche', 'cremefine', 'kochcreme'],
+        'Topfen': ['topfen', 'quark', 'magertopfen'],
+        'Frischkäse': ['frischkäse', 'cottage'],
+        'Mascarpone': ['mascarpone'],
+        'Parmesan': ['parmesan', 'parmigiano', 'grana', 'padano'],
+        'Ricotta': ['ricotta'],
+        'Babybel': ['babybel'],
+        'Eier': ['eier', 'ei ', 'freilandeier', 'fl-eier', 'bh-eier', 'bio eier'],    
+      },
+    
+      // ========== FLEISCH & WURST ==========
+      'Fleisch & Wurst': {
+        'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks', 'tafelspitz', 'gulasch', 'grillmix'],
+        'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
+        'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl', 'h-filet', 'geflügel', 'unterkeulen'],
+        'Putenfleisch': ['puten', 'pute'],
+        'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker', 'debreziner', 'frankfurter', 'kabanossi', 'griller', 'kaminwurzerl'],
+        'Schinken': ['schinken', 'speck', 'bratl', 'bratenaufschnitt', 'prosciutto'],
+        'Faschiertes': ['faschiert', 'hackfleisch', 'burger', 'beefburger'],
+        'Würstchen': ['neuburger', 'braunschweiger','chorizo', 'salsiccia', 'cevapcici'],
+
+      },
+    
+      // ========== FISCH ==========
+      'Fisch': {
+        'Lachs': ['lachs'],
+        'Thunfisch': ['thunfisch'],
+        'Forelle': ['forelle'],
+        'Garnelen': ['garnele', 'shrimp', 'crevette'],
+        'Fisch': ['fisch', 'scholle'],
+        'Makrelen': ['makrel'],
+      },
+    
+      // ========== BROT & BACKWAREN ==========
+      'Brot & Backwaren': {
+        'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot', 'baguette', 'ciabatta', 'fladenbrot', 'dinkel sandwich', 'sonntagsb'],
+        'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
+        'Toast': ['toast', 'toastbrot', 'mehrkorntoast', 'wasa'],
+        'Gebäck': ['gebäck', 'croissant', 'plunder', 'krapfen', 'nougattasche', 'clever kräuter bag'],
+        'Knäckebrot': ['knäcke', 'leicht cross', 'leicht & cross'],
+        'Blätterteig': ['blätterteig'], 
+        'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat', 'fajita', 'tort.'],
+      },
+    
+      // ========== NUDELN & REIS ==========
+      'Nudeln & Reis': {
+        'Nudeln': ['nudel', 'pasta', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'rigatoni', 'farfalle', 'tortellini', 'ravioli', 'parpadelle', 'fleckerl', 'bucati', 'girandole', 'lasagne'],
+        'Gnocchi': ['gnocchi', 'schupfnudeln'],
+        'Tortelloni': ['tortelloni'],
+        'Reis': ['reis', 'basmati', 'risotto', 'reisfleisch'],
+        'Quinoa': ['quinoa'],
+        'Couscous': ['couscous'],
+      },
+    
+      // ========== BACKEN ==========
+      'Backen': {
+        'Mehl': ['mehl'],
+        'Backpulver': ['backpulver'],
+        'Hefe': ['hefe', 'backhefe', 'germ', 'keimkraft'],
+        'Vanille': ['vanille', 'bourbon'],
+        'Pudding': ['pudding'],
+        'Gelatine': ['blattgelat'],
+        'Panier': ['panko', 'panier', 'crumbs'],
+      },
+    
+      // ========== SÜSSES ==========
+      'Süßes': {
+        'Zucker': ['zucker', 'puderzucker', 'normalkristallz'],
+        'Honig': ['honig'],
+      },
+    
+      // ========== GEWÜRZE & WÜRZMITTEL ==========
+      'Gewürze & Würzmittel': {
+        'Salz': ['salz'],
+        'Pfeffer': ['pfeffer', 'cayennepf'],
+        'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'koriander', 'kotanyi'],
+
+      },
+    
+      // ========== ÖLE & ESSIG ==========
+      'Öle & Essig': {
+        'Olivenöl': ['olivenöl'],
+        'Sonnenblumenöl': ['sonnenblumenöl'],
+        'Kürbisöl': ['kürbisöl'],
+        'Essig': ['essig', 'balsamico'],
+        'Natron': ['natron'],
+        'Kokosöl': ['kokosöl'],
+      },
+    
+      // ========== SOSSEN & AUFSTRICHE ==========
+      'Soßen & Aufstriche': {
+        'Ketchup': ['ketchup'],
+        'Mayonnaise': ['mayonnaise', 'mayo'],
+        'Soßen': ['soße', 'sauce', 'hollandaise', 'pizzasauce'],
+        'Dips': ['dip', 'tahin', 'sesam'],
+        'Fond': ['fond'],
+        'Letscho': ['letscho'],
+        'Kren': ['kren', 'meerrettich'],
+        'Aufstrich': ['aufstrich', 'grammel', 'liptauer'],
+      },
+    
+      // ========== FRÜHSTÜCK ==========
+      'Frühstück': {
+        'Müsli': ['müsli', 'knusperli', 'knusper pur', 'oetker knusper'],
+        'Cornflakes': ['cornflakes', 'color loops'],
+        'Haferflocken': ['haferflocken', 'hafer'],
+        'Kaffee': ['kaffee', 'nescafé', 'nescafe', 'crema intenso', 'hornig'],
+        'Porridge': ['porridge'],
+      },
+    
+      // ========== SÜSSIGKEITEN & SNACKS ==========
+      'Süßigkeiten & Snacks': {
+        'Schokolade': ['schokolade', 'schoko', 'nutella', 'kinder-pingui', 'manner'],
+        'Kekse': ['keks', 'biskuit', 'cookie', 'biskotten', 'leibniz', 'pick up'],
+        'Chips': ['chips', 'snips', 'best foodies bio bunte'],
+        'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'walnüsse', 'cashew', 'pistazie', 'erdnuss', 'studentenfutter', 'studentenfutt', 'pinienkerne', 'sonnenblumenkerne', 'chiasamen'],
+        'Trockenfrüchte': ['rosine', 'dattel', 'maroni'],
+        'Süßigkeiten': ['tiramisu', 'duplo', 'suchard', 'celebrations', 'corny', 'trüffeltortenstück', 'sorger schwarzwälder', 'waffeleier'],
+        'Proteinriegel': ['proteinriegel', 'barebells', 'neoh'],
+        'Mohn': ['mohn'],
+
+      },
+    
+      // ========== GETRÄNKE ==========
+      'Getränke': {
+        'Wasser': ['wasser', 'mineralwasser', 'sicheldorfer', 'vöslauer'],
+        'Saft': ['saft', 'nektar', 'rübensaft', 'fruchtik', 'innocent'],
+        'Limonade': ['cola', 'sprite', 'fanta', 'limo'],
+        'Bier': ['bier', 'radler', 'puntigamer'],
+        'Wein': ['wein', 'rotwein', 'weißwein', 'weisswein', 'kremser', 'veltl', 'sandgrube', 'sauvignon', 'les fumees', 'drautaler'],
+        'Energy Drinks': ['red bull', 'energy'],
+        'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista', 'natrue coco'],
+        'Sojamilch': ['sojamilch', 'sojadrink'],
+        'Tee': ['tee', 'halsfreund', 'kamille', 'immun bio'],
+        'Milchdrinks': ['lattella', 'nöm mix'],
+        'Vegane Milch': ['vegavita no muuh'],
+      },
+    
+      // ========== HYGIENE & KOSMETIK ==========
+      'Hygiene & Kosmetik': {
+        'Shampoo': ['shampoo'],
+        'Duschgel': ['duschgel', 'dusche'],
+        'Deo': ['deo'],
+        'Lippenpflege': ['lippenpflege'],
+        'Zahnpflege': ['zahncreme', 'zahnspül', 'zahnpasta', 'colgate', 'blend-a-med', 'elmex', 'sensodyne', 'corega', 'zahnseide'],
+        'Wattestäbchen': ['wattestäbch', 'wattepads'],
+        'Haargummis': ['haargummi', 'zopfhalter'],
+        'Seife': ['seife', 'cremeseife'],
+        'Desinfektionsmittel': ['desinfektions', 'dettol', 'lysoform'],
+        'Haarspray': ['haarspray', 'taft'],
+        'Sonnenschutz': ['sonnenspray', 'sonnenschutz', 'apres spray', 'nivea'],
+        'Gel Pads': ['gel pads'],
+        'Wachsstreifen': ['kaltwachs', 'veet'],
+        'Waschgel': ['waschgel', 'gänseb'],
+      },
+    
+      // ========== HAUSHALT & REINIGUNG ==========
+      'Haushalt & Reinigung': {
+        'Reiniger': ['reiniger', 'frosch', 'dr. beckmann', 'rorax', 'clean&clear', 'bihome', 'lysofrom'],
+        'Spülmittel': ['spülmittel'],
+        'Toilettenpapier': ['toilettenpapier', 'klopapier'],
+        'Küchenrolle': ['küchenrolle', 'kitchen towel'],
+        'Backpapier': ['backpapier'],
+        'Alufolie': ['alufolie', 'aluminiumfolie'],
+        'Gefrierbeutel': ['gefrierbeutel', 'frischhaltebeutel', 'knotenbeutel'],
+        'Müllbeutel': ['müllbeutel', 'mülltüte', 'swirl active frische', 'swirl aktive frische'],
+        'Taschentücher': ['taschentuch', 'papiertaschentuch', 'tempo', 'feh taschentücher'],
+        'Frischhaltefolie': ['toppits', 'frischhalte', 'swiffer'],
+        'Weichspüler': ['silan'],
+        'Brillenreiniger': ['brillenputz', 'brillenputztücher'],
+        'Ohrstöpsel': ['ohropax'],
+        'Waschmittel': ['persil', 'ariel', 'pulver', 'megapearls', 'dr. beck.gardinen'],
+        'Entkalker': ['durgol', 'calgon'],
+        'Geschirrspüler': ['finish', 'somat', 'klarspüler'],
+        'WC-Reiniger': ['wc ente', 'wc power'],
+        'Spülschwamm': ['spülschwamm', 'vileda', 'schwammtuch'],
+        'Reinigungstücher': ['reinigungstücher', 'bi care'],
+        'Feuchttücher': ['feucht', 'topa'],
+        'Wundspray': ['wund reinigungsspr'],
+      },
+    
+      // ========== TIEFKÜHL ==========
+      'Tiefkühl': {
+        'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
+        'Pizza': ['pizza', 'pizzamehl'],
+        'Eis': ['eis ', 'cornetto', 'langnese', 'magnum', 'eskimo', 'cremissimo', 'mälzer&fu'],
+        'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat'],
+      },
+    
+      // ========== FERTIGGERICHTE ==========
+      'Fertiggerichte': {
+        'Suppen': ['suppe', 'rindsuppe', 'eierschöberl'],
+        'Cornichons': ['cornichons'],
+      },
+    
+      // ========== TEXTILIEN & NON-FOOD ==========
+      'Textilien & Non-Food': {
+        'Textilien': ['thermohose', 'mütze', 'kissen'],
+        'Blumen & Pflanzen': ['palmkätzchen', 'blühplfanzen', 'adventkranz', 'markttulpen', 'blumen'],
+        'Batterien': ['batterien', 'batter', 'varta'],
+        'Geschenke & Deko': ['bon ', 'geschenk', 'neujahrsguß', 'happy birthay'],
+        'Lichterketten': ['lichterkette', 'lichter', 'magnet-lichter'],
+        'Diverses': ['non food', 'abverkauf', 'aktion', 'mailing', 'limited edition', 'bonus'],
+      },
+    
+      // ========== SONSTIGES ==========
+      'Sonstiges': {
+        'Pfandartikel': ['pfand', 'einwegpfand', 'pfandartikel', 'leergut', 'leergut-ret', 'leerflasche'],
+        'Tragetaschen': ['tragetasche'],
+        'Sonstiges': ['sonstiges', 'frisch gekocht', 'ready to eat', 'billa bon', 'äpp-only', 'unsere besten 6er', '8 x nimm mehr', 'stifterl', 'schütt-streubehälter', 'tatü box', 'koro', 'bi good', 'gärtnerbund', 'lieblingsprodukt', 'bio gourmet', 'landfr', 'jö', 'rabattsammler', 'vorteilsbox', 'äpp extrem', 'teuerstes prod'],
+      },
+    };
+
+  const findeProduktGruppeUndUeberkategorie = (produktName) => {
+    if (!produktName) return { ueberkategorie: null, produktgruppe: null };
+    const nameLower = produktName.toLowerCase();
+    
+    for (const [ueberkategorie, gruppen] of Object.entries(produktGruppenMitUeberkategorie)) {
+      for (const [produktgruppe, keywords] of Object.entries(gruppen)) {
+        for (const keyword of keywords) {
+          if (nameLower.includes(keyword)) {
+            return { ueberkategorie, produktgruppe };
+          }
+        }
+      }
+    }
+    return { ueberkategorie: null, produktgruppe: null };
+  };
+
+  useEffect(() => {
+    const produkteVonDjango = {{ produkte_json|safe }};
+    
+    const mitGruppen = produkteVonDjango.map(produkt => {
+      const gefunden = findeProduktGruppeUndUeberkategorie(produkt.name_normalisiert);
+      return {
+        ...produkt,
+        ueberkategorie: produkt.ueberkategorie || gefunden.ueberkategorie,
+        produktgruppe: produkt.produktgruppe || gefunden.produktgruppe
+      };
+    });
+
+    setProduktListe(mitGruppen);
+    
+    const mitGruppe = mitGruppen.filter(p => p.ueberkategorie !== null).length;
+    setStats({
+      gesamt: mitGruppen.length,
+      mitGruppe,
+      ohneGruppe: mitGruppen.length - mitGruppe
+    });
+  }, []);
+
+      // NEU: Handler zum Ändern von Überkategorie
+    const aendereUeberkategorie = (produktId, neueUeberkategorie) => {
+      setProduktListe(produktListe.map(p => 
+        p.id === produktId 
+          ? { ...p, ueberkategorie: neueUeberkategorie, produktgruppe: '' }
+          : p
+      ));
+    };
+    
+    // NEU: Handler zum Ändern von Produktgruppe
+    const aendereProduktgruppe = (produktId, neueProduktgruppe) => {
+      setProduktListe(produktListe.map(p => 
+        p.id === produktId 
+          ? { ...p, produktgruppe: neueProduktgruppe }
+          : p
+      ));
+    };
+
+  const gefiltert = produktListe.filter(p => {
+    const matchFilter = filter === 'alle' || 
+      (filter === 'mit' && p.ueberkategorie) || 
+      (filter === 'ohne' && !p.ueberkategorie);
+    
+    const matchSuche = !suchbegriff || 
+      p.name_normalisiert?.toLowerCase().includes(suchbegriff.toLowerCase());
+    
+    return matchFilter && matchSuche;
+  });
+
+  const speichereMapping = async () => {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    try {
+      const response = await fetch('{% url "billa:billa_produktgruppen_speichern" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf
+        },
+        body: JSON.stringify({ produkte: produktListe })
+      });
+      
+      if (response.ok) {
+        alert('✓ Produktgruppen erfolgreich gespeichert!');
+      } else {
+        alert('❌ Fehler beim Speichern');
+      }
+    } catch (error) {
+      alert('❌ Netzwerkfehler: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Produktgruppen Mapper</h1>
+      
+      <div className="bg-blue-50 p-4 rounded mb-6">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-2xl font-bold">{stats.gesamt}</div>
+            <div className="text-sm">Gesamt</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-green-600">{stats.mitGruppe}</div>
+            <div className="text-sm">Mit Gruppe</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-red-600">{stats.ohneGruppe}</div>
+            <div className="text-sm">Ohne Gruppe</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Suche nach Produktname..."
+          value={suchbegriff}
+          onChange={(e) => setSuchbegriff(e.target.value)}
+          className="flex-1 p-2 border rounded"
+        />
+        <select 
+          value={filter} 
+          onChange={(e) => setFilter(e.target.value)}
+          className="p-2 border rounded"
+        >
+          <option value="alle">Alle</option>
+          <option value="mit">Mit Gruppe</option>
+          <option value="ohne">Ohne Gruppe</option>
+        </select>
+        <button
+          onClick={speichereMapping}
+          className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Speichern
+        </button>
+      </div>
+
+        <div className="bg-white shadow rounded overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-left">Produktname</th>
+                <th className="p-3 text-left">Überkategorie</th>
+                <th className="p-3 text-left">Produktgruppe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gefiltert.map(produkt => {
+                const verfuegbareGruppen = produkt.ueberkategorie 
+                  ? Object.keys(produktGruppenMitUeberkategorie[produkt.ueberkategorie] || {})
+                  : [];
+                
+                return (
+                  <tr key={produkt.id} className="border-t hover:bg-gray-50">
+                    <td className="p-3 font-medium">{produkt.name_normalisiert}</td>
+                    <td className="p-3">
+                      <select
+                        value={produkt.ueberkategorie || ''}
+                        onChange={(e) => aendereUeberkategorie(produkt.id, e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">-- Wählen --</option>
+                        {Object.keys(produktGruppenMitUeberkategorie).map(kat => (
+                          <option key={kat} value={kat}>{kat}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="p-3">
+                      <select
+                        value={produkt.produktgruppe || ''}
+                        onChange={(e) => aendereProduktgruppe(produkt.id, e.target.value)}
+                        disabled={!produkt.ueberkategorie}
+                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">-- Wählen --</option>
+                        {verfuegbareGruppen.map(gruppe => (
+                          <option key={gruppe} value={gruppe}>{gruppe}</option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+      <div className="text-sm text-gray-500 mt-4">
+        {gefiltert.length} von {stats.gesamt} Produkten angezeigt
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.render(<ProduktgruppenMapper />, document.getElementById('root'));
+</script>
+{% endblock %}
