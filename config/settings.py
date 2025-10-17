@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'axes', # ← Für Brute-Force Schutz
     'finance',
     'billa',
+    'energiedaten',
 ]
 
 MIDDLEWARE = [

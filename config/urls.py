@@ -17,6 +17,7 @@ urlpatterns = [
 
     path('', include('finance.urls')),
     path('billa/', include('billa.urls')),
+    path('energiedaten/', include('energiedaten.urls')),
 ]
 
 if settings.DEBUG:
