@@ -2522,95 +2522,178 @@ def api_household_monthly_spending(request):
 
 @login_required
 def api_household_category_breakdown(request):
-    """API: Ausgaben nach CategoryGroup für Tortendiagramm"""
+    """API: Ausgaben nach CategoryGroup für Tortendiagramm MIT DRILLDOWN"""
     year = request.GET.get('year', datetime.now().year)
     year = int(year)
+    categorygroup_id = request.GET.get('categorygroup_id')
 
     # Definiere die gewünschten CategoryGroups mit Farben
     category_config = {
-        2: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},  # #5B9BD5
-        3: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},  # #ED7D31
-        4: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},  # #8497B0
-        5: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},  # #FFC000
-        6: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},  # #70AD47
-        7: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},  # #4472C4
-        10: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}  # #FF0066
+        2: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},
+        3: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},
+        4: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},
+        5: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},
+        6: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},
+        7: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},
+        10: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}
     }
 
-    # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
-    sigi_transactions = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        date__year=year,
-        outflow__gt=0
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1  # "Ready to Assign"
-    )
+    if categorygroup_id:
+        # ===== DRILLDOWN: Zeige Categories dieser CategoryGroup =====
+        try:
+            categorygroup_id = int(categorygroup_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'Invalid categorygroup_id'}, status=400)
 
-    # Robert: Alle Transaktionen
-    robert_transactions = FactTransactionsRobert.objects.filter(
-        date__year=year,
-        outflow__gt=0
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    )
+        # Sigi
+        sigi_by_category = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            date__year=year,
+            category__categorygroup_id=categorygroup_id  # ⚠️ KORRIGIERT
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).values(
+            'category__category'
+        ).annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
 
-    # Aggregiere nach CategoryGroup für Sigi
-    sigi_by_group = sigi_transactions.values(
-        'category__categorygroup_id',
-        'category__categorygroup__category_group'
-    ).annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    )
+        # Robert
+        robert_by_category = FactTransactionsRobert.objects.filter(
+            date__year=year,
+            category__categorygroup_id=categorygroup_id  # ⚠️ KORRIGIERT
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).values(
+            'category__category'
+        ).annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
 
-    # Aggregiere nach CategoryGroup für Robert
-    robert_by_group = robert_transactions.values(
-        'category__categorygroup_id',
-        'category__categorygroup__category_group'
-    ).annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    )
+        # Kombiniere Daten
+        category_totals = {}
 
-    # Kombiniere beide und berechne Netto pro CategoryGroup
-    category_totals = {}
-
-    for item in sigi_by_group:
-        group_id = item['category__categorygroup_id']
-        if group_id in category_config:
+        for item in sigi_by_category:
+            cat_name = item['category__category'] or 'Unbekannt'
             netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
-            category_totals[group_id] = category_totals.get(group_id, 0) + netto
+            category_totals[cat_name] = category_totals.get(cat_name, 0) + netto
 
-    for item in robert_by_group:
-        group_id = item['category__categorygroup_id']
-        if group_id in category_config:
+        for item in robert_by_category:
+            cat_name = item['category__category'] or 'Unbekannt'
             netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
-            category_totals[group_id] = category_totals.get(group_id, 0) + netto
+            category_totals[cat_name] = category_totals.get(cat_name, 0) + netto
 
-    # Bereite Daten für Chart.js vor
-    labels = []
-    data = []
-    colors = []
+        # Sortiere nach Wert
+        sorted_categories = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)
 
-    for group_id in sorted(category_config.keys()):
-        if group_id in category_totals and category_totals[group_id] > 0:
-            labels.append(category_config[group_id]['name'])
-            data.append(category_totals[group_id])
-            colors.append(category_config[group_id]['color'])
+        labels = [cat[0] for cat in sorted_categories if cat[1] > 0]
+        data = [cat[1] for cat in sorted_categories if cat[1] > 0]
 
-    return JsonResponse({
-        'labels': labels,
-        'datasets': [{
-            'data': data,
-            'backgroundColor': colors,
-            'borderColor': colors,
-            'borderWidth': 1
-        }]
-    })
+        # Farben für Drilldown (verschiedene Schattierungen)
+        colors = [
+            'rgb(130, 177, 255)',  # Helles Blau
+            'rgb(158, 206, 154)',  # Mintgrün
+            'rgb(255, 183, 178)',  # Lachs
+            'rgb(189, 178, 255)',  # Lavendel
+            'rgb(255, 218, 121)',  # Gelb
+            'rgb(174, 214, 241)',  # Baby Blau
+            'rgb(255, 195, 160)',  # Pfirsich
+            'rgb(162, 217, 206)',  # Aquamarin
+            'rgb(229, 152, 155)',  # Altrosa
+            'rgb(197, 202, 233)',  # Periwinkle
+        ]
+
+        return JsonResponse({
+            'labels': labels,
+            'datasets': [{
+                'data': data,
+                'backgroundColor': colors[:len(data)],
+                'borderColor': colors[:len(data)],
+                'borderWidth': 1
+            }]
+        })
+
+    else:
+        # ===== OVERVIEW: Zeige CategoryGroups (wie bisher) =====
+        # Sigi
+        sigi_transactions = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            date__year=year,
+            outflow__gt=0
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        )
+
+        # Robert
+        robert_transactions = FactTransactionsRobert.objects.filter(
+            date__year=year,
+            outflow__gt=0
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        )
+
+        # Aggregiere nach CategoryGroup
+        sigi_by_group = sigi_transactions.values(
+            'category__categorygroup_id',
+            'category__categorygroup__category_group'
+        ).annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
+
+        robert_by_group = robert_transactions.values(
+            'category__categorygroup_id',
+            'category__categorygroup__category_group'
+        ).annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
+
+        # Kombiniere
+        category_totals = {}
+
+        for item in sigi_by_group:
+            group_id = item['category__categorygroup_id']
+            if group_id in category_config:
+                netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                category_totals[group_id] = category_totals.get(group_id, 0) + netto
+
+        for item in robert_by_group:
+            group_id = item['category__categorygroup_id']
+            if group_id in category_config:
+                netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                category_totals[group_id] = category_totals.get(group_id, 0) + netto
+
+        # Bereite Daten vor
+        labels = []
+        data = []
+        colors = []
+
+        for group_id in sorted(category_config.keys()):
+            if group_id in category_totals and category_totals[group_id] > 0:
+                labels.append(category_config[group_id]['name'])
+                data.append(category_totals[group_id])
+                colors.append(category_config[group_id]['color'])
+
+        return JsonResponse({
+            'labels': labels,
+            'datasets': [{
+                'data': data,
+                'backgroundColor': colors,
+                'borderColor': colors,
+                'borderWidth': 1
+            }]
+        })
 
 
 @login_required

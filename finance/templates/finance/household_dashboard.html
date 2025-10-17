@@ -337,36 +337,53 @@
     </div>
     </div>
 
-    <!-- Tortendiagramme -->
+    <!-- Tortendiagramme MIT DRILLDOWN -->
     <div class="section-wrapper section-bg-overview">
         <div class="row mb-5" id="section-pie-charts">
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-pie-chart-fill"></i> Ausgaben nach Kategorie 2025
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="categoryPieChart2025" height="250"></canvas>
+            <!-- 2025 Pie Chart -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" id="pieChartHeader2025">
+                        <h5 class="mb-0" id="pieChartTitle2025">
+                            <i class="bi bi-pie-chart-fill"></i> Ausgaben nach Kategorie 2025
+                        </h5>
+                        <!-- ⚠️ ZURÜCK-BUTTON HIER -->
+                        <button id="backBtn2025" class="btn btn-sm btn-outline-light" style="display: none;" onclick="backToOverview(2025, 'categoryPieChart2025', '2025')">
+                            <i class="bi bi-arrow-left"></i> Zurück
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="categoryPieChart2025" height="250"></canvas>
+                        <div class="mt-2 text-muted small text-center" id="drilldownHint2025">
+                            <i class="bi bi-info-circle"></i> Klicke auf eine Kategorie für Details
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-pie-chart-fill"></i> Ausgaben nach Kategorie 2024
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="categoryPieChart2024" height="250"></canvas>
-                </div>
+    
+            <!-- 2024 Pie Chart -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" id="pieChartHeader2024">
+                        <h5 class="mb-0" id="pieChartTitle2024">
+                            <i class="bi bi-pie-chart-fill"></i> Ausgaben nach Kategorie 2024
+                        </h5>
+                        <!-- ⚠️ ZURÜCK-BUTTON HIER -->
+                        <button id="backBtn2024" class="btn btn-sm btn-outline-light" style="display: none;" onclick="backToOverview(2024, 'categoryPieChart2024', '2024')">
+                            <i class="bi bi-arrow-left"></i> Zurück
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="categoryPieChart2024" height="250"></canvas>
+                        <div class="mt-2 text-muted small text-center" id="drilldownHint2024">
+                            <i class="bi bi-info-circle"></i> Klicke auf eine Kategorie für Details
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    </div>
+</div>
 
     <!-- ===== SPECIAL SECTION: SUPERMARKT (Kategorie 1.4. id=5) ===== -->
     <div class="section-wrapper section-bg-supermarkt">
@@ -907,6 +924,24 @@ let monthlyChart = null;
 let pieChart2025 = null;
 let pieChart2024 = null;
 
+let drilldownState2025 = {
+    level: 'overview',
+    categorygroupName: null,
+    categorygroupId: null  // ⚠️ NEU
+};
+
+let drilldownState2024 = {
+    level: 'overview',
+    categorygroupName: null,
+    categorygroupId: null  // ⚠️ NEU
+};
+
+let sharedDrilldownState = {
+    level: 'overview',
+    categorygroupName: null,
+    categorygroupId: null
+};
+
 // ============================================================
 // Ersetze die loadMonthlyChart Funktion mit dieser optimierten Version:
 // ============================================================
@@ -1066,16 +1101,29 @@ function loadMonthlyChart(year) {
             console.error('Fehler beim Laden der monatlichen Daten:', error);
         });
 }
+// ===== FUNKTION: LADE PIE CHART (MIT DRILLDOWN SUPPORT) =====
+// ===== GEMEINSAMER DRILLDOWN STATE (SYNCHRONISIERT) =====
 
+
+// ===== FUNKTION: LADE PIE CHART (MIT SYNCHRONISIERTEM DRILLDOWN) =====
 function loadPieChart(year, canvasId, chartVariable) {
-    fetch(`/api/household-category-breakdown/?year=${year}`)
+    const isChart2025 = chartVariable === '2025';
+
+    // Baue URL (mit optionalem categorygroup_id Parameter)
+    let url = `/api/household-category-breakdown/?year=${year}`;
+    if (sharedDrilldownState.level === 'drilldown' && sharedDrilldownState.categorygroupId) {
+        url += `&categorygroup_id=${sharedDrilldownState.categorygroupId}`;
+    }
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById(canvasId).getContext('2d');
 
-            if (chartVariable === '2025' && pieChart2025) {
+            // Zerstöre alten Chart
+            if (isChart2025 && pieChart2025) {
                 pieChart2025.destroy();
-            } else if (chartVariable === '2024' && pieChart2024) {
+            } else if (!isChart2025 && pieChart2024) {
                 pieChart2024.destroy();
             }
 
@@ -1084,12 +1132,12 @@ function loadPieChart(year, canvasId, chartVariable) {
             const isSmallMobile = window.innerWidth < 576;
 
             const newChart = new Chart(ctx, {
-                type: isMobile ? 'doughnut' : 'pie',  // Doughnut auf Mobile
+                type: isMobile ? 'doughnut' : 'pie',
                 data: data,
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    cutout: isMobile ? '50%' : '0%',  // ← HIER: auf options-Ebene!
+                    cutout: isMobile ? '50%' : '0%',
                     plugins: {
                         legend: {
                             display: true,
@@ -1109,8 +1157,7 @@ function loadPieChart(year, canvasId, chartVariable) {
                                             const value = data.datasets[0].data[i];
                                             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
                                             const percentage = ((value / total) * 100).toFixed(0);
-                                            
-                                            // Kürzere Labels auf Mobile
+
                                             let shortLabel = label;
                                             if (isMobile) {
                                                 const labelMap = {
@@ -1124,7 +1171,7 @@ function loadPieChart(year, canvasId, chartVariable) {
                                                 };
                                                 shortLabel = labelMap[label] || label;
                                             }
-                                            
+
                                             return {
                                                 text: `${shortLabel} (${percentage}%)`,
                                                 fillStyle: data.datasets[0].backgroundColor[i],
@@ -1172,21 +1219,98 @@ function loadPieChart(year, canvasId, chartVariable) {
                             top: 0,
                             bottom: isMobile ? 10 : 0,
                             left: 0,
-                            right: isMobile ? 5 : 0  // Weniger Padding rechts auf Mobile
+                            right: isMobile ? 5 : 0
                         }
-                    }
+                    },
+                    // ⚠️ WICHTIG: Click-Handler nur auf Overview-Ebene
+                    onClick: sharedDrilldownState.level === 'overview' ? function(event, elements, chart) {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const categorygroupName = chart.data.labels[index];
+                            
+                            const categoryGroupMapping = {
+                                'Haushaltsausgaben': 2,
+                                'Wohnung': 3,
+                                'Restaurant & Lieferservice': 4,
+                                'Ärzte & Gesundheit': 5,
+                                'Freizeit & Hobby & Urlaub': 6,
+                                'Geschenke': 7,
+                                'KFZ': 10
+                            };
+                            
+                            const categorygroupId = categoryGroupMapping[categorygroupName];
+
+                            console.log(`Pie clicked:`, categorygroupName, 'ID:', categorygroupId);
+                            // ⚠️ SYNCHRONISIERE BEIDE CHARTS
+                            loadPieChartDrilldown(categorygroupName, categorygroupId);
+                        }
+                    } : null
                 }
             });
 
-            if (chartVariable === '2025') {
+            // Speichere Chart-Instanz
+            if (isChart2025) {
                 pieChart2025 = newChart;
-            } else if (chartVariable === '2024') {
+            } else {
                 pieChart2024 = newChart;
             }
+
+            // Update UI (Titel, Back-Button, Hint)
+            updatePieChartUI(year, canvasId, chartVariable);
         })
         .catch(error => {
             console.error(`Fehler beim Laden der Kategoriedaten für ${year}:`, error);
         });
+}
+
+// ===== DRILLDOWN: LADE BEIDE CHARTS GLEICHZEITIG =====
+function loadPieChartDrilldown(categorygroupName, categorygroupId) {
+    // Update GEMEINSAMEN State
+    sharedDrilldownState.level = 'drilldown';
+    sharedDrilldownState.categorygroupName = categorygroupName;
+    sharedDrilldownState.categorygroupId = categorygroupId;
+
+    // ⚠️ LADE BEIDE CHARTS NEU
+    loadPieChart(2025, 'categoryPieChart2025', '2025');
+    loadPieChart(2024, 'categoryPieChart2024', '2024');
+}
+
+// ===== UPDATE UI (TITEL, BACK-BUTTON, HINT) =====
+function updatePieChartUI(year, canvasId, chartVariable) {
+    const isChart2025 = chartVariable === '2025';
+    const titleId = isChart2025 ? 'pieChartTitle2025' : 'pieChartTitle2024';
+    const backButtonId = isChart2025 ? 'backBtn2025' : 'backBtn2024';
+    const hintId = isChart2025 ? 'drilldownHint2025' : 'drilldownHint2024';
+
+    const titleElement = document.getElementById(titleId);
+    const backButton = document.getElementById(backButtonId);
+    const hint = document.getElementById(hintId);
+
+    if (!titleElement) return;
+
+    if (sharedDrilldownState.level === 'overview') {
+        // Overview-Modus
+        titleElement.innerHTML = `<i class="bi bi-pie-chart-fill"></i> Ausgaben nach Kategorie ${year}`;
+        if (backButton) backButton.style.display = 'none';
+        if (hint) hint.style.display = 'block';
+    } else {
+        // Drilldown-Modus
+        titleElement.innerHTML = `<i class="bi bi-pie-chart-fill"></i> ${sharedDrilldownState.categorygroupName} - ${year}`;
+        if (backButton) backButton.style.display = 'inline-block';
+        if (hint) hint.style.display = 'none';
+    }
+}
+
+// ===== BACK TO OVERVIEW (BEIDE CHARTS) =====
+function backToOverview(year, canvasId, chartVariable) {
+    // Reset GEMEINSAMEN State
+    sharedDrilldownState.level = 'overview';
+    sharedDrilldownState.categorygroupName = null;
+    sharedDrilldownState.categorygroupId = null;
+
+    // ⚠️ LADE BEIDE CHARTS NEU
+    loadPieChart(2025, 'categoryPieChart2025', '2025');
+    loadPieChart(2024, 'categoryPieChart2024', '2024');
 }
 
 // ===== NEUE CATEGORYGROUP CHARTS =====
@@ -1648,8 +1772,8 @@ function createBillaCombinedChart() {
                             borderColor: 'rgb(30,122,54)',
                             backgroundColor: 'rgba(52, 168, 83, 0.2)',
                             borderWidth: isMobile ? 2 : 3,
-                            pointRadius: isMobile ? 6 : 5,  // Größere Touch-Targets
-                            pointHoverRadius: isMobile ? 8 : 7,
+                            pointRadius: isMobile ? 5 : 5,  // Größere Touch-Targets
+                            pointHoverRadius: isMobile ? 6 : 7,
                             pointBackgroundColor: 'rgb(52, 168, 83)',
                             tension: 0.4,
                             yAxisID: 'y-avg',
@@ -1771,6 +1895,7 @@ function createBillaCombinedChart() {
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     // Lade bestehende Charts (Balken und Tortendiagramme)
+
     loadMonthlyChart({{ current_year }});
     loadPieChart(2025, 'categoryPieChart2025', '2025');
     loadPieChart(2024, 'categoryPieChart2024', '2024');
