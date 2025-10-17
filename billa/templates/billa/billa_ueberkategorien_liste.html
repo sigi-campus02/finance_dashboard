@@ -69,16 +69,6 @@
                                 Max: €{{ kat.max_preis|floatformat:2 }}
                             </span>
                         </div>
-                        
-                        <!-- Preisänderung Badge -->
-                        <div class="text-center">
-                            <span class="badge {% if kat.diff_pct > 20 %}bg-danger{% elif kat.diff_pct > 10 %}bg-warning{% else %}bg-info{% endif %} fs-6">
-                                +{{ kat.diff_pct|floatformat:1 }}%
-                            </span>
-                            <div class="text-muted small mt-1">
-                                (€{{ kat.diff|floatformat:2 }} Differenz)
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Chart -->

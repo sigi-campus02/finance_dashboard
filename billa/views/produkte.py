@@ -603,7 +603,8 @@ def billa_ueberkategorien_liste(request):
     # ✅ GEÄNDERT: Aggregiere über Überkategorien-Tabelle
     ueberkategorien_base = BillaUeberkategorie.objects.annotate(
         anzahl_produkte=Count('produkte', distinct=True),
-        anzahl_kaeufe=Sum('produkte__anzahl_kaeufe')
+        anzahl_kaeufe=Sum('produkte__anzahl_kaeufe'),
+        gesamt_ausgaben=Sum('produkte__artikel__gesamtpreis')
     ).order_by('name')
 
     ueberkategorien = []
@@ -646,6 +647,7 @@ def billa_ueberkategorien_liste(request):
                 'name': kat_obj.name,
                 'anzahl_produkte': kat_obj.anzahl_produkte or 0,
                 'anzahl_kaeufe': kat_obj.anzahl_kaeufe or 0,
+                'gesamt_ausgaben': float(kat_obj.gesamt_ausgaben) if kat_obj.gesamt_ausgaben else 0.0,  # ✅ NEU
                 'min_preis': float(min_preis),
                 'max_preis': float(max_preis),
                 'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0.0,
@@ -655,7 +657,7 @@ def billa_ueberkategorien_liste(request):
             })
 
     # Sortiere nach Preisänderung
-    ueberkategorien.sort(key=lambda x: x['diff_pct'], reverse=True)
+    ueberkategorien.sort(key=lambda x: x['gesamt_ausgaben'], reverse=True)
 
     context = {
         'ueberkategorien': ueberkategorien
