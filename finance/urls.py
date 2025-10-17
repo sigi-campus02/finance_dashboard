@@ -80,6 +80,6 @@ urlpatterns = [
     path('api/supermarket-transactions-detail/', views.api_supermarket_transactions_detail, name='api_supermarket_transactions_detail'),
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 
-
+    path('api/urlaube-chart/', views.api_urlaube_chart, name='api_urlaube_chart'),
 
 ]

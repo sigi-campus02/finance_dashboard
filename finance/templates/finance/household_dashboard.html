@@ -34,20 +34,6 @@
         justify-content: space-between;
     }
 
-    .stat-box-label {
-        font-size: 0.9rem;
-        color: #6c757d;
-        margin: 0;
-        font-weight: 500;
-    }
-
-    .stat-box-value {
-        font-size: 1.75rem;
-        font-weight: 600;
-        margin: 0;
-        color: #212529;
-    }
-
     @media (max-width: 576px) {
         .stat-box {
             flex-direction: column;
@@ -55,10 +41,6 @@
             padding: 10px 12px;
         }
 
-        .stat-box-value {
-            font-size: 1.5rem;
-            margin-top: 4px;
-        }
     }
 
     /* Bereichs-Hintergründe */
@@ -97,7 +79,11 @@
     .section-bg-kfz {
         background: linear-gradient(to bottom, rgba(255, 0, 102, 0.05) 0%, rgba(255,255,255,0) 100%);
     }
-
+    
+    .section-bg-urlaube {
+        background: linear-gradient(to bottom, rgba(155, 89, 182, 0.05) 0%, rgba(255,255,255,0) 100%);
+    }
+    
     .section-wrapper {
         padding: 30px 0;
         margin-left: -15px;
@@ -824,6 +810,85 @@
         </div>
     </div>
     </div>
+    
+    <!-- 10. Urlaube -->
+    <div class="section-wrapper section-bg-urlaube">
+        <div class="row mb-5" id="section-urlaube">
+            <div class="col-12">
+                <div class="card">
+                    <div class="categorygroup-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h4 class="mb-0">
+                            <i class="bi bi-airplane"></i> Urlaube & Reisen
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <!-- Statistiken -->
+                        <div class="stat-box" style="border-left-color: rgb(102, 126, 234);">
+                            <div class="row">
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <h6 class="text-muted mb-1">Gesamtausgaben</h6>
+                                    <h3 class="mb-0" id="urlaube-gesamt">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    </h3>
+                                </div>
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <h6 class="text-muted mb-1">Anzahl Urlaube</h6>
+                                    <h3 class="mb-0" id="urlaube-anzahl">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    </h3>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-muted mb-1">Durchschnitt pro Urlaub</h6>
+                                    <h3 class="mb-0" id="urlaube-durchschnitt">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+    
+                        <!-- Urlaubs-Chart -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5><i class="bi bi-bar-chart-fill"></i> Urlaubsausgaben nach Person</h5>
+                                <p class="text-muted mb-3">
+                                    <small>Gestapelte Darstellung der Kostenaufteilung zwischen Robert und Sigi</small>
+                                </p>
+                                <div class="chart-container-horizontal">
+                                    <canvas id="urlaubeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+    
+                        <!-- Jahresvergleich -->
+                        <div class="row">
+                            <div class="col-md-6 mb-4 mb-md-0">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-muted mb-2">
+                                            <i class="bi bi-calendar3"></i> Jahr 2024
+                                        </h6>
+                                        <h4 class="mb-1" id="urlaube-2024-gesamt">-</h4>
+                                        <small class="text-muted" id="urlaube-2024-anzahl">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-muted mb-2">
+                                            <i class="bi bi-calendar3"></i> Jahr 2025
+                                        </h6>
+                                        <h4 class="mb-1" id="urlaube-2025-gesamt">-</h4>
+                                        <small class="text-muted" id="urlaube-2025-anzahl">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Link zur Transaktionsliste -->
     <div class="row">
@@ -909,6 +974,11 @@
         <a href="#section-kfz" class="nav-menu-item" style="border-left-color: rgb(255, 0, 102);" data-section="section-kfz">
             <i class="bi bi-car-front" style="color: rgb(255, 0, 102);"></i>
             <span>KFZ</span>
+        </a>
+    
+        <a href="#section-urlaube" class="nav-menu-item" style="border-left-color: rgb(102, 126, 234);" data-section="section-urlaube">
+            <i class="bi bi-airplane" style="color: rgb(102, 126, 234);"></i>
+            <span>Urlaube & Reisen</span>
         </a>
     </div>
 </div>
@@ -1892,6 +1962,178 @@ function createBillaCombinedChart() {
         .catch(error => console.error('Error loading Billa combined chart:', error));
 }
 
+// ===== URLAUBE SECTION =====
+
+function loadUrlaubeStats() {
+    fetch('/api/urlaube-chart/')
+        .then(response => response.json())
+        .then(data => {
+            // Berechne Statistiken
+            let gesamt = 0;
+            let anzahl = data.labels.length;
+            let gesamt2024 = 0;
+            let anzahl2024 = 0;
+            let gesamt2025 = 0;
+            let anzahl2025 = 0;
+
+            data.datasets.forEach(dataset => {
+                dataset.data.forEach((value, index) => {
+                    gesamt += value;
+                    
+                    // Extrahiere Jahr aus Label (Format: "DD.MM.YYYY\nBeschreibung")
+                    const labelParts = data.labels[index].split('\n');
+                    const datum = labelParts[0];
+                    const jahr = parseInt(datum.split('.')[2]);
+                    
+                    if (jahr === 2024) {
+                        gesamt2024 += value;
+                        if (dataset.label === 'Anteil Robert') anzahl2024++;
+                    } else if (jahr === 2025) {
+                        gesamt2025 += value;
+                        if (dataset.label === 'Anteil Robert') anzahl2025++;
+                    }
+                });
+            });
+
+            const durchschnitt = anzahl > 0 ? gesamt / anzahl : 0;
+
+            // Update UI
+            document.getElementById('urlaube-gesamt').innerHTML = formatEuro(gesamt);
+            document.getElementById('urlaube-anzahl').innerHTML = anzahl;
+            document.getElementById('urlaube-durchschnitt').innerHTML = formatEuro(durchschnitt);
+            
+            document.getElementById('urlaube-2024-gesamt').innerHTML = formatEuro(gesamt2024);
+            document.getElementById('urlaube-2024-anzahl').innerHTML = `${anzahl2024} Urlaube`;
+            
+            document.getElementById('urlaube-2025-gesamt').innerHTML = formatEuro(gesamt2025);
+            document.getElementById('urlaube-2025-anzahl').innerHTML = `${anzahl2025} Urlaube`;
+        })
+        .catch(error => {
+            console.error('Error loading urlaube stats:', error);
+            document.getElementById('urlaube-gesamt').innerHTML = '<span class="text-danger">Fehler</span>';
+            document.getElementById('urlaube-anzahl').innerHTML = '<span class="text-danger">-</span>';
+            document.getElementById('urlaube-durchschnitt').innerHTML = '<span class="text-danger">-</span>';
+        });
+}
+
+function createUrlaubeChart() {
+    fetch('/api/urlaube-chart/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('urlaubeChart').getContext('2d');
+            
+            // Mobile Detection
+            const isMobile = window.innerWidth < 768;
+            const isSmallMobile = window.innerWidth < 576;
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: isMobile ? 5 : 10,
+                            right: isMobile ? 5 : 10,
+                            bottom: isMobile ? 5 : 10,
+                            left: isMobile ? 5 : 10
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        axis: 'y',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (isMobile) {
+                                        return '€' + (value / 1000).toFixed(1) + 'k';
+                                    }
+                                    return formatEuro(value);
+                                },
+                                font: {
+                                    size: isSmallMobile ? 9 : (isMobile ? 10 : 12)
+                                },
+                                maxRotation: 0,
+                                autoSkip: true
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: isSmallMobile ? 9 : (isMobile ? 10 : 11)
+                                },
+                                autoSkip: false,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    // Auf Mobile: Zeige nur Datum, nicht Beschreibung
+                                    if (isMobile) {
+                                        return label.split('\n')[0];
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: isMobile ? 'bottom' : 'top',
+                            labels: {
+                                font: {
+                                    size: isSmallMobile ? 10 : (isMobile ? 11 : 13)
+                                },
+                                padding: isSmallMobile ? 8 : (isMobile ? 10 : 15),
+                                boxWidth: isMobile ? 12 : 15,
+                                boxHeight: isMobile ? 12 : 15
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            padding: isMobile ? 8 : 12,
+                            titleFont: {
+                                size: isMobile ? 11 : 13
+                            },
+                            bodyFont: {
+                                size: isMobile ? 10 : 12
+                            },
+                            callbacks: {
+                                title: function(context) {
+                                    // Zeige beide Zeilen im Tooltip
+                                    return context[0].label.replace('\n', ' - ');
+                                },
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatEuro(context.parsed.x);
+                                },
+                                footer: function(tooltipItems) {
+                                    let sum = 0;
+                                    tooltipItems.forEach(item => {
+                                        sum += item.parsed.x;
+                                    });
+                                    return '━━━━━━━━━━━━━━━━\nGesamt: ' + formatEuro(sum);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error creating urlaube chart:', error));
+}
+
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     // Lade bestehende Charts (Balken und Tortendiagramme)
@@ -1916,7 +2158,11 @@ document.addEventListener('DOMContentLoaded', function() {
     createSupermarketTrendChart();
     createSupermarketComparisonChart();
     createBillaCombinedChart();
-
+    
+    // Urlaube-Bereich laden
+    loadUrlaubeStats();
+    createUrlaubeChart();
+    
     // === Floating Navigation ===
     const floatingBtn = document.getElementById('floatingNavBtn');
     const navOverlay = document.getElementById('navOverlay');

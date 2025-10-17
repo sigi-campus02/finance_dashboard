@@ -11,7 +11,7 @@ from django.contrib import messages
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
     DimAccount, DimCategory, DimPayee, DimCategoryGroup, DimFlag,
-    ScheduledTransaction, RegisteredDevice
+    ScheduledTransaction, RegisteredDevice, FactUrlaube
 )
 from .forms import TransactionForm
 from collections import defaultdict
@@ -3737,3 +3737,41 @@ def api_billa_transactions_detail(request):
     })
 
 
+@login_required
+def api_urlaube_chart(request):
+    """
+    API für Urlaubs-Balkendiagramm (gestapelt nach Person)
+    """
+
+    urlaube = FactUrlaube.objects.all().order_by('-datum')
+
+    labels = []
+    robert_data = []
+    sigi_data = []
+
+    for urlaub in urlaube:
+        labels.append(f"{urlaub.datum.strftime('%d.%m.%Y')}\n{urlaub.beschreibung}")
+        robert_data.append(float(urlaub.anteil_robert))
+        sigi_data.append(float(urlaub.anteil_sigi))
+
+    data = {
+        'labels': labels,
+        'datasets': [
+            {
+                'label': 'Anteil Robert',
+                'data': robert_data,
+                'backgroundColor': 'rgba(54, 162, 235, 0.8)',
+                'borderColor': 'rgb(54, 162, 235)',
+                'borderWidth': 1
+            },
+            {
+                'label': 'Anteil Sigi',
+                'data': sigi_data,
+                'backgroundColor': 'rgba(75, 192, 192, 0.8)',
+                'borderColor': 'rgb(75, 192, 192)',
+                'borderWidth': 1
+            }
+        ]
+    }
+
+    return JsonResponse(data)
