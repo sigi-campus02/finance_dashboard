@@ -37,4 +37,6 @@ urlpatterns = [
     path('api/preisverlauf/<int:produkt_id>/', stats.billa_api_preisverlauf, name='billa_api_preisverlauf'),
     path('api/stats/', stats.billa_api_stats, name='api_stats'),
     path('api/bulk-update-by-name/', views.bulk_update_by_name, name='bulk_update_by_name'),
+    path('api/produktgruppen/', views.billa_dashboard_produktgruppen_ajax, name='billa_dashboard_produktgruppen_ajax'),
+    path('api/produkte/', views.billa_dashboard_produkte_ajax, name='billa_dashboard_produkte_ajax'),
 ]

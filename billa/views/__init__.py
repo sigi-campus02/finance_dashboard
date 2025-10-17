@@ -1,4 +1,4 @@
-from .dashboard import billa_dashboard
+from .dashboard import billa_dashboard, billa_dashboard_produktgruppen_ajax, billa_dashboard_produkte_ajax
 from .einkauefe import billa_einkauefe_liste, billa_einkauf_detail
 from .produkte import (
     billa_produkte_liste, billa_produkt_detail,
@@ -11,7 +11,7 @@ from .produkte import (
 from .import_views import billa_import_upload
 
 __all__ = [
-    'billa_dashboard',
+    'billa_dashboard', 'billa_dashboard_produktgruppen_ajax', 'billa_dashboard_produkte_ajax',
     'billa_einkauefe_liste', 'billa_einkauf_detail',
     'billa_produkte_liste', 'billa_produkt_detail',
     'billa_produktgruppen_liste', 'billa_produktgruppe_detail',

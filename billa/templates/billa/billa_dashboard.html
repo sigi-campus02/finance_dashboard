@@ -453,6 +453,25 @@
     <div class="row mt-4">
         <div class="col-12 col-lg-6">
             <div class="chart-container">
+                <h5>🎯 Ausgaben nach Kategorie</h5>
+                <p class="text-muted mb-3" style="font-size: 0.85rem;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Klicke auf ein Segment um in Details zu navigieren: Überkategorien → Produktgruppen → Produkte
+                </p>
+                <div id="chart-kategorie"></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>💸 Ersparnisse nach Rabatt-Typ</h5>
+                <div id="chart-rabatte"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
                 <h5>🏷️ Top 10 Produkte (Häufigkeit)</h5>
                 <div id="chart-top-products"></div>
             </div>
@@ -465,20 +484,7 @@
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-12 col-lg-6">
-            <div class="chart-container">
-                <h5>🎯 Ausgaben nach Kategorie</h5>
-                <div id="chart-kategorie"></div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-6">
-            <div class="chart-container">
-                <h5>💸 Ersparnisse nach Rabatt-Typ</h5>
-                <div id="chart-rabatte"></div>
-            </div>
-        </div>
-    </div>
+
 </div>
 
 {% endblock %}
@@ -486,13 +492,20 @@
 {% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
-// Daten aus Django Template
+// ========================================
+// DATEN & GLOBALE VARIABLEN
+// ========================================
 const dailyData = {{ daily_spending|safe }};
 const monthlyData = {{ monthly_spending|safe }};
 const topProdukte = {{ top_produkte_anzahl|safe }};
 const topAusgaben = {{ top_produkte_ausgaben|safe }};
 const kategorieData = {{ ausgaben_kategorie|safe }};
 const rabatteData = {{ rabatte|safe }};
+
+// State Management für Drill-Down
+let currentView = 'ueberkategorie';
+let selectedUeberkategorie = null;
+let backButton = null;
 
 // Mobile Detection
 const isMobile = window.innerWidth < 768;
@@ -513,7 +526,9 @@ const shortenName = (name) => {
     return name.length > maxLength ? name.substring(0, maxLength - 3) + '...' : name;
 };
 
-// ✅ 1. TÄGLICHE AUSGABEN - Mobile optimiert
+// ========================================
+// 1. TÄGLICHE AUSGABEN
+// ========================================
 if (dailyData && dailyData.length > 0) {
     const dailyTrace = {
         x: dailyData.map(d => d.tag),
@@ -536,11 +551,11 @@ if (dailyData && dailyData.length > 0) {
 
     const dailyLayout = {
         ...layoutConfig,
-        margin: { 
-            t: 10, 
-            b: isMobile ? 40 : 60, 
-            l: isMobile ? 45 : 60, 
-            r: 10 
+        margin: {
+            t: 10,
+            b: isMobile ? 40 : 60,
+            l: isMobile ? 45 : 60,
+            r: 10
         },
         xaxis: {
             title: isMobile ? '' : 'Datum',
@@ -567,7 +582,9 @@ if (dailyData && dailyData.length > 0) {
     document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// ✅ 2. MONATLICHE AUSGABEN - Mobile optimiert (Legende außerhalb)
+// ========================================
+// 2. MONATLICHE AUSGABEN
+// ========================================
 const monthlyStackedData = JSON.parse('{{ monthly_spending_stacked|safe }}');
 
 if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate.length > 0) {
@@ -599,11 +616,11 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
     const monthlyLayout = {
         ...layoutConfig,
         barmode: 'stack',
-        margin: { 
-            t: 10, 
-            b: isMobile ? 110 : 160, 
-            l: isMobile ? 45 : 60, 
-            r: 10 
+        margin: {
+            t: 10,
+            b: isMobile ? 110 : 160,
+            l: isMobile ? 45 : 60,
+            r: 10
         },
         xaxis: {
             title: isMobile ? '' : 'Monat',
@@ -630,19 +647,21 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
         hovermode: 'closest',
         plot_bgcolor: '#fff',
         paper_bgcolor: '#fff',
-        height: isMobile ? 350 : 400,
+        height: isMobile ? 500 : 400,
         autosize: true
     };
 
-    Plotly.newPlot('chart-monthly', traces, monthlyLayout, { 
+    Plotly.newPlot('chart-monthly', traces, monthlyLayout, {
         displayModeBar: false,
-        staticPlot: isMobile // Verhindert Tooltip-Probleme auf Mobile
+        staticPlot: isMobile
     });
 } else {
     document.getElementById('chart-monthly').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 3. Top 10 Produkte nach Häufigkeit
+// ========================================
+// 3. TOP 10 PRODUKTE (HÄUFIGKEIT)
+// ========================================
 if (topProdukte && topProdukte.length > 0) {
     const top10 = topProdukte.slice(0, 10);
 
@@ -666,11 +685,11 @@ if (topProdukte && topProdukte.length > 0) {
 
     Plotly.newPlot('chart-top-products', [topProdukteTrace], {
         ...layoutConfig,
-        margin: { 
-            t: 20, 
-            b: isMobile ? 120 : 150, 
-            l: isMobile ? 40 : 60, 
-            r: 20 
+        margin: {
+            t: 20,
+            b: isMobile ? 120 : 150,
+            l: isMobile ? 40 : 60,
+            r: 20
         },
         xaxis: {
             title: '',
@@ -688,7 +707,9 @@ if (topProdukte && topProdukte.length > 0) {
     document.getElementById('chart-top-products').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 4. Top 10 Produkte nach Ausgaben
+// ========================================
+// 4. TOP 10 PRODUKTE (AUSGABEN)
+// ========================================
 if (topAusgaben && topAusgaben.length > 0) {
     const top10 = topAusgaben.slice(0, 10);
 
@@ -712,11 +733,11 @@ if (topAusgaben && topAusgaben.length > 0) {
 
     Plotly.newPlot('chart-top-spending', [topAusgabenTrace], {
         ...layoutConfig,
-        margin: { 
-            t: 20, 
-            b: isMobile ? 120 : 150, 
-            l: isMobile ? 40 : 60, 
-            r: 20 
+        margin: {
+            t: 20,
+            b: isMobile ? 120 : 150,
+            l: isMobile ? 40 : 60,
+            r: 20
         },
         xaxis: {
             title: '',
@@ -735,43 +756,282 @@ if (topAusgaben && topAusgaben.length > 0) {
     document.getElementById('chart-top-spending').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 5. Ausgaben nach Kategorie (Pie Chart)
-if (kategorieData && kategorieData.length > 0) {
-    const sortedKategorieData = [...kategorieData].sort((a, b) => b.ausgaben - a.ausgaben);
+// ========================================
+// 5. AUSGABEN NACH KATEGORIE (3-EBENEN DRILL-DOWN)
+// ========================================
 
-    const kategorieTrace = {
-        values: sortedKategorieData.map(k => parseFloat(k.ausgaben)),
-        labels: sortedKategorieData.map(k => k.produkt__ueberkategorie || 'Nicht zugeordnet'),
+// State Management für 3-Ebenen Drill-Down
+let drillDownStack = [];  // Stack für Navigation
+
+// ✅ HAUPTFUNKTION: Pie Chart rendern
+function renderKategoriePieChart(data, title, level = 'ueberkategorie') {
+    const trace = {
+        values: data.map(k => parseFloat(k.ausgaben)),
+        labels: data.map(k => {
+            if (level === 'ueberkategorie') return k.produkt__ueberkategorie || 'Nicht zugeordnet';
+            return k.name || 'Unbekannt';
+        }),
         type: 'pie',
-        textinfo: isMobile ? 'percent' : 'label+percent',
+        textinfo: 'percent',  // ✅ Nur Prozent im Kreis anzeigen
         textposition: 'inside',
         insidetextorientation: 'radial',
-        textfont: { size: isMobile ? 9 : 12 },
+        textfont: { size: isMobile ? 9 : 11 },
         hovertemplate: '<b>%{label}</b><br>€%{value:.2f}<br>%{percent}<extra></extra>',
         marker: {
             line: { color: '#ffffff', width: 1 }
-        }
+        },
+        pull: isMobile ? 0.02 : 0
     };
 
-    Plotly.newPlot('chart-kategorie', [kategorieTrace], {
-        ...layoutConfig,
-        margin: { t: 10, b: 10, l: 10, r: 10 },
-        showlegend: !isMobile,
-        legend: isMobile ? {} : {
-            orientation: 'v',
-            x: 1.05,
-            y: 0.5,
-            font: { size: 10 }
+    const layout = {
+        responsive: true,
+        displayModeBar: false,
+        font: {
+            family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            size: isMobile ? 9 : 11
+        },
+        margin: isMobile ? { t: 20, b: 20, l: 20, r: 20 } : { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: true,  // ✅ Legende einschalten
+        legend: {
+            orientation: isMobile ? 'h' : 'v',  // Horizontal auf Mobile, Vertikal auf Desktop
+            yanchor: isMobile ? 'top' : 'middle',
+            y: isMobile ? -0.15 : 0.5,
+            xanchor: isMobile ? 'center' : 'left',
+            x: isMobile ? 0.5 : 1.02,
+            font: { size: isMobile ? 9 : 10 },
+            itemwidth: 30
         },
         paper_bgcolor: '#fff',
         plot_bgcolor: '#fff',
-        height: isMobile ? 300 : 400
+        height: isMobile ? 500 : 500  // Etwas höher auf Mobile wegen Legende unten
+    };
+
+    Plotly.newPlot('chart-kategorie', [trace], layout, {
+        displayModeBar: false
     });
+}
+
+// ✅ LOADING SPINNER (deaktiviert)
+function showLoadingSpinner(message = 'Lade Daten...') {
+    // Keine Ladeanzeige mehr - Funktion ist leer
+}
+
+// ✅ BREADCRUMB NAVIGATION
+function updateBreadcrumb() {
+    const chartContainer = document.querySelector('#chart-kategorie').parentNode;
+
+    // Entferne alte Breadcrumb
+    const oldBreadcrumb = chartContainer.querySelector('.drill-down-breadcrumb');
+    if (oldBreadcrumb) oldBreadcrumb.remove();
+
+    if (drillDownStack.length === 0) return;
+
+    // Erstelle neue Breadcrumb
+    const breadcrumb = document.createElement('nav');
+    breadcrumb.className = 'drill-down-breadcrumb mb-2';
+    breadcrumb.setAttribute('aria-label', 'breadcrumb');
+
+    const ol = document.createElement('ol');
+    ol.className = 'breadcrumb mb-0';
+    ol.style.cssText = 'background: transparent; padding: 0.5rem 0;';
+
+    // Home Link
+    const homeLi = document.createElement('li');
+    homeLi.className = 'breadcrumb-item';
+    const homeLink = document.createElement('a');
+    homeLink.href = '#';
+    homeLink.textContent = '🎯 Überkategorien';
+    homeLink.onclick = (e) => {
+        e.preventDefault();
+        navigateToLevel(0);
+    };
+    homeLi.appendChild(homeLink);
+    ol.appendChild(homeLi);
+
+    // Stack Items
+    drillDownStack.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = 'breadcrumb-item' + (index === drillDownStack.length - 1 ? ' active' : '');
+
+        if (index === drillDownStack.length - 1) {
+            li.textContent = item.icon + ' ' + item.label;
+            li.setAttribute('aria-current', 'page');
+        } else {
+            const link = document.createElement('a');
+            link.href = '#';
+            link.textContent = item.icon + ' ' + item.label;
+            link.onclick = (e) => {
+                e.preventDefault();
+                navigateToLevel(index + 1);
+            };
+            li.appendChild(link);
+        }
+        ol.appendChild(li);
+    });
+
+    breadcrumb.appendChild(ol);
+    chartContainer.insertBefore(breadcrumb, chartContainer.firstChild);
+}
+
+// ✅ NAVIGATION ZU BESTIMMTEM LEVEL
+function navigateToLevel(targetLevel) {
+    drillDownStack = drillDownStack.slice(0, targetLevel);
+
+    if (targetLevel === 0) {
+        const sortedKategorieData = [...kategorieData].sort((a, b) => b.ausgaben - a.ausgaben);
+        renderKategoriePieChart(sortedKategorieData, '🎯 Ausgaben nach Kategorie', 'ueberkategorie');
+        updateChartTitle('🎯 Ausgaben nach Kategorie');
+        updateBreadcrumb();
+        registerClickHandler();
+    } else if (targetLevel === 1) {
+        const lastItem = drillDownStack[0];
+        loadProduktgruppen(lastItem.label);
+    }
+}
+
+// ✅ LADE PRODUKTGRUPPEN
+function loadProduktgruppen(ueberkategorie) {
+    showLoadingSpinner('Lade Produktgruppen...');
+
+    const startDate = document.getElementById('start_date')?.value || '';
+    const endDate = document.getElementById('end_date')?.value || '';
+    const filiale = document.getElementById('filiale')?.value || 'alle';
+
+    const url = new URL('/billa/api/produktgruppen/', window.location.origin);
+    url.searchParams.append('ueberkategorie', ueberkategorie);
+    if (startDate) url.searchParams.append('start_date', startDate);
+    if (endDate) url.searchParams.append('end_date', endDate);
+    if (filiale && filiale !== 'alle') url.searchParams.append('filiale', filiale);
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Netzwerkfehler');
+            return response.json();
+        })
+        .then(data => {
+            if (data.produktgruppen && data.produktgruppen.length > 0) {
+                drillDownStack = [{level: 'produktgruppe', label: ueberkategorie, icon: '📦'}];
+                renderKategoriePieChart(data.produktgruppen, `📦 ${ueberkategorie} - Produktgruppen`, 'produktgruppe');
+                updateChartTitle(`📦 ${ueberkategorie} - Produktgruppen`);
+                updateBreadcrumb();
+                registerClickHandler();
+            } else {
+                showNoDataMessage(`Keine Produktgruppen für ${ueberkategorie} gefunden.`);
+            }
+        })
+        .catch(error => {
+            console.error('Fehler:', error);
+            showErrorMessage();
+        });
+}
+
+// ✅ LADE PRODUKTE
+function loadProdukte(produktgruppe, ueberkategorie) {
+    showLoadingSpinner('Lade Produkte...');
+
+    const startDate = document.getElementById('start_date')?.value || '';
+    const endDate = document.getElementById('end_date')?.value || '';
+    const filiale = document.getElementById('filiale')?.value || 'alle';
+
+    const url = new URL('/billa/api/produkte/', window.location.origin);
+    url.searchParams.append('produktgruppe', produktgruppe);
+    url.searchParams.append('ueberkategorie', ueberkategorie);
+    if (startDate) url.searchParams.append('start_date', startDate);
+    if (endDate) url.searchParams.append('end_date', endDate);
+    if (filiale && filiale !== 'alle') url.searchParams.append('filiale', filiale);
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Netzwerkfehler');
+            return response.json();
+        })
+        .then(data => {
+            if (data.produkte && data.produkte.length > 0) {
+                drillDownStack.push({level: 'produkt', label: produktgruppe, icon: '🏷️'});
+                renderKategoriePieChart(data.produkte, `🏷️ ${produktgruppe} - Produkte`, 'produkt');
+                updateChartTitle(`🏷️ ${produktgruppe} - Top Produkte`);
+                updateBreadcrumb();
+                // Kein registerClickHandler auf Produkt-Ebene
+            } else {
+                showNoDataMessage(`Keine Produkte für ${produktgruppe} gefunden.`);
+            }
+        })
+        .catch(error => {
+            console.error('Fehler:', error);
+            showErrorMessage();
+        });
+}
+
+// ✅ HILFS-FUNKTIONEN FÜR MELDUNGEN
+function showNoDataMessage(message) {
+    document.getElementById('chart-kategorie').innerHTML =
+        `<div class="alert alert-info text-center mt-3">
+            <i class="bi bi-info-circle me-2"></i>${message}
+        </div>`;
+    updateBreadcrumb();
+}
+
+function showErrorMessage() {
+    document.getElementById('chart-kategorie').innerHTML =
+        `<div class="alert alert-danger text-center mt-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Fehler beim Laden der Daten. Bitte versuche es erneut.
+        </div>`;
+    updateBreadcrumb();
+}
+
+// ✅ CHART TITEL AKTUALISIEREN
+function updateChartTitle(title) {
+    const titleElement = document.querySelector('#chart-kategorie').parentNode.querySelector('h5');
+    if (titleElement) {
+        titleElement.innerHTML = title;
+    }
+}
+
+// ✅ CLICK HANDLER REGISTRIEREN (WICHTIG: OHNE PURGE!)
+function registerClickHandler() {
+    const chartDiv = document.getElementById('chart-kategorie');
+
+    // ⚠️ KEIN Plotly.purge() hier - das zerstört den Chart!
+
+    chartDiv.on('plotly_click', function(data) {
+        const clickedLabel = data.points[0].label;
+
+        if (drillDownStack.length === 0) {
+            // Ebene 1: Überkategorie → Produktgruppen
+            loadProduktgruppen(clickedLabel);
+        } else if (drillDownStack.length === 1 && drillDownStack[0].level === 'produktgruppe') {
+            // Ebene 2: Produktgruppe → Produkte
+            const ueberkategorie = drillDownStack[0].label;
+            loadProdukte(clickedLabel, ueberkategorie);
+        }
+        // Ebene 3: Produkte - kein weiterer Drill-Down
+    });
+
+    // Hover Effects (nur wenn klickbar)
+    chartDiv.on('plotly_hover', function(data) {
+        if (drillDownStack.length < 2) {
+            chartDiv.style.cursor = 'pointer';
+        }
+    });
+
+    chartDiv.on('plotly_unhover', function(data) {
+        chartDiv.style.cursor = 'default';
+    });
+}
+
+// ✅ INITIAL: Überkategorien-Chart rendern
+if (kategorieData && kategorieData.length > 0) {
+    const sortedKategorieData = [...kategorieData].sort((a, b) => b.ausgaben - a.ausgaben);
+    renderKategoriePieChart(sortedKategorieData, '🎯 Ausgaben nach Kategorie', 'ueberkategorie');
+    registerClickHandler();
 } else {
     document.getElementById('chart-kategorie').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// 6. Ersparnisse nach Rabatt-Typ (Pie Chart)
+// ========================================
+// 6. ERSPARNISSE NACH RABATT-TYP
+// ========================================
 if (rabatteData && rabatteData.length > 0) {
     const sortedRabatteData = [...rabatteData].sort((a, b) => b.ersparnis - a.ersparnis);
 
@@ -779,41 +1039,47 @@ if (rabatteData && rabatteData.length > 0) {
         values: sortedRabatteData.map(r => parseFloat(r.ersparnis)),
         labels: sortedRabatteData.map(r => r.rabatt_typ || 'Unbekannt'),
         type: 'pie',
-        textinfo: isMobile ? 'percent' : 'label+percent',
+        textinfo: 'percent',  // ✅ Nur Prozent anzeigen
         textposition: 'inside',
         insidetextorientation: 'radial',
-        textfont: { size: isMobile ? 9 : 12 },
+        textfont: { size: isMobile ? 9 : 11 },
         hovertemplate: '<b>%{label}</b><br>€%{value:.2f}<br>%{percent}<extra></extra>',
         marker: {
             line: { color: '#ffffff', width: 1 }
-        }
+        },
+        pull: isMobile ? 0.02 : 0
     };
 
     Plotly.newPlot('chart-rabatte', [rabatteTrace], {
         ...layoutConfig,
-        margin: { t: 10, b: 10, l: 10, r: 10 },
-        showlegend: !isMobile,
-        legend: isMobile ? {} : {
-            orientation: 'v',
-            x: 1.05,
-            y: 0.5,
-            font: { size: 10 }
+        margin: isMobile ? { t: 20, b: 20, l: 20, r: 20 } : { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: true,  // ✅ Legende einschalten
+        legend: {
+            orientation: isMobile ? 'h' : 'v',  // Horizontal auf Mobile, Vertikal auf Desktop
+            yanchor: isMobile ? 'top' : 'middle',
+            y: isMobile ? -0.15 : 0.5,
+            xanchor: isMobile ? 'center' : 'left',
+            x: isMobile ? 0.5 : 1.02,
+            font: { size: isMobile ? 9 : 10 },
+            itemwidth: 30
         },
         paper_bgcolor: '#fff',
         plot_bgcolor: '#fff',
-        height: isMobile ? 300 : 400
+        height: isMobile ? 500 : 500
     });
 } else {
     document.getElementById('chart-rabatte').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
 
-// Responsive resize handling
+// ========================================
+// RESPONSIVE HANDLING
+// ========================================
 window.addEventListener('resize', function() {
     const newIsMobile = window.innerWidth < 768;
     if (newIsMobile !== isMobile) {
-        location.reload(); // Reload bei Device-Wechsel für korrekte Darstellung
+        location.reload();
     }
-    
+
     Plotly.Plots.resize('chart-daily');
     Plotly.Plots.resize('chart-monthly');
     Plotly.Plots.resize('chart-top-products');
