@@ -100,7 +100,7 @@ def billa_produkt_detail(request, produkt_id):
 
 @login_required
 def billa_produkte_liste(request):
-    """Liste aller Produkte - GRUPPIERT nach name_korrigiert"""
+    """Liste aller Produkte - GRUPPIERT nach name_korrigiert mit Pagination"""
 
     # Filter
     ueberkategorie = request.GET.get('ueberkategorie')
@@ -150,6 +150,12 @@ def billa_produkte_liste(request):
         sortierung_map.get(sortierung, '-gesamt_kaeufe')
     )
 
+    # === PAGINATION ===
+    from django.core.paginator import Paginator
+    paginator = Paginator(list(produkte_grouped), 50)  # Convert QuerySet to list
+    page_number = request.GET.get('page', 1)
+    produkte_page = paginator.get_page(page_number)
+
     # Filter-Optionen - ✅ GEÄNDERT
     alle_ueberkategorien = BillaUeberkategorie.objects.all().order_by('name')
     alle_produktgruppen = BillaProduktgruppe.objects.all().order_by('name')
@@ -163,7 +169,8 @@ def billa_produkte_liste(request):
         ]
 
     context = {
-        'produkte': produkte_grouped,
+        'produkte': produkte_page,  # ✅ Page object für Template
+        'page_obj': produkte_page,  # ✅ Für Pagination Template
         'ueberkategorien': alle_ueberkategorien,
         'produktgruppen': alle_produktgruppen,
         'selected_ueberkategorie': ueberkategorie or 'alle',
@@ -171,7 +178,7 @@ def billa_produkte_liste(request):
         'selected_kategorie_display': None,  # Wird im Template aufgelöst
         'suche': suche or '',
         'sortierung': sortierung,
-        'produktgruppen_by_ueberkategorie': json.dumps(produktgruppen_by_ueberkategorie)
+        'produktgruppen_by_ueberkategorie': json.dumps(produktgruppen_by_ueberkategorie)  # ✅ FÜR JAVASCRIPT
     }
 
     return render(request, 'billa/billa_produkte_liste.html', context)

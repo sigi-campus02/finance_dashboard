@@ -314,29 +314,19 @@
 
                 <!-- Statistiken -->
                 <div class="produkt-stats">
-                    <div class="stat-item">
-                        <div class="stat-value">{{ produkt.gesamt_kaeufe }}</div>
-                        <div class="stat-label">Käufe</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">
-                            {% if produkt.letzter_preis %}
-                            € {{ produkt.letzter_preis|floatformat:2 }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </div>
-                        <div class="stat-label">Aktuell</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">
-                            {% if produkt.durchschnittspreis %}
-                            € {{ produkt.durchschnittspreis|floatformat:2 }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </div>
-                        <div class="stat-label">Ø Preis</div>
+                    <div class="d-flex flex-wrap gap-2">
+
+                        <!-- Anzahl Käufe -->
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-cart-check"></i> {{ produkt.gesamt_kaeufe|default:0 }} Käufe
+                        </span>
+
+                        <!-- Durchschnittspreis -->
+                        {% if produkt.durchschnittspreis %}
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-cash"></i> Ø €{{ produkt.durchschnittspreis|floatformat:2 }}
+                        </span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -357,6 +347,79 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Produkte Pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        <!-- Erste Seite -->
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{% if suche %}&suche={{ suche }}{% endif %}{% if selected_ueberkategorie != 'alle' %}&ueberkategorie={{ selected_ueberkategorie }}{% endif %}{% if selected_produktgruppe != 'alle' %}&produktgruppe={{ selected_produktgruppe }}{% endif %}{% if sortierung %}&sort={{ sortierung }}{% endif %}">
+                <i class="bi bi-chevron-double-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if selected_ueberkategorie != 'alle' %}&ueberkategorie={{ selected_ueberkategorie }}{% endif %}{% if selected_produktgruppe != 'alle' %}&produktgruppe={{ selected_produktgruppe }}{% endif %}{% if sortierung %}&sort={{ sortierung }}{% endif %}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+        </li>
+        {% endif %}
+
+        <!-- Seitenzahlen -->
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if selected_ueberkategorie != 'alle' %}&ueberkategorie={{ selected_ueberkategorie }}{% endif %}{% if selected_produktgruppe != 'alle' %}&produktgruppe={{ selected_produktgruppe }}{% endif %}{% if sortierung %}&sort={{ sortierung }}{% endif %}">
+                    {{ num }}
+                </a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Letzte Seite -->
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if selected_ueberkategorie != 'alle' %}&ueberkategorie={{ selected_ueberkategorie }}{% endif %}{% if selected_produktgruppe != 'alle' %}&produktgruppe={{ selected_produktgruppe }}{% endif %}{% if sortierung %}&sort={{ sortierung }}{% endif %}">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if suche %}&suche={{ suche }}{% endif %}{% if selected_ueberkategorie != 'alle' %}&ueberkategorie={{ selected_ueberkategorie }}{% endif %}{% if selected_produktgruppe != 'alle' %}&produktgruppe={{ selected_produktgruppe }}{% endif %}{% if sortierung %}&sort={{ sortierung }}{% endif %}">
+                <i class="bi bi-chevron-double-right"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
+        </li>
+        {% endif %}
+    </ul>
+
+    <!-- Seiteninfo -->
+    <p class="text-center text-muted mt-2">
+        Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+        <span class="text-muted">|</span>
+        Zeige Produkte {{ page_obj.start_index }} bis {{ page_obj.end_index }} von {{ page_obj.paginator.count }}
+    </p>
+</nav>
+{% endif %}
+
+
 {% endblock %}
 
 {% block extra_js %}
