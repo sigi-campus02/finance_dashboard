@@ -247,7 +247,7 @@
             </li>
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}">
                     {{ num }}
                 </a>
             </li>
