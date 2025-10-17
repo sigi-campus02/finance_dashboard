@@ -65,17 +65,3 @@ def billa_einkauf_detail(request, einkauf_id):
     }
 
     return render(request, 'billa/billa_einkauf_detail.html', context)
-
-
-@login_required
-def billa_einkauf_detail(request, einkauf_id):
-    """Detail-Ansicht eines Einkaufs"""
-    einkauf = get_object_or_404(BillaEinkauf, pk=einkauf_id)
-    artikel = einkauf.artikel.select_related('produkt').order_by('position')
-
-    context = {
-        'einkauf': einkauf,
-        'artikel': artikel
-    }
-
-    return render(request, 'billa/billa_einkauf_detail.html', context)

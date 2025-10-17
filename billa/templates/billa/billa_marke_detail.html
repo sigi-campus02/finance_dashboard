@@ -241,8 +241,8 @@
                                 <select name="ueberkategorie" class="form-select" onchange="this.form.submit()">
                                     <option value="alle">Alle Kategorien</option>
                                     {% for kat in ueberkategorien %}
-                                    <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
-                                        {{ kat }}
+                                    <option value="{{ kat.id }}" {% if selected_ueberkategorie|stringformat:"s" == kat.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ kat.name }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -252,8 +252,8 @@
                                 <select name="produktgruppe" class="form-select" onchange="this.form.submit()">
                                     <option value="alle">Alle Gruppen</option>
                                     {% for gruppe in alle_produktgruppen %}
-                                    <option value="{{ gruppe }}" {% if selected_produktgruppe == gruppe %}selected{% endif %}>
-                                        {{ gruppe }}
+                                    <option value="{{ gruppe.id }}" {% if selected_produktgruppe|stringformat:"s" == gruppe.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ gruppe.name }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -313,12 +313,12 @@
                                     </td>
                                     <td>
                                         <span class="badge bg-light text-dark">
-                                            {{ produkt.ueberkategorie|default:"-" }}
+                                            {{ produkt.ueberkategorie.name|default:"-" }}
                                         </span>
                                     </td>
                                     <td>
                                         <span class="badge bg-light text-dark">
-                                            {{ produkt.produktgruppe|default:"-" }}
+                                            {{ produkt.produktgruppe.name|default:"-" }}
                                         </span>
                                     </td>
                                     <td class="text-center">
@@ -419,7 +419,7 @@
                                         <strong>{{ item.produkt.name_korrigiert }}</strong>
                                     </td>
                                     <td>
-                                        <small class="text-muted">{{ item.produkt.produktgruppe|default:"-" }}</small>
+                                        <small class="text-muted">{{ item.produkt.produktgruppe.name|default:"-" }}</small>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-light text-dark">
@@ -485,7 +485,7 @@
                                 <div class="card-body">
                                     <h5 class="card-title">
                                         <i class="{{ gruppe.icon }}"></i>
-                                        {{ gruppe.produktgruppe }}
+                                        {{ gruppe.name }}
                                     </h5>
                                     <p class="card-text">
                                         <small class="text-muted">{{ gruppe.ueberkategorie }}</small>

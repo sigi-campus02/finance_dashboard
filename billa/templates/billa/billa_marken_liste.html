@@ -77,8 +77,8 @@
                                 Alle Kategorien
                             </option>
                             {% for ukat in ueberkategorien %}
-                            <option value="{{ ukat }}" {% if selected_ueberkategorie == ukat %}selected{% endif %}>
-                                {{ ukat }}
+                            <option value="{{ ukat.id }}" {% if selected_ueberkategorie|stringformat:"s" == ukat.id|stringformat:"s" %}selected{% endif %}>
+                                {{ ukat.name }}
                             </option>
                             {% endfor %}
                         </select>
@@ -92,8 +92,8 @@
                                 Alle Produktgruppen
                             </option>
                             {% for pgruppe in produktgruppen %}
-                            <option value="{{ pgruppe }}" {% if selected_produktgruppe == pgruppe %}selected{% endif %}>
-                                {{ pgruppe }}
+                            <option value="{{ pgruppe.id }}" {% if selected_produktgruppe|stringformat:"s" == pgruppe.id|stringformat:"s" %}selected{% endif %}>
+                                {{ pgruppe.name }}
                             </option>
                             {% endfor %}
                         </select>

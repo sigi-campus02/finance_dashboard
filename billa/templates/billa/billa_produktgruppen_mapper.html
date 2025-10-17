@@ -88,8 +88,8 @@
                     <select name="ueberkategorie_filter" class="form-select">
                         <option value="">Alle Überkategorien</option>
                         {% for kat in ueberkategorien %}
-                        <option value="{{ kat }}" {% if ueberkategorie_filter == kat %}selected{% endif %}>
-                            {{ kat }}
+                        <option value="{{ kat.id }}" {% if ueberkategorie_filter|stringformat:"s" == kat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ kat.name }}
                         </option>
                         {% endfor %}
                     </select>
@@ -173,31 +173,31 @@
                                        value="{{ produkt.name_korrigiert|default:'' }}">
                             </td>
                             <td>
-                                <select name="ueberkategorie_{{ produkt.id }}"
-                                        class="form-select form-select-sm ueberkategorie-select"
-                                        data-produkt-id="{{ produkt.id }}">
-                                    <option value="">-- Wählen --</option>
-                                    {% for kat in ueberkategorien %}
-                                    <option value="{{ kat }}"
-                                            {% if produkt.ueberkategorie == kat %}selected{% endif %}>
-                                        {{ kat }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
+                            <select name="ueberkategorie_{{ produkt.id }}"
+                                    class="form-select form-select-sm ueberkategorie-select"
+                                    data-produkt-id="{{ produkt.id }}">
+                                <option value="">-- Wählen --</option>
+                                {% for kat in ueberkategorien %}
+                                <option value="{{ kat.id }}"
+                                        {% if produkt.ueberkategorie.id == kat.id %}selected{% endif %}>
+                                    {{ kat.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                             </td>
                             <td>
-                                <select name="produktgruppe_{{ produkt.id }}"
-                                        class="form-select form-select-sm produktgruppe-select"
-                                        data-produkt-id="{{ produkt.id }}"
-                                        {% if not produkt.ueberkategorie %}disabled{% endif %}>
-                                    <option value="">-- Wählen --</option>
-                                    {% for gruppe in produkt.verfuegbare_gruppen %}
-                                    <option value="{{ gruppe }}"
-                                            {% if produkt.produktgruppe == gruppe %}selected{% endif %}>
-                                        {{ gruppe }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
+                            <select name="produktgruppe_{{ produkt.id }}"
+                                    class="form-select form-select-sm produktgruppe-select"
+                                    data-produkt-id="{{ produkt.id }}"
+                                    {% if not produkt.ueberkategorie %}disabled{% endif %}>
+                                <option value="">-- Wählen --</option>
+                                {% for gruppe in produkt.verfuegbare_gruppen %}
+                                <option value="{{ gruppe.id }}"
+                                        {% if produkt.produktgruppe.id == gruppe.id %}selected{% endif %}>
+                                    {{ gruppe.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                             </td>
                         </tr>
                         {% empty %}
@@ -337,7 +337,7 @@
                         <select class="form-select" id="neuProduktgruppeUeberkat" required>
                             <option value="">-- Bitte wählen --</option>
                             {% for kat in ueberkategorien %}
-                            <option value="{{ kat }}">{{ kat }}</option>
+                            <option value="{{ kat.id }}">{{ kat.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -365,8 +365,11 @@
 </div>
 
 <script>
-// Produktgruppen-Map als JavaScript-Objekt
+// Produktgruppen-Map als JavaScript-Objekt (jetzt mit IDs als Keys!)
 const produktgruppenMap = {{ produktgruppen_json|safe }};
+
+// Debug: Map anzeigen
+console.log('Produktgruppen-Map:', produktgruppenMap);
 
 // CSRF Token für AJAX
 function getCookie(name) {
@@ -394,7 +397,6 @@ document.getElementById('saveUeberkategorieBtn').addEventListener('click', async
     const errorDiv = document.getElementById('ueberkategorieError');
     const successDiv = document.getElementById('ueberkategorieSuccess');
 
-    // Reset messages
     errorDiv.classList.add('d-none');
     successDiv.classList.add('d-none');
 
@@ -423,31 +425,29 @@ document.getElementById('saveUeberkategorieBtn').addEventListener('click', async
             successDiv.textContent = data.message;
             successDiv.classList.remove('d-none');
 
-            // Füge neue Überkategorie zu allen Selects hinzu
-            const option = new Option(name, name);
+            // Füge neue Überkategorie zu allen Selects hinzu (mit ID!)
+            const option = new Option(data.name, data.id);
             document.querySelectorAll('.ueberkategorie-select').forEach(select => {
                 select.add(option.cloneNode(true));
             });
 
-            // Auch zu Produktgruppen-Map hinzufügen
-            produktgruppenMap[name] = [];
+            // Auch zu Produktgruppen-Map hinzufügen (ID als Key!)
+            produktgruppenMap[data.id] = [];
 
             // Füge zu Filter-Select hinzu
             const filterSelect = document.querySelector('select[name="ueberkategorie_filter"]');
             if (filterSelect) {
-                filterSelect.add(new Option(name, name));
+                filterSelect.add(new Option(data.name, data.id));
             }
 
             // Füge zu Modal-Select für Produktgruppen hinzu
             const produktgruppeUeberkatSelect = document.getElementById('neuProduktgruppeUeberkat');
             if (produktgruppeUeberkatSelect) {
-                produktgruppeUeberkatSelect.add(new Option(name, name));
+                produktgruppeUeberkatSelect.add(new Option(data.name, data.id));
             }
 
-            // Form zurücksetzen
             nameInput.value = '';
 
-            // Modal nach 1.5 Sekunden schließen
             setTimeout(() => {
                 bootstrap.Modal.getInstance(document.getElementById('neuUeberkategorieModal')).hide();
                 successDiv.classList.add('d-none');
@@ -469,16 +469,15 @@ document.getElementById('saveUeberkategorieBtn').addEventListener('click', async
 document.getElementById('saveProduktgruppeBtn').addEventListener('click', async function() {
     const ueberkatSelect = document.getElementById('neuProduktgruppeUeberkat');
     const nameInput = document.getElementById('neuProduktgruppeName');
-    const ueberkategorie = ueberkatSelect.value;
+    const ueberkategorieId = ueberkatSelect.value;
     const name = nameInput.value.trim();
     const errorDiv = document.getElementById('produktgruppeError');
     const successDiv = document.getElementById('produktgruppeSuccess');
 
-    // Reset messages
     errorDiv.classList.add('d-none');
     successDiv.classList.add('d-none');
 
-    if (!ueberkategorie) {
+    if (!ueberkategorieId) {
         errorDiv.textContent = 'Bitte eine Überkategorie wählen';
         errorDiv.classList.remove('d-none');
         return;
@@ -500,7 +499,7 @@ document.getElementById('saveProduktgruppeBtn').addEventListener('click', async 
             body: JSON.stringify({
                 typ: 'produktgruppe',
                 name: name,
-                ueberkategorie: ueberkategorie
+                ueberkategorie_id: ueberkategorieId  // ✅ Sendet jetzt ID!
             })
         });
 
@@ -510,30 +509,31 @@ document.getElementById('saveProduktgruppeBtn').addEventListener('click', async 
             successDiv.textContent = data.message;
             successDiv.classList.remove('d-none');
 
-            // Füge neue Produktgruppe zur Map hinzu
-            if (!produktgruppenMap[ueberkategorie]) {
-                produktgruppenMap[ueberkategorie] = [];
+            // Füge neue Produktgruppe zur Map hinzu (mit IDs!)
+            if (!produktgruppenMap[ueberkategorieId]) {
+                produktgruppenMap[ueberkategorieId] = [];
             }
-            produktgruppenMap[ueberkategorie].push(name);
+            produktgruppenMap[ueberkategorieId].push({
+                id: data.id,
+                name: data.name
+            });
 
             // Aktualisiere alle Produktgruppen-Selects die diese Überkategorie haben
             document.querySelectorAll('.ueberkategorie-select').forEach(select => {
-                if (select.value === ueberkategorie) {
+                if (select.value === ueberkategorieId) {
                     const produktId = select.dataset.produktId;
                     const produktgruppeSelect = document.querySelector(
                         `.produktgruppe-select[data-produkt-id="${produktId}"]`
                     );
                     if (produktgruppeSelect) {
-                        produktgruppeSelect.add(new Option(name, name));
+                        produktgruppeSelect.add(new Option(data.name, data.id));
                     }
                 }
             });
 
-            // Form zurücksetzen
             nameInput.value = '';
             ueberkatSelect.value = '';
 
-            // Modal nach 1.5 Sekunden schließen
             setTimeout(() => {
                 bootstrap.Modal.getInstance(document.getElementById('neuProduktgruppeModal')).hide();
                 successDiv.classList.add('d-none');
@@ -560,29 +560,35 @@ const currentProduktgruppe = "{{ produktgruppe_filter }}";
 
 if (ueberkategorieFilter) {
     ueberkategorieFilter.addEventListener('change', function() {
-        const ueberkategorie = this.value;
+        const ueberkategorieId = this.value;
 
         // Produktgruppen-Filter zurücksetzen
         produktgruppeFilter.innerHTML = '<option value="">Alle Produktgruppen</option>';
 
-        if (ueberkategorie && produktgruppenMap[ueberkategorie]) {
-            produktgruppenMap[ueberkategorie].forEach(gruppe => {
+        if (ueberkategorieId && produktgruppenMap[ueberkategorieId]) {
+            produktgruppenMap[ueberkategorieId].forEach(gruppe => {
                 const option = document.createElement('option');
-                option.value = gruppe;
-                option.textContent = gruppe;
+                option.value = gruppe.id;
+                option.textContent = gruppe.name;
                 produktgruppeFilter.appendChild(option);
             });
             produktgruppeFilter.disabled = false;
         } else {
             // Wenn "Alle" gewählt, zeige alle Produktgruppen
-            const alleGruppen = new Set();
+            const alleGruppen = new Map(); // ID -> Name
             Object.values(produktgruppenMap).forEach(gruppen => {
-                gruppen.forEach(gruppe => alleGruppen.add(gruppe));
+                gruppen.forEach(gruppe => {
+                    alleGruppen.set(gruppe.id, gruppe.name);
+                });
             });
-            [...alleGruppen].sort().forEach(gruppe => {
+            // Sortiere nach Name
+            const sortedGruppen = Array.from(alleGruppen.entries()).sort((a, b) =>
+                a[1].localeCompare(b[1])
+            );
+            sortedGruppen.forEach(([id, name]) => {
                 const option = document.createElement('option');
-                option.value = gruppe;
-                option.textContent = gruppe;
+                option.value = id;
+                option.textContent = name;
                 produktgruppeFilter.appendChild(option);
             });
         }
@@ -592,7 +598,6 @@ if (ueberkategorieFilter) {
     const currentUeberkat = ueberkategorieFilter.value;
     if (currentUeberkat) {
         ueberkategorieFilter.dispatchEvent(new Event('change'));
-        // Aktuell gewählte Produktgruppe wieder selektieren
         if (currentProduktgruppe) {
             setTimeout(() => {
                 produktgruppeFilter.value = currentProduktgruppe;
@@ -608,17 +613,17 @@ document.querySelectorAll('.ueberkategorie-select').forEach(select => {
         const produktgruppeSelect = document.querySelector(
             `.produktgruppe-select[data-produkt-id="${produktId}"]`
         );
-        const ueberkategorie = this.value;
+        const ueberkategorieId = this.value;
 
         // Produktgruppe zurücksetzen und neu befüllen
         produktgruppeSelect.innerHTML = '<option value="">-- Wählen --</option>';
 
-        if (ueberkategorie && produktgruppenMap[ueberkategorie]) {
+        if (ueberkategorieId && produktgruppenMap[ueberkategorieId]) {
             produktgruppeSelect.disabled = false;
-            produktgruppenMap[ueberkategorie].forEach(gruppe => {
+            produktgruppenMap[ueberkategorieId].forEach(gruppe => {
                 const option = document.createElement('option');
-                option.value = gruppe;
-                option.textContent = gruppe;
+                option.value = gruppe.id;
+                option.textContent = gruppe.name;
                 produktgruppeSelect.appendChild(option);
             });
         } else {

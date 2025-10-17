@@ -3,25 +3,45 @@ from decimal import Decimal
 from django.db import models
 
 
-# ===== BILLA MODELS =====
-
-class BillaKategorie(models.Model):
+class BillaUeberkategorie(models.Model):
     """
-    Speichert verfügbare Überkategorien und Produktgruppen
-    Unabhängig von tatsächlichen Produkten
+    Überkategorien (z.B. Gemüse, Obst, Milchprodukte, etc.)
     """
-    ueberkategorie = models.CharField(max_length=200)
-    produktgruppe = models.CharField(max_length=200, blank=True, null=True)
+    name = models.CharField(max_length=200, unique=True)
+    icon = models.CharField(max_length=50, blank=True, null=True)  # Optional: Bootstrap Icons
     erstellt_am = models.DateTimeField(auto_now_add=True)
+    geaendert_am = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['ueberkategorie', 'produktgruppe']
-        ordering = ['ueberkategorie', 'produktgruppe']
+        ordering = ['name']
+        verbose_name = 'Überkategorie'
+        verbose_name_plural = 'Überkategorien'
 
     def __str__(self):
-        if self.produktgruppe:
-            return f"{self.ueberkategorie} → {self.produktgruppe}"
-        return self.ueberkategorie
+        return self.name
+
+
+class BillaProduktgruppe(models.Model):
+    """
+    Produktgruppen innerhalb einer Überkategorie (z.B. Paprika, Tomaten unter Gemüse)
+    """
+    name = models.CharField(max_length=200)
+    ueberkategorie = models.ForeignKey(
+        BillaUeberkategorie,
+        on_delete=models.CASCADE,
+        related_name='produktgruppen'
+    )
+    erstellt_am = models.DateTimeField(auto_now_add=True)
+    geaendert_am = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['ueberkategorie__name', 'name']
+        unique_together = ['name', 'ueberkategorie']
+        verbose_name = 'Produktgruppe'
+        verbose_name_plural = 'Produktgruppen'
+
+    def __str__(self):
+        return f"{self.ueberkategorie.name} → {self.name}"
 
 
 class BillaEinkauf(models.Model):
@@ -189,116 +209,38 @@ class BillaArtikel(models.Model):
 
 
 class BillaProdukt(models.Model):
-    """Billa Produkt - Normalisierte Produktdaten"""
+    """Produkte aus Billa-Einkäufen"""
 
-    name_original = models.CharField(
-        max_length=500,
-        verbose_name="Original-Name",
-        help_text="Eine der Original-Varianten dieses Produkts"
-    )
+    name_original = models.CharField(max_length=500)
+    name_normalisiert = models.CharField(max_length=500)
+    name_korrigiert = models.CharField(max_length=500, blank=True, null=True)
+    marke = models.CharField(max_length=200, blank=True, null=True)
 
-    name_normalisiert = models.CharField(
-        max_length=500,
-        db_index=True,
-        unique=True,
-        verbose_name="Normalisierter Name"
-    )
-
-    name_korrigiert = models.CharField(
-        max_length=500,
-        db_index=True,
+    # ✅ NEUE Foreign Keys
+    ueberkategorie = models.ForeignKey(
+        'BillaUeberkategorie',
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Korrigierter Name",
-        help_text="Manuell korrigierter/vereinheitlichter Produktname"
+        related_name='produkte'
+    )
+    produktgruppe = models.ForeignKey(
+        'BillaProduktgruppe',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='produkte'
     )
 
-    # Überkategorie (ersetzt die alte kategorie)
-    ueberkategorie = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        db_index=True,
-        verbose_name='Überkategorie',
-        help_text='Übergeordnete Kategorie wie Gemüse, Obst, Milchprodukte, etc.'
-    )
-
-    # Spezifische Produktgruppe
-    produktgruppe = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        verbose_name='Produktgruppe'
-    )
-
-    marke = models.CharField(
-        max_length=200,
-        null=True,
-        blank=True,
-        verbose_name="Marke"
-    )
-
-    # Statistiken
-    durchschnittspreis = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Durchschnittspreis"
-    )
-    letzter_preis = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Letzter Preis"
-    )
-    anzahl_kaeufe = models.IntegerField(default=0, verbose_name="Anzahl Käufe")
-    letzte_aktualisierung = models.DateTimeField(auto_now=True, verbose_name="Letzte Aktualisierung")
+    anzahl_kaeufe = models.IntegerField(default=0)
+    durchschnittspreis = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    letzter_preis = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
-        app_label = 'billa'
-        db_table = 'billa_produkt'
-        verbose_name = "Billa Produkt"
-        verbose_name_plural = "Billa Produkte"
-        ordering = ['name_normalisiert']
-        indexes = [
-            models.Index(fields=['name_normalisiert']),
-            models.Index(fields=['ueberkategorie']),
-            models.Index(fields=['name_korrigiert']),
-        ]
+        ordering = ['-anzahl_kaeufe']
 
     def __str__(self):
         return self.name_korrigiert or self.name_normalisiert
-
-    @property
-    def display_name(self):
-        """Gibt den korrigierten Namen zurück, falls vorhanden, sonst normalisiert"""
-        return self.name_korrigiert or self.name_normalisiert
-
-
-    def update_statistiken(self):
-        """Aktualisiert die Statistiken für dieses Produkt"""
-        from django.db.models import Avg, Max, Count
-
-        stats = self.artikel.aggregate(
-            avg_preis=Avg('preis_pro_einheit'),
-            letzter_preis=Max('einkauf__datum'),
-            anzahl=Count('id')
-        )
-
-        if stats['avg_preis']:
-            self.durchschnittspreis = stats['avg_preis']
-
-        if stats['letzter_preis']:
-            letzter_artikel = self.artikel.filter(
-                einkauf__datum=stats['letzter_preis']
-            ).first()
-            if letzter_artikel:
-                self.letzter_preis = letzter_artikel.preis_pro_einheit
-
-        self.anzahl_kaeufe = stats['anzahl'] or 0
-        self.save(update_fields=['durchschnittspreis', 'letzter_preis', 'anzahl_kaeufe'])
 
 
 class BillaPreisHistorie(models.Model):

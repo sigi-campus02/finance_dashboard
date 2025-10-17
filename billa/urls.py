@@ -19,11 +19,11 @@ urlpatterns = [
 
     # Überkategorien
     path('ueberkategorien/', views.billa_ueberkategorien_liste, name='billa_ueberkategorien_liste'),
-    path('ueberkategorie/<str:ueberkategorie>/', views.billa_ueberkategorie_detail, name='billa_ueberkategorie_detail'),
+    path('ueberkategorie/<int:ueberkategorie_id>/', views.billa_ueberkategorie_detail, name='billa_ueberkategorie_detail'),  # ✅ GEÄNDERT
 
     # Produktgruppen
     path('produktgruppen/', views.billa_produktgruppen_liste, name='billa_produktgruppen_liste'),
-    path('produktgruppe/<str:produktgruppe>/', views.billa_produktgruppe_detail, name='billa_produktgruppe_detail'),
+    path('produktgruppe/<int:produktgruppe_id>/', views.billa_produktgruppe_detail, name='billa_produktgruppe_detail'),  # ✅ GEÄNDERT
 
     # Mapper & Speichern
     path('produktgruppen/mapper/', views.billa_produktgruppen_mapper, name='billa_produktgruppen_mapper'),
@@ -36,6 +36,5 @@ urlpatterns = [
     # Billa API Endpoints
     path('api/preisverlauf/<int:produkt_id>/', stats.billa_api_preisverlauf, name='billa_api_preisverlauf'),
     path('api/stats/', stats.billa_api_stats, name='api_stats'),
-
     path('api/bulk-update-by-name/', views.bulk_update_by_name, name='bulk_update_by_name'),
 ]

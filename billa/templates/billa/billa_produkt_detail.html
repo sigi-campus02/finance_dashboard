@@ -36,12 +36,12 @@
         <div class="d-flex align-items-center gap-3">
             {% if hauptprodukt.ueberkategorie %}
             <span class="badge bg-secondary px-3 py-2">
-                <i class="bi bi-tag-fill"></i> {{ hauptprodukt.ueberkategorie }}
+                <i class="bi bi-tag-fill"></i> {{ hauptprodukt.ueberkategorie.name }}
             </span>
             {% endif %}
             {% if hauptprodukt.produktgruppe %}
             <span class="badge bg-info px-3 py-2">
-                <i class="bi bi-tag"></i> {{ hauptprodukt.produktgruppe }}
+                <i class="bi bi-tag"></i> {{ hauptprodukt.produktgruppe.name }}
             </span>
             {% endif %}
         </div>

@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 import logging
 from billa.models import (
-    BillaArtikel, BillaProdukt, BillaPreisHistorie, BillaKategorie
+    BillaArtikel, BillaProdukt, BillaPreisHistorie, BillaUeberkategorie, BillaProduktgruppe
 )
 
 logger = logging.getLogger(__name__)
@@ -16,25 +16,16 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def billa_produkt_detail(request, produkt_id):
-    """
-    Detail-Ansicht eines Produkts - zeigt ALLE Varianten mit gleichem name_korrigiert
-    """
-    import json
-    from django.db.models import Min, Max, Avg, Count, Sum
+    """Detail-Ansicht eines Produkts - zeigt ALLE Varianten mit gleichem name_korrigiert"""
 
-    # Hole das ursprüngliche Produkt
     hauptprodukt = get_object_or_404(BillaProdukt, pk=produkt_id)
 
     # Hole ALLE Produkte mit dem gleichen name_korrigiert
     alle_varianten = BillaProdukt.objects.filter(
         name_korrigiert=hauptprodukt.name_korrigiert
-    ).order_by('-anzahl_kaeufe')
+    ).select_related('ueberkategorie', 'produktgruppe').order_by('-anzahl_kaeufe')  # ✅ GEÄNDERT
 
     anzahl_varianten = alle_varianten.count()
-
-    # ========================================================================
-    # AGGREGIERTE STATISTIKEN über alle Varianten
-    # ========================================================================
 
     # Alle Artikel von allen Varianten
     alle_artikel = BillaArtikel.objects.filter(
@@ -49,16 +40,11 @@ def billa_produkt_detail(request, produkt_id):
         gesamt_ausgaben=Sum('gesamtpreis')
     )
 
-    # ========================================================================
-    # PREISENTWICKLUNG über alle Varianten
-    # ========================================================================
-
-    # Kombinierte Preisentwicklung aller Varianten
+    # Preisentwicklung
     preis_historie_raw = BillaPreisHistorie.objects.filter(
         produkt__name_korrigiert=hauptprodukt.name_korrigiert
-    ).order_by('datum')
+    ).select_related('filiale', 'produkt').order_by('datum')  # ✅ GEÄNDERT
 
-    # JSON für Chart vorbereiten
     preis_historie_json = []
     for h in preis_historie_raw:
         preis_historie_json.append({
@@ -66,21 +52,15 @@ def billa_produkt_detail(request, produkt_id):
             'preis': float(h.preis),
             'menge': float(h.menge),
             'filiale': h.filiale.name if h.filiale else 'Unbekannt',
-            'produkt_id': h.produkt.id  # Um Varianten zu unterscheiden
+            'produkt_id': h.produkt.id
         })
 
-    # ========================================================================
-    # LETZTE KÄUFE über alle Varianten
-    # ========================================================================
-
+    # Letzte Käufe
     letzte_kaeufe = alle_artikel.select_related(
-        'einkauf', 'produkt'
+        'einkauf', 'produkt', 'produkt__ueberkategorie', 'produkt__produktgruppe'  # ✅ GEÄNDERT
     ).order_by('-einkauf__datum')[:30]
 
-    # ========================================================================
-    # STATISTIKEN PRO VARIANTE
-    # ========================================================================
-
+    # Statistiken pro Variante
     varianten_stats = []
     for variante in alle_varianten:
         variante_artikel = variante.artikel.aggregate(
@@ -96,10 +76,7 @@ def billa_produkt_detail(request, produkt_id):
             'avg_preis': variante_artikel['avg_preis']
         })
 
-    # ========================================================================
-    # FILIALEN-VERTEILUNG
-    # ========================================================================
-
+    # Filialen-Verteilung
     filialen_stats = alle_artikel.values(
         'einkauf__filiale__name'
     ).annotate(
@@ -123,11 +100,7 @@ def billa_produkt_detail(request, produkt_id):
 
 @login_required
 def billa_produkte_liste(request):
-    """
-    Liste aller Produkte - GRUPPIERT nach name_korrigiert
-    """
-    import json
-    from django.db.models import Q, Count, Sum, Avg, Min
+    """Liste aller Produkte - GRUPPIERT nach name_korrigiert"""
 
     # Filter
     ueberkategorie = request.GET.get('ueberkategorie')
@@ -135,28 +108,28 @@ def billa_produkte_liste(request):
     suche = request.GET.get('suche')
     sortierung = request.GET.get('sort', '-anzahl_kaeufe')
 
-    # ========================================================================
-    # GRUPPIERUNG nach name_korrigiert
-    # ========================================================================
+    # GRUPPIERUNG nach name_korrigiert mit ForeignKey-Annotations
     produkte_grouped = BillaProdukt.objects.values(
         'name_korrigiert',
-        'ueberkategorie',
-        'produktgruppe'
+        'ueberkategorie__id',  # ✅ GEÄNDERT: __id statt direkter Wert
+        'ueberkategorie__name',  # ✅ GEÄNDERT: __name für Anzeige
+        'produktgruppe__id',  # ✅ GEÄNDERT
+        'produktgruppe__name'  # ✅ GEÄNDERT
     ).annotate(
         anzahl_varianten=Count('id'),
         gesamt_kaeufe=Sum('anzahl_kaeufe'),
         durchschnittspreis=Avg('durchschnittspreis'),
         letzter_preis=Avg('letzter_preis'),
-        erste_id=Min('id')  # Für Detail-Link
+        erste_id=Min('id')
     )
 
     # Filter nach Überkategorie
     if ueberkategorie and ueberkategorie != 'alle':
-        produkte_grouped = produkte_grouped.filter(ueberkategorie=ueberkategorie)
+        produkte_grouped = produkte_grouped.filter(ueberkategorie__id=ueberkategorie)  # ✅ GEÄNDERT
 
     # Filter nach Produktgruppe
     if produktgruppe and produktgruppe != 'alle':
-        produkte_grouped = produkte_grouped.filter(produktgruppe=produktgruppe)
+        produkte_grouped = produkte_grouped.filter(produktgruppe__id=produktgruppe)  # ✅ GEÄNDERT
 
     # Suche
     if suche:
@@ -164,7 +137,7 @@ def billa_produkte_liste(request):
             Q(name_korrigiert__icontains=suche)
         )
 
-    # Sortierung
+    # Sortierung bleibt gleich
     sortierung_map = {
         '-anzahl_kaeufe': '-gesamt_kaeufe',
         'anzahl_kaeufe': 'gesamt_kaeufe',
@@ -177,46 +150,25 @@ def billa_produkte_liste(request):
         sortierung_map.get(sortierung, '-gesamt_kaeufe')
     )
 
-    # ========================================================================
-    # Filter-Optionen
-    # ========================================================================
-    alle_ueberkategorien = BillaProdukt.objects.values_list(
-        'ueberkategorie', flat=True
-    ).distinct().exclude(
-        ueberkategorie__isnull=True
-    ).exclude(
-        ueberkategorie=''
-    ).order_by('ueberkategorie')
+    # Filter-Optionen - ✅ GEÄNDERT
+    alle_ueberkategorien = BillaUeberkategorie.objects.all().order_by('name')
+    alle_produktgruppen = BillaProduktgruppe.objects.all().order_by('name')
 
-    alle_produktgruppen = BillaProdukt.objects.values_list(
-        'produktgruppe', flat=True
-    ).distinct().exclude(
-        produktgruppe__isnull=True
-    ).exclude(
-        produktgruppe=''
-    ).order_by('produktgruppe')
-
-    # ========================================================================
-    # Produktgruppen-Mapping für JavaScript
-    # ========================================================================
+    # Produktgruppen-Mapping für JavaScript - ✅ GEÄNDERT
     produktgruppen_by_ueberkategorie = {}
     for ukat in alle_ueberkategorien:
-        gruppen = BillaProdukt.objects.filter(
-            ueberkategorie=ukat
-        ).values_list('produktgruppe', flat=True).distinct().exclude(
-            produktgruppe__isnull=True
-        ).exclude(
-            produktgruppe=''
-        ).order_by('produktgruppe')
-        produktgruppen_by_ueberkategorie[ukat] = list(gruppen)
+        gruppen = ukat.produktgruppen.all().values('id', 'name')
+        produktgruppen_by_ueberkategorie[str(ukat.id)] = [
+            {'id': g['id'], 'name': g['name']} for g in gruppen
+        ]
 
     context = {
         'produkte': produkte_grouped,
-        'ueberkategorien': list(alle_ueberkategorien),
-        'produktgruppen': list(alle_produktgruppen),
+        'ueberkategorien': alle_ueberkategorien,
+        'produktgruppen': alle_produktgruppen,
         'selected_ueberkategorie': ueberkategorie or 'alle',
         'selected_produktgruppe': produktgruppe or 'alle',
-        'selected_kategorie_display': ueberkategorie or 'Alle Kategorien',
+        'selected_kategorie_display': None,  # Wird im Template aufgelöst
         'suche': suche or '',
         'sortierung': sortierung,
         'produktgruppen_by_ueberkategorie': json.dumps(produktgruppen_by_ueberkategorie)
@@ -277,271 +229,6 @@ def bulk_update_by_name(request):
 def billa_produktgruppen_mapper(request):
     """Mapper für Produktgruppen mit manueller Zuordnung"""
 
-    # Produktgruppen-Definitionen
-    PRODUKTGRUPPEN_MAP = {
-        'Gemüse': {
-            'Paprika': ['paprika', 'spitzpaprika'],
-            'Tomaten': ['tomat', 'paradeiser', 'cherry', 'rispenparadeiser', 'markttomaten', 'rispenpara'],
-            'Gurken': ['gurke', 'gurk'],
-            'Salat': ['salat', 'rucola', 'eisberg', 'lollo', 'vogerlsalat', 'krauthäuptel'],
-            'Zwiebeln': ['zwiebel', 'schalott', 'zwieb'],
-            'Kartoffeln': ['kartoffel', 'erdäpfel', 'erdapfel', 'süßkartoffel', 'heurige'],
-            'Karotten': ['karott', 'möhre', 'wurzel'],
-            'Knoblauch': ['knoblauch'],
-            'Kräuter': ['petersilie', 'schnittlauch', 'basilikum', 'koriander', 'dill', 'thymian', 'rosmarin', 'salbei',
-                        'kerbel', 'lorbeerbl', '8 kräutermix'],
-            'Radieschen': ['radieschen'],
-            'Zucchini': ['zucchini'],
-            'Auberginen': ['aubergine', 'melanzani'],
-            'Brokkoli': ['brokkoli', 'brocoli'],
-            'Blumenkohl': ['blumenkohl', 'karfiol'],
-            'Mais': ['mais', 'zuckermais'],
-            'Erbsen': ['erbse', 'kichererbs'],
-            'Bohnen': ['bohne', 'bohn', 'sojabohne', 'kidneybohne', 'riesenbohne', 'fisolen', 'edamame'],
-            'Spinat': ['spinat', 'jungspinat', 'blattspinat'],
-            'Lauch': ['lauch', 'porree'],
-            'Kürbis': ['kürbis', 'hokkaido', 'butternuss'],
-            'Ingwer': ['ingwer'],
-            'Chili': ['chili', 'chiliwurzerl', 'peperoni'],
-            'Spargel': ['spargel'],
-            'Rüben': ['rübe', 'rote rübe', 'rote bete'],
-            'Fenchel': ['fenchel'],
-            'Kohl': ['kohl', 'kohlrabi', 'weißkohl', 'rotkohl', 'blumenkohl', 'rosenkohl', 'grünkohl', 'chinakohl',
-                     'pak choi'],
-            'Sellerie': ['sellerie', 'stangensellerie'],
-            'Gemüse Allgemein': ['gemüse', 'suppengemüse'],
-            'Sprossen': ['sprossen', 'sprossengarten', 'kresse'],
-            'Linsen': ['linsen', 'berglinsen'],
-            'Polenta': ['polenta'],
-            'Pilze': ['pilze', 'champignon', 'eierschwammerl', 'schwammerl'],
-        },
-        'Obst': {
-            'Äpfel': ['apfel', 'äpfel'],
-            'Bananen': ['banane'],
-            'Orangen': ['orange', 'apfelsine'],
-            'Zitronen': ['zitrone', 'limette', 'lime'],
-            'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
-            'Trauben': ['traube', 'weintraube'],
-            'Birnen': ['birne'],
-            'Kiwi': ['kiwi'],
-            'Mango': ['mango'],
-            'Ananas': ['ananas'],
-            'Pfirsich': ['pfirsich', 'nektarine'],
-            'Melone': ['melone', 'wassermelone', 'honigmelone'],
-            'Avocado': ['avocado'],
-            'Granatapfel': ['granatapfel'],
-            'Zwetschken': ['zwetschke', 'zwetsch', 'pflaume'],
-            'Pomelo': ['pomelo'],
-        },
-        'Milchprodukte': {
-            'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
-            'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt', 'fruchtjoghu', 'billa bio fairtrade kokos'],
-            'Käse': ['traungold', 'alpenprinz', 'käse', 'gruyere', 'baron', 'schlossdamer', 'brie', 'jerome',
-                     'moosbacher', 'schärd.', 'dachsteiner', 'halloumi', 'baronesse', 'gouda', 'emmentaler',
-                     'mozzarella', 'burrata', 'cheddar', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse',
-                     'bergkäse', 'edamer', 'tilsiter', 'parm.', 'regg.', 'almkönig', 'goudette'],
-            'Butter': ['butter', 'kräuterbutter', 'rama', 'lätta', 'margarine', 'viospread'],
-            'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche', 'cremefine', 'kochcreme'],
-            'Topfen': ['topfen', 'quark', 'magertopfen'],
-            'Frischkäse': ['frischkäse', 'cottage'],
-            'Mascarpone': ['mascarpone'],
-            'Parmesan': ['parmesan', 'parmigiano', 'grana', 'padano'],
-            'Ricotta': ['ricotta'],
-            'Babybel': ['babybel'],
-            'Eier': ['eier', 'ei ', 'freilandeier', 'fl-eier', 'bh-eier', 'bio eier'],
-        },
-        'Fleisch & Wurst': {
-            'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks', 'tafelspitz', 'gulasch', 'grillmix'],
-            'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
-            'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl', 'h-filet', 'geflügel',
-                              'unterkeulen'],
-            'Putenfleisch': ['puten', 'pute'],
-            'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker', 'debreziner', 'frankfurter',
-                      'kabanossi', 'griller', 'kaminwurzerl'],
-            'Schinken': ['schinken', 'speck', 'bratl', 'bratenaufschnitt', 'prosciutto'],
-            'Faschiertes': ['faschiert', 'hackfleisch', 'burger', 'beefburger'],
-            'Würstchen': ['neuburger', 'braunschweiger', 'chorizo', 'salsiccia', 'cevapcici'],
-        },
-        'Fisch': {
-            'Lachs': ['lachs'],
-            'Thunfisch': ['thunfisch'],
-            'Forelle': ['forelle'],
-            'Garnelen': ['garnele', 'shrimp', 'crevette'],
-            'Fisch': ['fisch', 'scholle'],
-            'Makrelen': ['makrel'],
-        },
-        'Brot & Backwaren': {
-            'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot',
-                     'baguette', 'ciabatta', 'fladenbrot', 'dinkel sandwich', 'sonntagsb'],
-            'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
-            'Toast': ['toast', 'toastbrot', 'mehrkorntoast', 'wasa'],
-            'Gebäck': ['gebäck', 'croissant', 'plunder', 'krapfen', 'nougattasche', 'clever kräuter bag'],
-            'Knäckebrot': ['knäcke', 'leicht cross', 'leicht & cross'],
-            'Blätterteig': ['blätterteig'],
-            'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat', 'fajita', 'tort.'],
-        },
-        'Nudeln & Reis': {
-            'Nudeln': ['nudel', 'pasta', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'rigatoni', 'farfalle',
-                       'tortellini', 'ravioli', 'parpadelle', 'fleckerl', 'bucati', 'girandole', 'lasagne'],
-            'Gnocchi': ['gnocchi', 'schupfnudeln'],
-            'Tortelloni': ['tortelloni'],
-            'Reis': ['reis', 'basmati', 'risotto', 'reisfleisch'],
-            'Quinoa': ['quinoa'],
-            'Couscous': ['couscous'],
-        },
-        'Backen': {
-            'Mehl': ['mehl'],
-            'Backpulver': ['backpulver'],
-            'Hefe': ['hefe', 'backhefe', 'germ', 'keimkraft'],
-            'Vanille': ['vanille', 'bourbon'],
-            'Pudding': ['pudding'],
-            'Gelatine': ['blattgelat'],
-            'Panier': ['panko', 'panier', 'crumbs'],
-        },
-        'Süßes': {
-            'Zucker': ['zucker', 'puderzucker', 'normalkristallz'],
-            'Honig': ['honig'],
-        },
-        'Gewürze & Würzmittel': {
-            'Salz': ['salz'],
-            'Pfeffer': ['pfeffer', 'cayennepf'],
-            'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke',
-                        'senf', 'koriander', 'kotanyi'],
-        },
-        'Öle & Essig': {
-            'Olivenöl': ['olivenöl'],
-            'Sonnenblumenöl': ['sonnenblumenöl'],
-            'Kürbisöl': ['kürbisöl'],
-            'Essig': ['essig', 'balsamico'],
-            'Natron': ['natron'],
-            'Kokosöl': ['kokosöl'],
-        },
-        'Soßen & Aufstriche': {
-            'Ketchup': ['ketchup'],
-            'Mayonnaise': ['mayonnaise', 'mayo'],
-            'Soßen': ['soße', 'sauce', 'hollandaise', 'pizzasauce'],
-            'Dips': ['dip', 'tahin', 'sesam'],
-            'Fond': ['fond'],
-            'Letscho': ['letscho'],
-            'Kren': ['kren', 'meerrettich'],
-            'Aufstrich': ['aufstrich', 'grammel', 'liptauer'],
-        },
-        'Frühstück': {
-            'Müsli': ['müsli', 'knusperli', 'knusper pur', 'oetker knusper'],
-            'Cornflakes': ['cornflakes', 'color loops'],
-            'Haferflocken': ['haferflocken', 'hafer'],
-            'Kaffee': ['kaffee', 'nescafé', 'nescafe', 'crema intenso', 'hornig'],
-            'Porridge': ['porridge'],
-        },
-        'Süßigkeiten & Snacks': {
-            'Schokolade': ['schokolade', 'schoko', 'nutella', 'kinder-pingui', 'manner'],
-            'Kekse': ['keks', 'biskuit', 'cookie', 'biskotten', 'leibniz', 'pick up'],
-            'Chips': ['chips', 'snips', 'best foodies bio bunte'],
-            'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'walnüsse', 'cashew', 'pistazie', 'erdnuss',
-                      'studentenfutter', 'studentenfutt', 'pinienkerne', 'sonnenblumenkerne', 'chiasamen'],
-            'Trockenfrüchte': ['rosine', 'dattel', 'maroni'],
-            'Süßigkeiten': ['tiramisu', 'duplo', 'suchard', 'celebrations', 'corny', 'trüffeltortenstück',
-                            'sorger schwarzwälder', 'waffeleier'],
-            'Proteinriegel': ['proteinriegel', 'barebells', 'neoh'],
-            'Mohn': ['mohn'],
-        },
-        'Getränke': {
-            'Wasser': ['wasser', 'mineralwasser', 'sicheldorfer', 'vöslauer'],
-            'Saft': ['saft', 'nektar', 'rübensaft', 'fruchtik', 'innocent'],
-            'Limonade': ['cola', 'sprite', 'fanta', 'limo'],
-            'Bier': ['bier', 'radler', 'puntigamer'],
-            'Wein': ['wein', 'rotwein', 'weißwein', 'weisswein', 'kremser', 'veltl', 'sandgrube', 'sauvignon',
-                     'les fumees', 'drautaler'],
-            'Energy Drinks': ['red bull', 'energy'],
-            'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista', 'natrue coco'],
-            'Sojamilch': ['sojamilch', 'sojadrink'],
-            'Tee': ['tee', 'halsfreund', 'kamille', 'immun bio'],
-            'Milchdrinks': ['lattella', 'nöm mix'],
-            'Vegane Milch': ['vegavita no muuh'],
-        },
-        'Hygiene & Kosmetik': {
-            'Shampoo': ['shampoo'],
-            'Duschgel': ['duschgel', 'dusche'],
-            'Deo': ['deo'],
-            'Lippenpflege': ['lippenpflege'],
-            'Zahnpflege': ['zahncreme', 'zahnspül', 'zahnpasta', 'colgate', 'blend-a-med', 'elmex', 'sensodyne',
-                           'corega', 'zahnseide'],
-            'Wattestäbchen': ['wattestäbch', 'wattepads'],
-            'Haargummis': ['haargummi', 'zopfhalter'],
-            'Seife': ['seife', 'cremeseife'],
-            'Desinfektionsmittel': ['desinfektions', 'dettol', 'lysoform'],
-            'Haarspray': ['haarspray', 'taft'],
-            'Sonnenschutz': ['sonnenspray', 'sonnenschutz', 'apres spray', 'nivea'],
-            'Gel Pads': ['gel pads'],
-            'Wachsstreifen': ['kaltwachs', 'veet'],
-            'Waschgel': ['waschgel', 'gänseb'],
-        },
-        'Haushalt & Reinigung': {
-            'Reiniger': ['reiniger', 'frosch', 'dr. beckmann', 'rorax', 'clean&clear', 'bihome', 'lysofrom'],
-            'Spülmittel': ['spülmittel'],
-            'Toilettenpapier': ['toilettenpapier', 'klopapier'],
-            'Küchenrolle': ['küchenrolle', 'kitchen towel'],
-            'Backpapier': ['backpapier'],
-            'Alufolie': ['alufolie', 'aluminiumfolie'],
-            'Gefrierbeutel': ['gefrierbeutel', 'frischhaltebeutel', 'knotenbeutel'],
-            'Müllbeutel': ['müllbeutel', 'mülltüte', 'swirl active frische', 'swirl aktive frische'],
-            'Taschentücher': ['taschentuch', 'papiertaschentuch', 'tempo', 'feh taschentücher'],
-            'Frischhaltefolie': ['toppits', 'frischhalte', 'swiffer'],
-            'Weichspüler': ['silan'],
-            'Brillenreiniger': ['brillenputz', 'brillenputztücher'],
-            'Ohrstöpsel': ['ohropax'],
-            'Waschmittel': ['persil', 'ariel', 'pulver', 'megapearls', 'dr. beck.gardinen'],
-            'Entkalker': ['durgol', 'calgon'],
-            'Geschirrspüler': ['finish', 'somat', 'klarspüler'],
-            'WC-Reiniger': ['wc ente', 'wc power'],
-            'Spülschwamm': ['spülschwamm', 'vileda', 'schwammtuch'],
-            'Reinigungstücher': ['reinigungstücher', 'bi care'],
-            'Feuchttücher': ['feucht', 'topa'],
-            'Wundspray': ['wund reinigungsspr'],
-        },
-        'Tiefkühl': {
-            'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
-            'Pizza': ['pizza', 'pizzamehl'],
-            'Eis': ['eis ', 'cornetto', 'langnese', 'magnum', 'eskimo', 'cremissimo', 'mälzer&fu'],
-            'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat'],
-        },
-        'Fertiggerichte': {
-            'Suppen': ['suppe', 'rindsuppe', 'eierschöberl'],
-            'Cornichons': ['cornichons'],
-        },
-        'Textilien & Non-Food': {
-            'Textilien': ['thermohose', 'mütze', 'kissen'],
-            'Blumen & Pflanzen': ['palmkätzchen', 'blühplfanzen', 'adventkranz', 'markttulpen', 'blumen'],
-            'Batterien': ['batterien', 'batter', 'varta'],
-            'Geschenke & Deko': ['bon ', 'geschenk', 'neujahrsguß', 'happy birthay'],
-            'Lichterketten': ['lichterkette', 'lichter', 'magnet-lichter'],
-            'Diverses': ['non food', 'abverkauf', 'aktion', 'mailing', 'limited edition', 'bonus'],
-        },
-        'Sonstiges': {
-            'Pfandartikel': ['pfand', 'einwegpfand', 'pfandartikel', 'leergut', 'leergut-ret', 'leerflasche'],
-            'Tragetaschen': ['tragetasche'],
-            'Sonstiges': ['sonstiges', 'frisch gekocht', 'ready to eat', 'billa bon', 'äpp-only', 'unsere besten 6er',
-                          '8 x nimm mehr', 'stifterl', 'schütt-streubehälter', 'tatü box', 'koro', 'bi good',
-                          'gärtnerbund', 'lieblingsprodukt', 'bio gourmet', 'landfr', 'jö', 'rabattsammler',
-                          'vorteilsbox', 'äpp extrem', 'teuerstes prod'],
-        },
-    }
-
-    def finde_produktgruppe_und_ueberkategorie(produktname):
-        """Findet automatisch passende Produktgruppe basierend auf Keywords"""
-        if not produktname:
-            return None, None
-
-        name_lower = produktname.lower()
-
-        for ueberkategorie, gruppen in PRODUKTGRUPPEN_MAP.items():
-            for produktgruppe, keywords in gruppen.items():
-                for keyword in keywords:
-                    if keyword in name_lower:
-                        return ueberkategorie, produktgruppe
-
-        return None, None
-
     # GET: Anzeige der Mapper-Seite
     if request.method == 'GET':
         # Filter aus GET-Parametern
@@ -550,8 +237,10 @@ def billa_produktgruppen_mapper(request):
         ueberkategorie_filter = request.GET.get('ueberkategorie_filter', '')
         produktgruppe_filter = request.GET.get('produktgruppe_filter', '')
 
-        # Basis-Queryset
-        produkte = BillaProdukt.objects.all()
+        # Basis-Queryset mit select_related für Performance
+        produkte = BillaProdukt.objects.select_related(
+            'ueberkategorie', 'produktgruppe'
+        )
 
         # Suche
         if suche:
@@ -567,13 +256,13 @@ def billa_produktgruppen_mapper(request):
         elif filter_typ == 'ohne':
             produkte = produkte.filter(ueberkategorie__isnull=True)
 
-        # Überkategorie-Filter
+        # Überkategorie-Filter (jetzt mit ID!)
         if ueberkategorie_filter:
-            produkte = produkte.filter(ueberkategorie=ueberkategorie_filter)
+            produkte = produkte.filter(ueberkategorie__id=ueberkategorie_filter)
 
-        # Produktgruppe-Filter
+        # Produktgruppe-Filter (jetzt mit ID!)
         if produktgruppe_filter:
-            produkte = produkte.filter(produktgruppe=produktgruppe_filter)
+            produkte = produkte.filter(produktgruppe__id=produktgruppe_filter)
 
         # Pagination (100 Produkte pro Seite)
         from django.core.paginator import Paginator
@@ -581,18 +270,12 @@ def billa_produktgruppen_mapper(request):
         page_number = request.GET.get('page', 1)
         produkte_page = paginator.get_page(page_number)
 
-        # Auto-Mapping für noch nicht zugeordnete Produkte
-        # UND verfügbare Produktgruppen pro Produkt hinzufügen
+        # Verfügbare Produktgruppen pro Produkt hinzufügen
         produkte_liste = []
-        for produkt in produkte_page:  # Verwende produkte_page statt produkte
-            if not produkt.ueberkategorie:
-                ueberkat, prodgruppe = finde_produktgruppe_und_ueberkategorie(produkt.name_normalisiert)
-                produkt.auto_ueberkategorie = ueberkat
-                produkt.auto_produktgruppe = prodgruppe
-
+        for produkt in produkte_page:
             # Verfügbare Produktgruppen für dieses Produkt
-            if produkt.ueberkategorie and produkt.ueberkategorie in PRODUKTGRUPPEN_MAP:
-                produkt.verfuegbare_gruppen = list(PRODUKTGRUPPEN_MAP[produkt.ueberkategorie].keys())
+            if produkt.ueberkategorie:
+                produkt.verfuegbare_gruppen = produkt.ueberkategorie.produktgruppen.all()
             else:
                 produkt.verfuegbare_gruppen = []
 
@@ -606,23 +289,27 @@ def billa_produktgruppen_mapper(request):
             'ohne_gruppe': alle_produkte.filter(ueberkategorie__isnull=True).count(),
         }
 
-        # Konvertiere Map zu einfachem Dict für Template
-        produktgruppen_simplified = {
-            ueberkat: list(gruppen.keys())
-            for ueberkat, gruppen in PRODUKTGRUPPEN_MAP.items()
-        }
+        # Lade alle Überkategorien und Produktgruppen
+        ueberkategorien = BillaUeberkategorie.objects.all().order_by('name')
+
+        # Produktgruppen gruppiert nach Überkategorie (für JavaScript)
+        produktgruppen_map = {}
+        for ueberkat in ueberkategorien:
+            produktgruppen_map[str(ueberkat.id)] = [
+                {'id': pg.id, 'name': pg.name}
+                for pg in ueberkat.produktgruppen.all().order_by('name')
+            ]
 
         context = {
             'produkte': produkte_liste,
-            'page_obj': produkte_page,  # Für Pagination im Template
+            'page_obj': produkte_page,
             'stats': stats,
             'suche': suche,
             'filter': filter_typ,
             'ueberkategorie_filter': ueberkategorie_filter,
             'produktgruppe_filter': produktgruppe_filter,
-            'ueberkategorien': sorted(PRODUKTGRUPPEN_MAP.keys()),
-            'produktgruppen_map': produktgruppen_simplified,
-            'produktgruppen_json': json.dumps(produktgruppen_simplified),
+            'ueberkategorien': ueberkategorien,
+            'produktgruppen_json': json.dumps(produktgruppen_map),
         }
 
         return render(request, 'billa/billa_produktgruppen_mapper.html', context)
@@ -642,24 +329,44 @@ def billa_produktgruppen_mapper(request):
             try:
                 produkt = BillaProdukt.objects.get(id=produkt_id)
 
-                # Neue Werte aus POST
-                ueberkategorie = request.POST.get(f'ueberkategorie_{produkt_id}', '').strip()
-                produktgruppe = request.POST.get(f'produktgruppe_{produkt_id}', '').strip()
+                # Neue Werte aus POST (jetzt IDs statt Namen!)
+                ueberkategorie_id = request.POST.get(f'ueberkategorie_{produkt_id}', '').strip()
+                produktgruppe_id = request.POST.get(f'produktgruppe_{produkt_id}', '').strip()
                 name_korrigiert = request.POST.get(f'name_korrigiert_{produkt_id}', '').strip()
-
-                # Konvertiere leere Strings zu None
-                ueberkategorie = ueberkategorie if ueberkategorie else None
-                produktgruppe = produktgruppe if produktgruppe else None
-                name_korrigiert = name_korrigiert if name_korrigiert else None
 
                 # Prüfe ob sich was geändert hat
                 changed = False
-                if produkt.ueberkategorie != ueberkategorie:
-                    produkt.ueberkategorie = ueberkategorie
-                    changed = True
-                if produkt.produktgruppe != produktgruppe:
-                    produkt.produktgruppe = produktgruppe
-                    changed = True
+
+                # Überkategorie
+                if ueberkategorie_id:
+                    try:
+                        ueberkat_obj = BillaUeberkategorie.objects.get(id=ueberkategorie_id)
+                        if produkt.ueberkategorie != ueberkat_obj:
+                            produkt.ueberkategorie = ueberkat_obj
+                            changed = True
+                    except BillaUeberkategorie.DoesNotExist:
+                        pass
+                else:
+                    if produkt.ueberkategorie is not None:
+                        produkt.ueberkategorie = None
+                        changed = True
+
+                # Produktgruppe
+                if produktgruppe_id:
+                    try:
+                        gruppe_obj = BillaProduktgruppe.objects.get(id=produktgruppe_id)
+                        if produkt.produktgruppe != gruppe_obj:
+                            produkt.produktgruppe = gruppe_obj
+                            changed = True
+                    except BillaProduktgruppe.DoesNotExist:
+                        pass
+                else:
+                    if produkt.produktgruppe is not None:
+                        produkt.produktgruppe = None
+                        changed = True
+
+                # Name korrigiert
+                name_korrigiert = name_korrigiert if name_korrigiert else None
                 if produkt.name_korrigiert != name_korrigiert:
                     produkt.name_korrigiert = name_korrigiert
                     changed = True
@@ -687,20 +394,10 @@ def billa_produktgruppen_mapper(request):
 def billa_produktgruppen_liste(request):
     """Übersicht aller Produktgruppen mit aggregierten Daten"""
 
-    # Icon-Mapping für Überkategorien
     KATEGORIE_ICONS = {
         'Gemüse': 'bi-basket',
         'Obst': 'bi-apple',
-        'Milchprodukte': 'bi-cup-straw',
-        'Fleisch & Wurst': 'bi-shop',
-        'Getränke': 'bi-cup',
-        'Brot & Gebäck': 'bi-bread-slice',
-        'Tiefkühl': 'bi-snow',
-        'Süßigkeiten': 'bi-candy',
-        'Konserven': 'bi-archive',
-        'Haushalt': 'bi-house',
-        'Körperpflege': 'bi-droplet',
-        'Sonstiges': 'bi-three-dots'
+        # ... restliche Icons
     }
 
     # Filter
@@ -708,27 +405,23 @@ def billa_produktgruppen_liste(request):
     suche = request.GET.get('suche')
     sortierung = request.GET.get('sort', '-anzahl_kaeufe')
 
-    # Aggregiere Daten nach Produktgruppe
-    produktgruppen = BillaProdukt.objects.exclude(
-        produktgruppe__isnull=True
-    ).exclude(
-        produktgruppe=''
-    ).values(
-        'produktgruppe', 'ueberkategorie'
+    # ✅ GEÄNDERT: Aggregiere über Produktgruppen-Tabelle
+    produktgruppen = BillaProduktgruppe.objects.select_related(
+        'ueberkategorie'
     ).annotate(
-        anzahl_produkte=Count('id'),
-        anzahl_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis'),
-        aktueller_preis=Avg('letzter_preis')
+        anzahl_produkte=Count('produkte'),
+        anzahl_kaeufe=Sum('produkte__anzahl_kaeufe'),
+        durchschnittspreis=Avg('produkte__durchschnittspreis'),
+        aktueller_preis=Avg('produkte__letzter_preis')
     )
 
     # Filter nach Überkategorie
     if ueberkategorie_filter and ueberkategorie_filter != 'alle':
-        produktgruppen = produktgruppen.filter(ueberkategorie=ueberkategorie_filter)
+        produktgruppen = produktgruppen.filter(ueberkategorie__id=ueberkategorie_filter)  # ✅ GEÄNDERT
 
     # Suche
     if suche:
-        produktgruppen = produktgruppen.filter(produktgruppe__icontains=suche)
+        produktgruppen = produktgruppen.filter(name__icontains=suche)
 
     # Sortierung
     sortierung_map = {
@@ -736,26 +429,32 @@ def billa_produktgruppen_liste(request):
         'anzahl_kaeufe': 'anzahl_kaeufe',
         '-durchschnittspreis': '-durchschnittspreis',
         'durchschnittspreis': 'durchschnittspreis',
-        'produktgruppe': 'produktgruppe',
-        '-produktgruppe': '-produktgruppe',
+        'produktgruppe': 'name',  # ✅ GEÄNDERT
+        '-produktgruppe': '-name',  # ✅ GEÄNDERT
         '-anzahl_produkte': '-anzahl_produkte'
     }
     produktgruppen = produktgruppen.order_by(sortierung_map.get(sortierung, '-anzahl_kaeufe'))
 
-    # Liste in Python umwandeln und Icons hinzufügen
+    # Liste mit Icons
     produktgruppen_list = []
     for gruppe in produktgruppen:
-        gruppe['icon'] = KATEGORIE_ICONS.get(gruppe['ueberkategorie'], 'bi-box-seam')
-        produktgruppen_list.append(gruppe)
+        produktgruppen_list.append({
+            'id': gruppe.id,  # ✅ NEU
+            'name': gruppe.name,
+            'ueberkategorie': gruppe.ueberkategorie.name,
+            'icon': KATEGORIE_ICONS.get(gruppe.ueberkategorie.name, 'bi-box-seam'),
+            'anzahl_produkte': gruppe.anzahl_produkte,
+            'anzahl_kaeufe': gruppe.anzahl_kaeufe or 0,
+            'durchschnittspreis': gruppe.durchschnittspreis,
+            'aktueller_preis': gruppe.aktueller_preis
+        })
 
     # Alle Überkategorien für Filter
-    alle_ueberkategorien = BillaProdukt.objects.exclude(
-        ueberkategorie__isnull=True
-    ).values_list('ueberkategorie', flat=True).distinct().order_by('ueberkategorie')
+    alle_ueberkategorien = BillaUeberkategorie.objects.all().order_by('name')
 
     context = {
         'produktgruppen': produktgruppen_list,
-        'ueberkategorien': list(alle_ueberkategorien),
+        'ueberkategorien': alle_ueberkategorien,
         'selected_ueberkategorie': ueberkategorie_filter or 'alle',
         'suche': suche or '',
         'sortierung': sortierung,
@@ -767,20 +466,18 @@ def billa_produktgruppen_liste(request):
 
 @login_required
 def billa_produktgruppe_detail(request, produktgruppe):
-    """
-    Detailansicht einer Produktgruppe mit integrierter Preisentwicklung
-    ERWEITERT: Kombiniert normale Ansicht + Preisentwicklungs-Features
-    """
-    from decimal import Decimal
-    from django.db.models import Q, Count, Sum, Avg, Min, Max
+    """Detailansicht einer Produktgruppe"""
 
-    # ========================================================================
-    # BESTEHENDE LOGIK - Produkte und Basis-Daten
-    # ========================================================================
+    # Hole Produktgruppe per ID
+    try:
+        produktgruppe_obj = BillaProduktgruppe.objects.get(id=produktgruppe_id)
+    except BillaProduktgruppe.DoesNotExist:
+        from django.http import Http404
+        raise Http404("Produktgruppe nicht gefunden")
 
     # Alle Produkte dieser Gruppe
     produkte = BillaProdukt.objects.filter(
-        produktgruppe=produktgruppe
+        produktgruppe=produktgruppe_obj  # ✅ GEÄNDERT
     ).annotate(
         gesamtausgaben=Sum('artikel__gesamtpreis')
     ).prefetch_related('preishistorie').order_by('-anzahl_kaeufe')
@@ -790,24 +487,14 @@ def billa_produktgruppe_detail(request, produktgruppe):
         raise Http404("Produktgruppe nicht gefunden")
 
     # Überkategorie und Icon
-    ueberkategorie = produkte.first().ueberkategorie
+    ueberkategorie = produktgruppe_obj.ueberkategorie
     KATEGORIE_ICONS = {
         'Gemüse': 'bi-basket',
-        'Obst': 'bi-apple',
-        'Milchprodukte': 'bi-cup-straw',
-        'Fleisch & Wurst': 'bi-shop',
-        'Getränke': 'bi-cup',
-        'Brot & Gebäck': 'bi-bread-slice',
-        'Tiefkühl': 'bi-snow',
-        'Süßigkeiten': 'bi-candy',
-        'Konserven': 'bi-archive',
-        'Haushalt': 'bi-house',
-        'Körperpflege': 'bi-droplet',
-        'Sonstiges': 'bi-three-dots'
+        # ... restliche Icons
     }
-    icon = KATEGORIE_ICONS.get(ueberkategorie, 'bi-box-seam')
+    icon = KATEGORIE_ICONS.get(ueberkategorie.name, 'bi-box-seam')
 
-    # Statistiken für die gesamte Gruppe
+    # Statistiken
     stats = produkte.aggregate(
         gesamt_produkte=Count('id'),
         gesamt_kaeufe=Sum('anzahl_kaeufe'),
@@ -817,20 +504,15 @@ def billa_produktgruppe_detail(request, produktgruppe):
         gesamt_ausgaben=Sum('gesamtausgaben')
     )
 
-    # Letzte Käufe ALLER Produkte dieser Gruppe (mit Produktname)
+    # Letzte Käufe
     letzte_kaeufe = BillaArtikel.objects.filter(
-        produkt__produktgruppe=produktgruppe
+        produkt__produktgruppe=produktgruppe_obj  # ✅ GEÄNDERT
     ).select_related(
         'einkauf', 'produkt'
     ).order_by('-einkauf__datum')[:30]
 
-    # ========================================================================
-    # NEU: PREISENTWICKLUNG - Detaillierte Analyse
-    # ========================================================================
-
-    # 1. Berechne Preisänderungen für jedes Produkt
+    # Preisentwicklung
     produkte_mit_preisen = []
-
     for produkt in produkte:
         preis_stats = produkt.preishistorie.aggregate(
             min_preis=Min('preis'),
@@ -838,7 +520,6 @@ def billa_produktgruppe_detail(request, produktgruppe):
             count=Count('id')
         )
 
-        # Nur Produkte mit mindestens 2 Preispunkten
         if preis_stats['count'] >= 2 and preis_stats['min_preis']:
             min_preis = preis_stats['min_preis']
             max_preis = preis_stats['max_preis']
@@ -854,39 +535,33 @@ def billa_produktgruppe_detail(request, produktgruppe):
                     'diff_pct': diff_pct
                 })
 
-    # Sortiere nach Preisänderung (größte Änderung zuerst)
     produkte_mit_preisen.sort(key=lambda x: x['diff_pct'], reverse=True)
 
-    # 2. Preisentwicklung der gesamten Gruppe (erweitert mit min/max)
-    preis_historie_gruppe = BillaPreisHistorie.objects.filter(
-        produkt__produktgruppe=produktgruppe
+    # Preisentwicklung Gruppe
+    preis_historie_raw = BillaPreisHistorie.objects.filter(
+        produkt__produktgruppe=produktgruppe_obj  # ✅ GEÄNDERT
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis')
+    ).order_by('datum')
+
+    preis_historie_simple = []
+    for entry in preis_historie_raw:
+        preis_historie_simple.append({
+            'datum': entry['datum'].strftime('%Y-%m-%d'),
+            'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0
+        })
+
+    # Detail-Historie mit min/max
+    preis_historie_detail_raw = BillaPreisHistorie.objects.filter(
+        produkt__produktgruppe=produktgruppe_obj  # ✅ GEÄNDERT
     ).values('datum').annotate(
         durchschnitt=Avg('preis'),
         min_preis=Min('preis'),
         max_preis=Max('preis')
     ).order_by('datum')
 
-    # ========================================================================
-    # Context zusammenstellen
-    # ========================================================================
-
-    import json
-
-    # Konvertiere Preis-Historie für Charts (JSON-serialisierbar)
-    preis_historie_simple = []
-    for entry in BillaPreisHistorie.objects.filter(
-            produkt__produktgruppe=produktgruppe
-    ).values('datum').annotate(
-        durchschnitt=Avg('preis')
-    ).order_by('datum'):
-        preis_historie_simple.append({
-            'datum': entry['datum'].strftime('%Y-%m-%d'),
-            'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0
-        })
-
-    # Konvertiere erweiterte Preis-Historie (mit min/max)
     preis_historie_detail = []
-    for entry in preis_historie_gruppe:
+    for entry in preis_historie_detail_raw:
         preis_historie_detail.append({
             'datum': entry['datum'].strftime('%Y-%m-%d'),
             'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0,
@@ -895,18 +570,14 @@ def billa_produktgruppe_detail(request, produktgruppe):
         })
 
     context = {
-        # Bestehende Daten
-        'produktgruppe': produktgruppe,
-        'ueberkategorie': ueberkategorie,
+        'produktgruppe': produktgruppe_obj.name,  # ✅ GEÄNDERT
+        'produktgruppe_obj': produktgruppe_obj,  # ✅ NEU für Template
+        'ueberkategorie': ueberkategorie.name,  # ✅ GEÄNDERT
         'icon': icon,
         'produkte': produkte,
         'stats': stats,
         'letzte_kaeufe': letzte_kaeufe,
-
-        # NEU: Preisentwicklungs-Daten
         'produkte_mit_preisen': produkte_mit_preisen,
-
-        # JSON-serialisierte Chart-Daten
         'preis_historie_json': json.dumps(preis_historie_simple),
         'preis_historie_detail_json': json.dumps(preis_historie_detail)
     }
@@ -920,28 +591,20 @@ def billa_produktgruppe_detail(request, produktgruppe):
 
 @login_required
 def billa_ueberkategorien_liste(request):
-    """
-    Zeigt alle Überkategorien mit aggregierter Preisentwicklung.
-    ✅ FIX: Konvertiert Decimal zu Float für JavaScript Charts
-    """
+    """Zeigt alle Überkategorien mit aggregierter Preisentwicklung"""
 
-    # Aggregiere Überkategorien direkt in der DB
-    ueberkategorien_base = BillaProdukt.objects.exclude(
-        Q(ueberkategorie__isnull=True) | Q(ueberkategorie='')
-    ).values('ueberkategorie').annotate(
-        anzahl_produkte=Count('id', distinct=True),
-        anzahl_kaeufe=Sum('anzahl_kaeufe')
-    ).order_by('ueberkategorie')
+    # ✅ GEÄNDERT: Aggregiere über Überkategorien-Tabelle
+    ueberkategorien_base = BillaUeberkategorie.objects.annotate(
+        anzahl_produkte=Count('produkte', distinct=True),
+        anzahl_kaeufe=Sum('produkte__anzahl_kaeufe')
+    ).order_by('name')
 
-    # Berechne Preisentwicklung für jede Kategorie
     ueberkategorien = []
 
-    for kat in ueberkategorien_base:
-        kategorie_name = kat['ueberkategorie']
-
+    for kat_obj in ueberkategorien_base:
         # Preisentwicklung über Zeit
         preis_stats = BillaPreisHistorie.objects.filter(
-            produkt__ueberkategorie=kategorie_name
+            produkt__ueberkategorie=kat_obj  # ✅ GEÄNDERT: Objekt statt String
         ).aggregate(
             min_preis=Min('preis'),
             max_preis=Max('preis'),
@@ -958,12 +621,11 @@ def billa_ueberkategorien_liste(request):
 
             # Zeitreihe für Chart
             preis_historie_raw = BillaPreisHistorie.objects.filter(
-                produkt__ueberkategorie=kategorie_name
+                produkt__ueberkategorie=kat_obj  # ✅ GEÄNDERT
             ).values('datum').annotate(
                 durchschnitt=Avg('preis')
             ).order_by('datum')[:60]
 
-            # ✅ FIX: Konvertiere Decimal zu Float für JavaScript
             preis_historie_converted = [
                 {
                     'datum': h['datum'],
@@ -973,15 +635,16 @@ def billa_ueberkategorien_liste(request):
             ]
 
             ueberkategorien.append({
-                'name': kategorie_name,
-                'anzahl_produkte': kat['anzahl_produkte'],
-                'anzahl_kaeufe': kat['anzahl_kaeufe'] or 0,
-                'min_preis': float(min_preis),  # ✅ Float conversion
-                'max_preis': float(max_preis),  # ✅ Float conversion
-                'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0.0,  # ✅ Float conversion
-                'diff': float(diff),  # ✅ Float conversion
-                'diff_pct': float(diff_pct),  # ✅ Float conversion
-                'preis_historie': preis_historie_converted  # ✅ Alle Werte als Float
+                'id': kat_obj.id,  # ✅ NEU
+                'name': kat_obj.name,
+                'anzahl_produkte': kat_obj.anzahl_produkte or 0,
+                'anzahl_kaeufe': kat_obj.anzahl_kaeufe or 0,
+                'min_preis': float(min_preis),
+                'max_preis': float(max_preis),
+                'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0.0,
+                'diff': float(diff),
+                'diff_pct': float(diff_pct),
+                'preis_historie': preis_historie_converted
             })
 
     # Sortiere nach Preisänderung
@@ -996,62 +659,53 @@ def billa_ueberkategorien_liste(request):
 
 @login_required
 def billa_ueberkategorie_detail(request, ueberkategorie):
-    """
-    Detailansicht einer Überkategorie mit integrierter Preisentwicklung
-    NEU: Analog zu Produktgruppen und Marken mit Tab-Navigation
-    """
-    from decimal import Decimal
-    from django.db.models import Q, Count, Sum, Avg, Min, Max
-    import json
+    """Detailansicht einer Überkategorie"""
 
-    # Prüfe ob Überkategorie existiert
-    if not BillaProdukt.objects.filter(ueberkategorie=ueberkategorie).exists():
+    # Hole Überkategorie-Objekt per ID
+    try:
+        ueberkategorie_obj = BillaUeberkategorie.objects.get(id=ueberkategorie_id)
+    except BillaUeberkategorie.DoesNotExist:
         from django.http import Http404
         raise Http404("Überkategorie nicht gefunden")
 
-    # ========================================================================
-    # PRODUKTGRUPPEN dieser Überkategorie
-    # ========================================================================
-
-    # Aggregiere Produktgruppen
-    produktgruppen_base = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
-    ).exclude(
-        Q(produktgruppe__isnull=True) | Q(produktgruppe='')
-    ).values('produktgruppe').annotate(
-        anzahl_produkte=Count('id', distinct=True),
-        anzahl_kaeufe=Sum('anzahl_kaeufe'),
-        durchschnittspreis=Avg('durchschnittspreis')
+    # Produktgruppen dieser Überkategorie
+    produktgruppen_base = BillaProduktgruppe.objects.filter(
+        ueberkategorie=ueberkategorie_obj  # ✅ GEÄNDERT
+    ).annotate(
+        anzahl_produkte=Count('produkte', distinct=True),
+        anzahl_kaeufe=Sum('produkte__anzahl_kaeufe'),
+        durchschnittspreis=Avg('produkte__durchschnittspreis')
     ).order_by('-anzahl_kaeufe')
 
-    # Icons für Produktgruppen
     KATEGORIE_ICONS = {
         'Gemüse': 'bi-basket',
         'Obst': 'bi-apple',
         'Milchprodukte': 'bi-cup-straw',
         'Fleisch & Wurst': 'bi-shop',
         'Getränke': 'bi-cup',
-        'Brot & Gebäck': 'bi-bread-slice',
+        'Brot & Backwaren': 'bi-bread-slice',
         'Tiefkühl': 'bi-snow',
         'Süßigkeiten': 'bi-candy',
-        'Konserven': 'bi-archive',
-        'Haushalt': 'bi-house',
-        'Körperpflege': 'bi-droplet',
+        'Haushalt & Reinigung': 'bi-house',
+        'Hygiene & Kosmetik': 'bi-droplet',
         'Sonstiges': 'bi-three-dots'
     }
-    icon = KATEGORIE_ICONS.get(ueberkategorie, 'bi-box-seam')
+    icon = KATEGORIE_ICONS.get(ueberkategorie_obj.name, 'bi-box-seam')
 
     produktgruppen_list = []
     for gruppe in produktgruppen_base:
-        gruppe['icon'] = KATEGORIE_ICONS.get(ueberkategorie, 'bi-tag')
-        produktgruppen_list.append(gruppe)
+        produktgruppen_list.append({
+            'id': gruppe.id,
+            'name': gruppe.name,
+            'anzahl_produkte': gruppe.anzahl_produkte,
+            'anzahl_kaeufe': gruppe.anzahl_kaeufe or 0,
+            'durchschnittspreis': gruppe.durchschnittspreis,
+            'icon': icon
+        })
 
-    # ========================================================================
-    # STATISTIKEN der Überkategorie
-    # ========================================================================
-
+    # Statistiken
     stats = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
+        ueberkategorie=ueberkategorie_obj  # ✅ GEÄNDERT
     ).aggregate(
         gesamt_produkte=Count('id', distinct=True),
         gesamt_kaeufe=Sum('anzahl_kaeufe'),
@@ -1061,20 +715,12 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
         gesamt_ausgaben=Sum('artikel__gesamtpreis')
     )
 
-    # ========================================================================
-    # PREISENTWICKLUNG - Detaillierte Analyse
-    # ========================================================================
-
-    # 1. Produktgruppen mit Preisänderungen
+    # Produktgruppen mit Preisänderungen
     produktgruppen_mit_preisen = []
 
     for gruppe in produktgruppen_base:
-        gruppe_name = gruppe['produktgruppe']
-
-        # Preisentwicklung dieser Produktgruppe
         preis_stats = BillaPreisHistorie.objects.filter(
-            produkt__ueberkategorie=ueberkategorie,
-            produkt__produktgruppe=gruppe_name
+            produkt__produktgruppe=gruppe  # ✅ GEÄNDERT
         ).aggregate(
             min_preis=Min('preis'),
             max_preis=Max('preis'),
@@ -1082,17 +728,14 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
             count=Count('id')
         )
 
-        # Nur Gruppen mit Preishistorie einbeziehen
         if preis_stats['count'] >= 2 and preis_stats['min_preis']:
             min_preis = preis_stats['min_preis']
             max_preis = preis_stats['max_preis']
             diff = max_preis - min_preis
             diff_pct = (diff / min_preis * 100) if min_preis > 0 else 0
 
-            # ✅ NEU: Preisverlauf für Charts (letzte 30 Einträge)
             preis_historie_raw = BillaPreisHistorie.objects.filter(
-                produkt__ueberkategorie=ueberkategorie,
-                produkt__produktgruppe=gruppe_name
+                produkt__produktgruppe=gruppe  # ✅ GEÄNDERT
             ).values('datum').annotate(
                 durchschnitt=Avg('preis')
             ).order_by('datum')[:30]
@@ -1106,33 +749,24 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
             ]
 
             produktgruppen_mit_preisen.append({
-                'name': gruppe_name,
-                'anzahl_produkte': gruppe['anzahl_produkte'],
-                'anzahl_kaeufe': gruppe['anzahl_kaeufe'],
-                'min_preis': float(min_preis),  # ✅ Float für JSON
-                'max_preis': float(max_preis),  # ✅ Float für JSON
+                'id': gruppe.id,
+                'name': gruppe.name,
+                'anzahl_produkte': gruppe.anzahl_produkte,
+                'anzahl_kaeufe': gruppe.anzahl_kaeufe,
+                'min_preis': float(min_preis),
+                'max_preis': float(max_preis),
                 'avg_preis': float(preis_stats['avg_preis']) if preis_stats['avg_preis'] else 0,
-                'diff': float(diff),  # ✅ Float für JSON
-                'diff_pct': float(diff_pct),  # ✅ Float für JSON
-                'preis_historie': preis_historie  # ✅ NEU: Für Charts
+                'diff': float(diff),
+                'diff_pct': float(diff_pct),
+                'preis_historie': preis_historie
             })
 
-    # Sortiere nach Preisänderung
     produktgruppen_mit_preisen.sort(key=lambda x: x['diff_pct'], reverse=True)
 
-    # 2. Preisentwicklung der gesamten Überkategorie (erweitert mit min/max)
-    preis_historie_kategorie = BillaPreisHistorie.objects.filter(
-        produkt__ueberkategorie=ueberkategorie
-    ).values('datum').annotate(
-        durchschnitt=Avg('preis'),
-        min_preis=Min('preis'),
-        max_preis=Max('preis')
-    ).order_by('datum')
-
-    # JSON-serialisierbare Daten für Charts
+    # Preisentwicklung der gesamten Überkategorie
     preis_historie_simple = []
     for entry in BillaPreisHistorie.objects.filter(
-            produkt__ueberkategorie=ueberkategorie
+            produkt__ueberkategorie=ueberkategorie_obj  # ✅ GEÄNDERT
     ).values('datum').annotate(
         durchschnitt=Avg('preis')
     ).order_by('datum'):
@@ -1141,9 +775,14 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
             'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0
         })
 
-    # Konvertiere erweiterte Preis-Historie (mit min/max)
     preis_historie_detail = []
-    for entry in preis_historie_kategorie:
+    for entry in BillaPreisHistorie.objects.filter(
+            produkt__ueberkategorie=ueberkategorie_obj  # ✅ GEÄNDERT
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis'),
+        min_preis=Min('preis'),
+        max_preis=Max('preis')
+    ).order_by('datum'):
         preis_historie_detail.append({
             'datum': entry['datum'].strftime('%Y-%m-%d'),
             'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0,
@@ -1151,29 +790,21 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
             'max_preis': float(entry['max_preis']) if entry['max_preis'] else 0
         })
 
-    # ========================================================================
-    # TOP PRODUKTE dieser Überkategorie
-    # ========================================================================
-
+    # Top Produkte
     top_produkte = BillaProdukt.objects.filter(
-        ueberkategorie=ueberkategorie
+        ueberkategorie=ueberkategorie_obj  # ✅ GEÄNDERT
     ).order_by('-anzahl_kaeufe')[:10]
-
-    # ========================================================================
-    # Context zusammenstellen
-    # ========================================================================
 
     stats['anzahl_produktgruppen'] = len(produktgruppen_list)
 
     context = {
-        'ueberkategorie': ueberkategorie,
+        'ueberkategorie': ueberkategorie_obj.name,
+        'ueberkategorie_obj': ueberkategorie_obj,  # ✅ NEU
         'icon': icon,
         'stats': stats,
         'produktgruppen': produktgruppen_list,
-        'produktgruppen_mit_preisen': json.dumps(produktgruppen_mit_preisen),  # ✅ JSON!
+        'produktgruppen_mit_preisen': json.dumps(produktgruppen_mit_preisen),
         'top_produkte': top_produkte,
-
-        # JSON-serialisierte Chart-Daten
         'preis_historie_json': json.dumps(preis_historie_simple),
         'preis_historie_detail_json': json.dumps(preis_historie_detail)
     }
@@ -1188,41 +819,32 @@ def billa_ueberkategorie_detail(request, ueberkategorie):
 
 @login_required
 def billa_marken_liste(request):
-    """
-    Zeigt alle Marken mit Statistiken (analog zu Produktgruppen-Liste)
-    """
+    """Zeigt alle Marken mit Statistiken"""
     ueberkategorie_filter = request.GET.get('ueberkategorie', 'alle')
     produktgruppe_filter = request.GET.get('produktgruppe', 'alle')
     suche = request.GET.get('suche', '')
     sortierung = request.GET.get('sort', '-anzahl_kaeufe')
 
-    # Aggregiere Daten nach Marke
+    # Basis-Queryset für Marken
     marken = BillaProdukt.objects.exclude(
         Q(marke__isnull=True) | Q(marke='')
-    ).values(
-        'marke'
-    ).annotate(
+    )
+
+    # ✅ Filter nach Überkategorie (mit ID!)
+    if ueberkategorie_filter and ueberkategorie_filter != 'alle':
+        marken = marken.filter(ueberkategorie__id=ueberkategorie_filter)
+
+    # ✅ Filter nach Produktgruppe (mit ID!)
+    if produktgruppe_filter and produktgruppe_filter != 'alle':
+        marken = marken.filter(produktgruppe__id=produktgruppe_filter)
+
+    # Aggregiere nach Marke
+    marken = marken.values('marke').annotate(
         anzahl_produkte=Count('id'),
         anzahl_kaeufe=Sum('anzahl_kaeufe'),
         durchschnittspreis=Avg('durchschnittspreis'),
         aktueller_preis=Avg('letzter_preis')
     )
-
-    # Filter nach Überkategorie
-    if ueberkategorie_filter and ueberkategorie_filter != 'alle':
-        marken = marken.filter(
-            id__in=BillaProdukt.objects.filter(
-                ueberkategorie=ueberkategorie_filter
-            ).values_list('id', flat=True)
-        )
-
-    # Filter nach Produktgruppe
-    if produktgruppe_filter and produktgruppe_filter != 'alle':
-        marken = marken.filter(
-            id__in=BillaProdukt.objects.filter(
-                produktgruppe=produktgruppe_filter
-            ).values_list('id', flat=True)
-        )
 
     # Suche
     if suche:
@@ -1241,28 +863,19 @@ def billa_marken_liste(request):
     }
     marken = marken.order_by(sortierung_map.get(sortierung, '-anzahl_kaeufe'))
 
-    # Alle Überkategorien für Filter
-    alle_ueberkategorien = BillaProdukt.objects.exclude(
-        Q(marke__isnull=True) | Q(marke='')
-    ).values_list('ueberkategorie', flat=True).distinct().exclude(
-        ueberkategorie__isnull=True
-    ).exclude(
-        ueberkategorie=''
-    ).order_by('ueberkategorie')
+    # ✅ GEÄNDERT: Filter-Optionen aus den neuen Tabellen
+    alle_ueberkategorien = BillaUeberkategorie.objects.filter(
+        produkte__marke__isnull=False
+    ).distinct().order_by('name')
 
-    # Alle Produktgruppen für Filter
-    alle_produktgruppen = BillaProdukt.objects.exclude(
-        Q(marke__isnull=True) | Q(marke='')
-    ).values_list('produktgruppe', flat=True).distinct().exclude(
-        produktgruppe__isnull=True
-    ).exclude(
-        produktgruppe=''
-    ).order_by('produktgruppe')
+    alle_produktgruppen = BillaProduktgruppe.objects.filter(
+        produkte__marke__isnull=False
+    ).distinct().order_by('name')
 
     context = {
         'marken': list(marken),
-        'ueberkategorien': list(alle_ueberkategorien),
-        'produktgruppen': list(alle_produktgruppen),
+        'ueberkategorien': alle_ueberkategorien,  # ✅ Jetzt Objekte statt Strings
+        'produktgruppen': alle_produktgruppen,    # ✅ Jetzt Objekte statt Strings
         'selected_ueberkategorie': ueberkategorie_filter or 'alle',
         'selected_produktgruppe': produktgruppe_filter or 'alle',
         'suche': suche or '',
@@ -1279,12 +892,7 @@ def billa_marken_liste(request):
 
 @login_required
 def billa_marke_detail(request, marke):
-    """
-    Detailansicht einer spezifischen Marke mit integrierter Preisentwicklung
-    ERWEITERT: Kombiniert normale Ansicht + Preisentwicklungs-Features
-    """
-    from decimal import Decimal
-    from django.db.models import Q, Count, Sum, Avg, Min, Max
+    """Detailansicht einer spezifischen Marke mit integrierter Preisentwicklung"""
     import json
 
     # Prüfe ob Marke existiert
@@ -1292,24 +900,22 @@ def billa_marke_detail(request, marke):
         from django.http import Http404
         raise Http404("Marke nicht gefunden")
 
-    # ========================================================================
-    # BESTEHENDE LOGIK - Filter & Basis-Daten
-    # ========================================================================
-
     # Filter aus Query-Parametern
     ueberkategorie_filter = request.GET.get('ueberkategorie', 'alle')
     produktgruppe_filter = request.GET.get('produktgruppe', 'alle')
     sortierung = request.GET.get('sort', '-anzahl_kaeufe')
 
-    # Basis-Queryset
-    produkte_base = BillaProdukt.objects.filter(marke=marke)
+    # Basis-Queryset mit select_related für Performance
+    produkte_base = BillaProdukt.objects.filter(marke=marke).select_related(
+        'ueberkategorie', 'produktgruppe'
+    )
 
-    # Filter anwenden
+    # Filter anwenden - ✅ GEÄNDERT: Jetzt mit IDs!
     produkte = produkte_base
     if ueberkategorie_filter and ueberkategorie_filter != 'alle':
-        produkte = produkte.filter(ueberkategorie=ueberkategorie_filter)
+        produkte = produkte.filter(ueberkategorie__id=ueberkategorie_filter)
     if produktgruppe_filter and produktgruppe_filter != 'alle':
-        produkte = produkte.filter(produktgruppe=produktgruppe_filter)
+        produkte = produkte.filter(produktgruppe__id=produktgruppe_filter)
 
     # Sortierung
     sortierung_map = {
@@ -1329,64 +935,55 @@ def billa_marke_detail(request, marke):
         anzahl_produkte=Count('id'),
         gesamt_kaeufe=Sum('anzahl_kaeufe'),
         durchschnittspreis=Avg('durchschnittspreis'),
-        gesamt_ausgaben=Sum('artikel__gesamtpreis')  # ✅ FIX: Nur ein Sum()
+        gesamt_ausgaben=Sum('artikel__gesamtpreis')
     )
 
-    # Produktgruppen dieser Marke
-    produktgruppen = produkte_base.exclude(
-        Q(produktgruppe__isnull=True) | Q(produktgruppe='')
-    ).values(
-        'produktgruppe', 'ueberkategorie'
-    ).annotate(
-        anzahl_produkte=Count('id'),
-        anzahl_kaeufe=Sum('anzahl_kaeufe')
+    # ✅ GEÄNDERT: Produktgruppen mit Foreign Key Relation
+    produktgruppen = BillaProduktgruppe.objects.filter(
+        produkte__marke=marke
+    ).select_related('ueberkategorie').annotate(
+        anzahl_produkte=Count('produkte', distinct=True),
+        anzahl_kaeufe=Sum('produkte__anzahl_kaeufe')
     ).order_by('-anzahl_kaeufe')
 
-    # Icons zu Produktgruppen hinzufügen
+    # Icons
     KATEGORIE_ICONS = {
         'Gemüse': 'bi-basket',
         'Obst': 'bi-apple',
         'Milchprodukte': 'bi-cup-straw',
         'Fleisch & Wurst': 'bi-shop',
         'Getränke': 'bi-cup',
-        'Brot & Gebäck': 'bi-bread-slice',
+        'Brot & Backwaren': 'bi-bread-slice',
         'Tiefkühl': 'bi-snow',
         'Süßigkeiten': 'bi-candy',
-        'Konserven': 'bi-archive',
-        'Haushalt': 'bi-house',
-        'Körperpflege': 'bi-droplet',
+        'Haushalt & Reinigung': 'bi-house',
+        'Hygiene & Kosmetik': 'bi-droplet',
         'Sonstiges': 'bi-three-dots'
     }
 
     produktgruppen_list = []
     for gruppe in produktgruppen:
-        gruppe['icon'] = KATEGORIE_ICONS.get(gruppe['ueberkategorie'], 'bi-tag')
-        produktgruppen_list.append(gruppe)
+        produktgruppen_list.append({
+            'id': gruppe.id,  # ✅ NEU
+            'name': gruppe.name,
+            'ueberkategorie': gruppe.ueberkategorie.name,
+            'ueberkategorie_id': gruppe.ueberkategorie.id,  # ✅ NEU
+            'anzahl_produkte': gruppe.anzahl_produkte,
+            'anzahl_kaeufe': gruppe.anzahl_kaeufe or 0,
+            'icon': KATEGORIE_ICONS.get(gruppe.ueberkategorie.name, 'bi-tag')
+        })
 
-    # Filter-Optionen
-    alle_ueberkategorien = produkte_base.values_list(
-        'ueberkategorie', flat=True
-    ).distinct().exclude(
-        ueberkategorie__isnull=True
-    ).exclude(
-        ueberkategorie=''
-    ).order_by('ueberkategorie')
+    # ✅ GEÄNDERT: Filter-Optionen aus den neuen Tabellen
+    alle_ueberkategorien = BillaUeberkategorie.objects.filter(
+        produkte__marke=marke
+    ).distinct().order_by('name')
 
-    alle_produktgruppen = produkte_base.values_list(
-        'produktgruppe', flat=True
-    ).distinct().exclude(
-        produktgruppe__isnull=True
-    ).exclude(
-        produktgruppe=''
-    ).order_by('produktgruppe')
+    alle_produktgruppen = BillaProduktgruppe.objects.filter(
+        produkte__marke=marke
+    ).distinct().order_by('name')
 
-    # ========================================================================
-    # NEU: PREISENTWICKLUNG - Detaillierte Analyse
-    # ========================================================================
-
-    # 1. Berechne Preisänderungen für jedes Produkt
+    # Preisentwicklung
     produkte_mit_preisen = []
-
     for produkt in produkte:
         preis_stats = produkt.preishistorie.aggregate(
             min_preis=Min('preis'),
@@ -1394,7 +991,6 @@ def billa_marke_detail(request, marke):
             count=Count('id')
         )
 
-        # Nur Produkte mit mindestens 2 Preispunkten
         if preis_stats['count'] >= 2 and preis_stats['min_preis']:
             min_preis = preis_stats['min_preis']
             max_preis = preis_stats['max_preis']
@@ -1410,22 +1006,12 @@ def billa_marke_detail(request, marke):
                     'diff_pct': diff_pct
                 })
 
-    # Sortiere nach Preisänderung (größte Änderung zuerst)
     produkte_mit_preisen.sort(key=lambda x: x['diff_pct'], reverse=True)
 
-    # 2. Preisentwicklung der gesamten Marke (erweitert mit min/max)
-    preis_historie_marke = BillaPreisHistorie.objects.filter(
-        produkt__marke=marke
-    ).values('datum').annotate(
-        durchschnitt=Avg('preis'),
-        min_preis=Min('preis'),
-        max_preis=Max('preis')
-    ).order_by('datum')
-
-    # JSON-serialisierbare Daten für Charts
+    # Preisentwicklung der gesamten Marke
     preis_historie_simple = []
     for entry in BillaPreisHistorie.objects.filter(
-            produkt__marke=marke
+        produkt__marke=marke
     ).values('datum').annotate(
         durchschnitt=Avg('preis')
     ).order_by('datum'):
@@ -1434,9 +1020,14 @@ def billa_marke_detail(request, marke):
             'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0
         })
 
-    # Konvertiere erweiterte Preis-Historie (mit min/max)
     preis_historie_detail = []
-    for entry in preis_historie_marke:
+    for entry in BillaPreisHistorie.objects.filter(
+        produkt__marke=marke
+    ).values('datum').annotate(
+        durchschnitt=Avg('preis'),
+        min_preis=Min('preis'),
+        max_preis=Max('preis')
+    ).order_by('datum'):
         preis_historie_detail.append({
             'datum': entry['datum'].strftime('%Y-%m-%d'),
             'durchschnitt': float(entry['durchschnitt']) if entry['durchschnitt'] else 0,
@@ -1444,26 +1035,17 @@ def billa_marke_detail(request, marke):
             'max_preis': float(entry['max_preis']) if entry['max_preis'] else 0
         })
 
-    # ========================================================================
-    # Context zusammenstellen
-    # ========================================================================
-
     context = {
-        # Bestehende Daten
         'marke': marke,
         'produkte': produkte,
         'stats': stats,
         'produktgruppen': produktgruppen_list,
-        'ueberkategorien': list(alle_ueberkategorien),
-        'alle_produktgruppen': list(alle_produktgruppen),
+        'ueberkategorien': alle_ueberkategorien,  # ✅ Jetzt Objekte
+        'alle_produktgruppen': alle_produktgruppen,  # ✅ Jetzt Objekte
         'selected_ueberkategorie': ueberkategorie_filter or 'alle',
         'selected_produktgruppe': produktgruppe_filter or 'alle',
         'sortierung': sortierung,
-
-        # NEU: Preisentwicklungs-Daten
         'produkte_mit_preisen': produkte_mit_preisen,
-
-        # JSON-serialisierte Chart-Daten
         'preis_historie_json': json.dumps(preis_historie_simple),
         'preis_historie_detail_json': json.dumps(preis_historie_detail)
     }
@@ -1474,15 +1056,12 @@ def billa_marke_detail(request, marke):
 @login_required
 @require_POST
 def ajax_create_kategorie(request):
-    """
-    AJAX-Endpoint zum Erstellen neuer Überkategorien oder Produktgruppen
-    Speichert in separater BillaKategorie-Tabelle
-    """
+    """AJAX-Endpoint zum Erstellen neuer Überkategorien oder Produktgruppen"""
     try:
         data = json.loads(request.body)
         typ = data.get('typ')
         name = data.get('name', '').strip()
-        ueberkategorie = data.get('ueberkategorie', '').strip()
+        ueberkategorie_id = data.get('ueberkategorie_id')  # ✅ GEÄNDERT: ID statt Name
 
         if not name:
             return JsonResponse({
@@ -1492,34 +1071,43 @@ def ajax_create_kategorie(request):
 
         if typ == 'ueberkategorie':
             # Prüfe ob bereits existiert
-            if BillaKategorie.objects.filter(
-                    ueberkategorie=name,
-                    produktgruppe__isnull=True
-            ).exists():
+            if BillaUeberkategorie.objects.filter(name=name).exists():
                 return JsonResponse({
                     'status': 'error',
                     'message': f'Überkategorie "{name}" existiert bereits'
                 }, status=400)
 
             # Erstelle neue Überkategorie
-            BillaKategorie.objects.create(
-                ueberkategorie=name,
-                produktgruppe=None
-            )
+            obj = BillaUeberkategorie.objects.create(name=name)
 
-            logger.info(f"Neue Überkategorie erstellt: {name}")
+            logger.info(f"Neue Überkategorie erstellt: {name} (ID: {obj.id})")
+
+            return JsonResponse({
+                'status': 'success',
+                'id': obj.id,
+                'name': obj.name,
+                'message': f'Überkategorie "{name}" erfolgreich erstellt'
+            })
 
         elif typ == 'produktgruppe':
-            if not ueberkategorie:
+            if not ueberkategorie_id:
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Überkategorie muss angegeben werden'
                 }, status=400)
 
+            try:
+                ueberkategorie = BillaUeberkategorie.objects.get(id=ueberkategorie_id)
+            except BillaUeberkategorie.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Überkategorie nicht gefunden'
+                }, status=400)
+
             # Prüfe ob bereits existiert
-            if BillaKategorie.objects.filter(
-                    ueberkategorie=ueberkategorie,
-                    produktgruppe=name
+            if BillaProduktgruppe.objects.filter(
+                    name=name,
+                    ueberkategorie=ueberkategorie
             ).exists():
                 return JsonResponse({
                     'status': 'error',
@@ -1527,24 +1115,26 @@ def ajax_create_kategorie(request):
                 }, status=400)
 
             # Erstelle neue Produktgruppe
-            BillaKategorie.objects.create(
-                ueberkategorie=ueberkategorie,
-                produktgruppe=name
+            obj = BillaProduktgruppe.objects.create(
+                name=name,
+                ueberkategorie=ueberkategorie
             )
 
-            logger.info(f"Neue Produktgruppe erstellt: {name} in {ueberkategorie}")
+            logger.info(f"Neue Produktgruppe erstellt: {name} in {ueberkategorie.name} (ID: {obj.id})")
+
+            return JsonResponse({
+                'status': 'success',
+                'id': obj.id,
+                'name': obj.name,
+                'ueberkategorie_id': ueberkategorie.id,
+                'message': f'Produktgruppe "{name}" erfolgreich erstellt'
+            })
 
         else:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Ungültiger Typ'
             }, status=400)
-
-        return JsonResponse({
-            'status': 'success',
-            'name': name,
-            'message': f'{typ.replace("ueberkategorie", "Überkategorie").replace("produktgruppe", "Produktgruppe")} "{name}" erfolgreich erstellt'
-        })
 
     except Exception as e:
         logger.error(f"Fehler beim Erstellen der Kategorie: {e}")

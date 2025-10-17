@@ -226,8 +226,8 @@
                                     Alle Kategorien
                                 </option>
                                 {% for kat in ueberkategorien %}
-                                <option value="{{ kat }}" {% if selected_ueberkategorie == kat %}selected{% endif %}>
-                                    {{ kat }}
+                                <option value="{{ kat.id }}" {% if selected_ueberkategorie|stringformat:"s" == kat.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ kat.name }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -291,16 +291,16 @@
     <!-- Produktgruppen -->
     {% if produktgruppen %}
     <div class="row">
-        {% for gruppe in produktgruppen %}
+    {% for gruppe in produktgruppen %}
         <div class="col-md-6 col-lg-4">
-            <a href="{% url 'billa:billa_produktgruppe_detail' gruppe.produktgruppe %}" class="text-decoration-none">
+            <a href="{% url 'billa:billa_produktgruppe_detail' gruppe.id %}" class="text-decoration-none">
                 <div class="gruppe-card">
                     <div class="gruppe-header">
                         <div class="gruppe-icon">
                             <i class="{{ gruppe.icon }}"></i>
                         </div>
                         <div class="gruppe-info">
-                            <h3 class="gruppe-name">{{ gruppe.produktgruppe|title }}</h3>
+                            <h3 class="gruppe-name">{{ gruppe.name|title }}</h3>
                             <div class="gruppe-meta">
                                 {% if gruppe.ueberkategorie %}
                                 <span class="meta-badge">
@@ -345,7 +345,7 @@
                 </div>
             </a>
         </div>
-        {% endfor %}
+    {% endfor %}
     </div>
     {% else %}
     <div class="empty-state">

@@ -165,30 +165,30 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for gruppe in produktgruppen %}
-                                <tr>
-                                    <td>
-                                        <i class="bi {{ gruppe.icon }} me-2"></i>
-                                        <strong>{{ gruppe.produktgruppe }}</strong>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-light text-dark">
-                                            {{ gruppe.anzahl_produkte }}
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-light text-dark">
-                                            {{ gruppe.anzahl_kaeufe }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="{% url 'billa:billa_produktgruppe_detail' gruppe.produktgruppe %}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-box"></i> Details
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                           {% for gruppe in produktgruppen %}
+                            <tr>
+                                <td>
+                                    <i class="bi {{ gruppe.icon }} me-2"></i>
+                                    <strong>{{ gruppe.name }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark">
+                                        {{ gruppe.anzahl_produkte }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark">
+                                        {{ gruppe.anzahl_kaeufe }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'billa:billa_produktgruppe_detail' gruppe.id %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-box"></i> Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
                             </tbody>
                         </table>
                     </div>

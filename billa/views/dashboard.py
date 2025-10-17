@@ -9,7 +9,6 @@ from billa.models import (
 )
 
 
-
 @login_required
 def billa_dashboard(request):
     """Haupt-Dashboard für Billa-Analysen"""
@@ -21,7 +20,11 @@ def billa_dashboard(request):
 
     # Basis-Queryset
     einkaufe = BillaEinkauf.objects.select_related('filiale')
-    artikel = BillaArtikel.objects.select_related('einkauf__filiale', 'produkt')
+    artikel = BillaArtikel.objects.select_related(
+        'einkauf__filiale',
+        'produkt__ueberkategorie',  # ✅ NEU: select_related für Performance
+        'produkt__produktgruppe'     # ✅ NEU: optional, falls später gebraucht
+    )
 
     # Datum-Filter
     if start_date:
@@ -65,9 +68,9 @@ def billa_dashboard(request):
     # ========================================
     monthly_by_group_raw = artikel.annotate(
         monat=TruncMonth('einkauf__datum')
-    ).values('monat', 'produkt__ueberkategorie').annotate(
+    ).values('monat', 'produkt__ueberkategorie__name').annotate(  # ✅ GEÄNDERT: __name
         ausgaben=Sum('gesamtpreis')
-    ).order_by('monat', 'produkt__ueberkategorie')
+    ).order_by('monat', 'produkt__ueberkategorie__name')  # ✅ GEÄNDERT: __name
 
     # Strukturiere Daten: {monat: {ueberkategorie: ausgaben}}
     monthly_data = {}
@@ -75,7 +78,7 @@ def billa_dashboard(request):
 
     for item in monthly_by_group_raw:
         monat_str = item['monat'].strftime('%Y-%m') if item['monat'] else 'Unbekannt'
-        ueberkategorie = item['produkt__ueberkategorie'] or 'Ohne Kategorie'
+        ueberkategorie = item['produkt__ueberkategorie__name'] or 'Ohne Kategorie'  # ✅ GEÄNDERT: __name
         ausgaben = float(item['ausgaben']) if item['ausgaben'] else 0
 
         if monat_str not in monthly_data:
@@ -96,7 +99,7 @@ def billa_dashboard(request):
     ueberkategorien_sorted = sorted(
         all_ueberkategorien,
         key=lambda kat: kategorie_totals[kat],
-        reverse=True  # Größte Ausgaben zuerst
+        reverse=True
     )
 
     # Pareto-Prinzip: Finde Top-Kategorien die ~80% ausmachen
@@ -115,8 +118,6 @@ def billa_dashboard(request):
     sonstige_kategorien = [k for k in ueberkategorien_sorted if k not in top_kategorien]
 
     # Erstelle strukturierte Daten für Plotly
-    # WICHTIG: In Plotly ist der erste Trace UNTEN im gestapelten Diagramm
-    # Also: Größte Kategorie zuerst = unten, kleinste zuletzt = oben
     alle_monate = sorted(monthly_data.keys())
 
     # Kategorien-Reihenfolge für Plotly (größte zuerst = unten im Chart)
@@ -170,7 +171,7 @@ def billa_dashboard(request):
     # Top Produkte nach Häufigkeit - JSON-serialisierbar machen
     top_produkte_anzahl_raw = artikel.values(
         'produkt__name_korrigiert',
-        'produkt__ueberkategorie'
+        'produkt__ueberkategorie__name'  # ✅ GEÄNDERT: __name
     ).annotate(
         anzahl=Count('id'),
         ausgaben=Sum('gesamtpreis')
@@ -179,7 +180,7 @@ def billa_dashboard(request):
     top_produkte_anzahl = [
         {
             'produkt__name_korrigiert': item['produkt__name_korrigiert'],
-            'produkt__ueberkategorie': item['produkt__ueberkategorie'],
+            'produkt__ueberkategorie': item['produkt__ueberkategorie__name'],  # ✅ GEÄNDERT: __name
             'anzahl': item['anzahl'],
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
         }
@@ -189,7 +190,7 @@ def billa_dashboard(request):
     # Top Produkte nach Ausgaben - JSON-serialisierbar machen
     top_produkte_ausgaben_raw = artikel.values(
         'produkt__name_korrigiert',
-        'produkt__ueberkategorie'
+        'produkt__ueberkategorie__name'  # ✅ GEÄNDERT: __name
     ).annotate(
         ausgaben=Sum('gesamtpreis'),
         anzahl=Count('id')
@@ -198,7 +199,7 @@ def billa_dashboard(request):
     top_produkte_ausgaben = [
         {
             'produkt__name_korrigiert': item['produkt__name_korrigiert'],
-            'produkt__ueberkategorie': item['produkt__ueberkategorie'],
+            'produkt__ueberkategorie': item['produkt__ueberkategorie__name'],  # ✅ GEÄNDERT: __name
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0,
             'anzahl': item['anzahl']
         }
@@ -207,14 +208,14 @@ def billa_dashboard(request):
 
     # Ausgaben nach Kategorie - JSON-serialisierbar machen
     ausgaben_kategorie_raw = artikel.values(
-        'produkt__ueberkategorie'
+        'produkt__ueberkategorie__name'  # ✅ GEÄNDERT: __name
     ).annotate(
         ausgaben=Sum('gesamtpreis')
     ).order_by('-ausgaben')
 
     ausgaben_kategorie = [
         {
-            'produkt__ueberkategorie': item['produkt__ueberkategorie'],
+            'produkt__ueberkategorie': item['produkt__ueberkategorie__name'],  # ✅ GEÄNDERT: __name (Key bleibt gleich für Template-Kompatibilität)
             'ausgaben': float(item['ausgaben']) if item['ausgaben'] else 0
         }
         for item in ausgaben_kategorie_raw
@@ -240,7 +241,6 @@ def billa_dashboard(request):
     # Filialen für Filter
     filialen = BillaFiliale.objects.filter(aktiv=True).order_by('filial_nr')
 
-    # In der billa_dashboard View:
     # Marken-Statistiken
     anzahl_marken = BillaProdukt.objects.exclude(
         Q(marke__isnull=True) | Q(marke='')
@@ -253,12 +253,11 @@ def billa_dashboard(request):
         anzahl_kaeufe=Sum('anzahl_kaeufe')
     ).order_by('-anzahl_kaeufe')[:5]
 
-
     context = {
         'stats': stats,
         'daily_spending': json.dumps(daily_spending),
-        'monthly_spending': json.dumps(monthly_spending),  # Alte Daten (Backup)
-        'monthly_spending_stacked': json.dumps(monthly_spending_stacked),  # NEU
+        'monthly_spending': json.dumps(monthly_spending),
+        'monthly_spending_stacked': json.dumps(monthly_spending_stacked),
         'top_produkte_anzahl': json.dumps(top_produkte_anzahl),
         'top_produkte_ausgaben': json.dumps(top_produkte_ausgaben),
         'ausgaben_kategorie': json.dumps(ausgaben_kategorie),
