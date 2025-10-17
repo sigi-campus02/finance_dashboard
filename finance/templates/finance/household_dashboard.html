@@ -890,6 +890,82 @@
         </div>
     </div>
 
+    <!-- 11. Betriebskosten -->
+    <div class="section-wrapper section-bg-betriebskosten">
+        <div class="row mb-5" id="section-betriebskosten">
+            <div class="col-12">
+                <div class="card">
+                    <div class="categorygroup-header" style="background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);">
+                        <h4 class="mb-0">
+                            <i class="bi bi-building"></i> Betriebskosten Entwicklung
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <!-- Statistiken -->
+                        <div class="stat-box" style="border-left-color: rgb(74, 144, 226);">
+                            <div class="row">
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <h6 class="text-muted mb-1">Aktuelle Betriebskosten (2025.07)</h6>
+                                    <h3 class="mb-0" id="betriebskosten-aktuell">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    </h3>
+                                </div>
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <h6 class="text-muted mb-1">Durchschnitt pro Periode</h6>
+                                    <h3 class="mb-0" id="betriebskosten-durchschnitt">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    </h3>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-muted mb-1">Steigerung 2022 → 2025</h6>
+                                    <h3 class="mb-0" id="betriebskosten-steigerung">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+    
+                        <!-- Chart -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5><i class="bi bi-bar-chart-fill"></i> Entwicklung nach Kostenart</h5>
+                                <p class="text-muted mb-3">
+                                    <small>Gestapelte Darstellung der Betriebskosten (Brutto) über die Zeit</small>
+                                </p>
+                                <div class="chart-container-horizontal">
+                                    <canvas id="betriebskostenChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+    
+                        <!-- Tabelle unter Chart -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover" id="betriebskostenTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Periode</th>
+                                                <th class="text-end">Reparaturrücklage</th>
+                                                <th class="text-end">Wohnkosten</th>
+                                                <th class="text-end">Heizkosten & Warmwasser</th>
+                                                <th class="text-end">Wohnkosten Wasser</th>
+                                                <th class="text-end"><strong>Gesamt</strong></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Wird dynamisch gefüllt -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Link zur Transaktionsliste -->
     <div class="row">
         <div class="col-12">
@@ -979,6 +1055,10 @@
         <a href="#section-urlaube" class="nav-menu-item" style="border-left-color: rgb(102, 126, 234);" data-section="section-urlaube">
             <i class="bi bi-airplane" style="color: rgb(102, 126, 234);"></i>
             <span>Urlaube & Reisen</span>
+        </a>
+        <a href="#section-betriebskosten" class="nav-menu-item" style="border-left-color: rgb(74, 144, 226);" data-section="section-betriebskosten">
+            <i class="bi bi-building" style="color: rgb(74, 144, 226);"></i>
+            <span>Betriebskosten</span>
         </a>
     </div>
 </div>
@@ -2134,6 +2214,187 @@ function createUrlaubeChart() {
         .catch(error => console.error('Error creating urlaube chart:', error));
 }
 
+// ===== BETRIEBSKOSTEN SECTION =====
+
+function loadBetriebskostenStats() {
+    fetch('/api/betriebskosten-chart/')
+        .then(response => response.json())
+        .then(data => {
+            // Berechne Statistiken
+            const labels = data.labels;
+            const datasets = data.datasets;
+            
+            // Summe für letzten Monat (2025.07)
+            let aktuell = 0;
+            datasets.forEach(ds => {
+                aktuell += ds.data[ds.data.length - 1] || 0;
+            });
+            
+            // Durchschnitt
+            let gesamt = 0;
+            let count = labels.length;
+            datasets.forEach(ds => {
+                ds.data.forEach(val => gesamt += val);
+            });
+            const durchschnitt = count > 0 ? gesamt / count : 0;
+            
+            // Steigerung 2022.01 vs 2025.07
+            let start = 0;
+            let ende = 0;
+            datasets.forEach(ds => {
+                start += ds.data[0] || 0;
+                ende += ds.data[ds.data.length - 1] || 0;
+            });
+            const steigerungProzent = start > 0 ? ((ende - start) / start * 100).toFixed(1) : 0;
+            const steigerungBetrag = ende - start;
+            
+            // Update UI
+            document.getElementById('betriebskosten-aktuell').innerHTML = formatEuro(aktuell);
+            document.getElementById('betriebskosten-durchschnitt').innerHTML = formatEuro(durchschnitt);
+            document.getElementById('betriebskosten-steigerung').innerHTML = 
+                `<span class="text-${steigerungBetrag >= 0 ? 'danger' : 'success'}">${formatEuro(steigerungBetrag)} (+${steigerungProzent}%)</span>`;
+            
+            // Fülle Tabelle
+            fillBetriebskostenTable(data);
+        })
+        .catch(error => {
+            console.error('Error loading betriebskosten stats:', error);
+            document.getElementById('betriebskosten-aktuell').innerHTML = '<span class="text-danger">Fehler</span>';
+        });
+}
+
+function fillBetriebskostenTable(data) {
+    const tbody = document.querySelector('#betriebskostenTable tbody');
+    tbody.innerHTML = '';
+    
+    const kategorien = ['Reparaturrücklage', 'Wohnkosten', 'Heizkosten & Warmwasser', 'Wohnkosten Wasser'];
+    
+    data.labels.forEach((label, index) => {
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = label;
+        
+        let summe = 0;
+        kategorien.forEach(kat => {
+            const dataset = data.datasets.find(ds => ds.label === kat);
+            const wert = dataset ? dataset.data[index] : 0;
+            summe += wert;
+            
+            const cell = row.insertCell();
+            cell.className = 'text-end';
+            cell.textContent = formatEuro(wert);
+        });
+        
+        const sumCell = row.insertCell();
+        sumCell.className = 'text-end fw-bold';
+        sumCell.textContent = formatEuro(summe);
+    });
+}
+
+function createBetriebskostenChart() {
+    fetch('/api/betriebskosten-chart/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('betriebskostenChart').getContext('2d');
+            
+            // Mobile Detection
+            const isMobile = window.innerWidth < 768;
+            const isSmallMobile = window.innerWidth < 576;
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: isMobile ? 5 : 10,
+                            right: isMobile ? 5 : 10,
+                            bottom: isMobile ? 5 : 10,
+                            left: isMobile ? 5 : 10
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                font: {
+                                    size: isSmallMobile ? 9 : (isMobile ? 10 : 12)
+                                },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (isMobile) {
+                                        return '€' + Math.round(value);
+                                    }
+                                    return formatEuro(value);
+                                },
+                                font: {
+                                    size: isSmallMobile ? 9 : (isMobile ? 10 : 12)
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: isMobile ? 'bottom' : 'top',
+                            labels: {
+                                font: {
+                                    size: isSmallMobile ? 10 : (isMobile ? 11 : 13)
+                                },
+                                padding: isSmallMobile ? 8 : (isMobile ? 10 : 15),
+                                boxWidth: isMobile ? 12 : 15,
+                                boxHeight: isMobile ? 12 : 15
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            padding: isMobile ? 8 : 12,
+                            titleFont: {
+                                size: isMobile ? 11 : 13
+                            },
+                            bodyFont: {
+                                size: isMobile ? 10 : 12
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatEuro(context.parsed.y);
+                                },
+                                footer: function(tooltipItems) {
+                                    let sum = 0;
+                                    tooltipItems.forEach(item => {
+                                        sum += item.parsed.y;
+                                    });
+                                    return '━━━━━━━━━━━━━━━━\nGesamt: ' + formatEuro(sum);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error creating betriebskosten chart:', error));
+}
+
+
+
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     // Lade bestehende Charts (Balken und Tortendiagramme)
@@ -2163,6 +2424,10 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUrlaubeStats();
     createUrlaubeChart();
     
+    // Betriebskosten-Bereich laden
+    loadBetriebskostenStats();
+    createBetriebskostenChart();
+
     // === Floating Navigation ===
     const floatingBtn = document.getElementById('floatingNavBtn');
     const navOverlay = document.getElementById('navOverlay');

@@ -81,5 +81,6 @@ urlpatterns = [
     path('api/billa-transactions-detail/', views.api_billa_transactions_detail, name='api_billa_transactions_detail'),
 
     path('api/urlaube-chart/', views.api_urlaube_chart, name='api_urlaube_chart'),
+    path('api/betriebskosten-chart/', views.betriebskosten_chart, name='api_betriebskosten_chart'),
 
 ]

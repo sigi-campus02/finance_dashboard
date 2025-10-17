@@ -11,7 +11,7 @@ from django.contrib import messages
 from .models import (
     FactTransactionsSigi, FactTransactionsRobert,
     DimAccount, DimCategory, DimPayee, DimCategoryGroup, DimFlag,
-    ScheduledTransaction, RegisteredDevice, FactUrlaube
+    ScheduledTransaction, RegisteredDevice, FactUrlaube, FactBetriebskosten
 )
 from .forms import TransactionForm
 from collections import defaultdict
@@ -3775,3 +3775,106 @@ def api_urlaube_chart(request):
     }
 
     return JsonResponse(data)
+
+
+@login_required
+def betriebskosten_chart(request):
+    """
+    API für Betriebskosten-Entwicklung
+    Gruppiert nach Jahr/Monat und vs_posten
+    """
+    try:
+        # Hole alle Datenpunkte, gruppiert nach Jahr, Monat und vs_posten
+        data = FactBetriebskosten.objects.values(
+            'jahr', 'monat', 'vs_posten'
+        ).annotate(
+            betrag=Sum('gesamt_betrag_brutto')
+        ).order_by('jahr', 'monat', 'vs_posten')
+
+        # Debug: Prüfe ob Daten vorhanden sind
+        print(f"Anzahl Datensätze: {len(data)}")
+
+        # Strukturiere die Daten für Chart.js
+        labels = []
+        datasets_dict = {}
+
+        for entry in data:
+            # Label Format: "2022.01" - KORRIGIERT: Doppelpunkt vor 02d
+            jahr = int(entry['jahr'])
+            monat = int(entry['monat'])
+            label = f"{jahr}.{monat:02d}"  # ← HIER WAR DER FEHLER
+
+            if label not in labels:
+                labels.append(label)
+
+            # Kategorie
+            kategorie = entry['vs_posten']
+            if kategorie not in datasets_dict:
+                datasets_dict[kategorie] = {}
+
+            datasets_dict[kategorie][label] = float(entry['betrag'] or 0)
+
+        print(f"Gefundene Labels: {labels}")
+        print(f"Gefundene Kategorien: {list(datasets_dict.keys())}")
+
+        # Farbschema für die Kategorien
+        color_map = {
+            'Reparaturrücklage': {
+                'bg': 'rgba(173, 216, 230, 0.7)',
+                'border': 'rgb(100, 149, 237)'
+            },
+            'Wohnkosten': {
+                'bg': 'rgba(135, 206, 250, 0.7)',
+                'border': 'rgb(65, 105, 225)'
+            },
+            'Heizkosten & Warmwasser': {
+                'bg': 'rgba(100, 149, 237, 0.7)',
+                'border': 'rgb(30, 144, 255)'
+            },
+            'Wohnkosten Wasser': {
+                'bg': 'rgba(70, 130, 180, 0.7)',
+                'border': 'rgb(25, 25, 112)'
+            },
+            'Wohnkosten Wasser ': {  # Mit Leerzeichen am Ende
+                'bg': 'rgba(70, 130, 180, 0.7)',
+                'border': 'rgb(25, 25, 112)'
+            }
+        }
+
+        # Baue Datasets
+        datasets = []
+        for kategorie, werte_dict in datasets_dict.items():
+            # Fülle fehlende Monate mit 0
+            data_array = [werte_dict.get(label, 0) for label in labels]
+
+            colors = color_map.get(kategorie, {
+                'bg': 'rgba(128, 128, 128, 0.7)',
+                'border': 'rgb(64, 64, 64)'
+            })
+
+            datasets.append({
+                'label': kategorie.strip(),
+                'data': data_array,
+                'backgroundColor': colors['bg'],
+                'borderColor': colors['border'],
+                'borderWidth': 1
+            })
+
+        response_data = {
+            'labels': labels,
+            'datasets': datasets
+        }
+
+        print(f"Sende {len(labels)} Labels und {len(datasets)} Datasets")
+
+        return JsonResponse(response_data)
+
+    except Exception as e:
+        print(f"Fehler in betriebskosten_chart: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': str(e),
+            'labels': [],
+            'datasets': []
+        }, status=500)
