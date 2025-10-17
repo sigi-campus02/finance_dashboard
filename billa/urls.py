@@ -27,6 +27,7 @@ urlpatterns = [
 
     # Mapper & Speichern
     path('produktgruppen/mapper/', views.billa_produktgruppen_mapper, name='billa_produktgruppen_mapper'),
+    path('mapper/ajax-create-kategorie/', views.ajax_create_kategorie, name='ajax_create_kategorie'),
 
     # Marken
     path('marken/', views.billa_marken_liste, name='billa_marken_liste'),

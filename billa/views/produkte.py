@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 import logging
 from billa.models import (
-    BillaArtikel, BillaProdukt, BillaPreisHistorie
+    BillaArtikel, BillaProdukt, BillaPreisHistorie, BillaKategorie
 )
 
 logger = logging.getLogger(__name__)
@@ -1469,3 +1469,86 @@ def billa_marke_detail(request, marke):
     }
 
     return render(request, 'billa/billa_marke_detail.html', context)
+
+
+@login_required
+@require_POST
+def ajax_create_kategorie(request):
+    """
+    AJAX-Endpoint zum Erstellen neuer Überkategorien oder Produktgruppen
+    Speichert in separater BillaKategorie-Tabelle
+    """
+    try:
+        data = json.loads(request.body)
+        typ = data.get('typ')
+        name = data.get('name', '').strip()
+        ueberkategorie = data.get('ueberkategorie', '').strip()
+
+        if not name:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Name darf nicht leer sein'
+            }, status=400)
+
+        if typ == 'ueberkategorie':
+            # Prüfe ob bereits existiert
+            if BillaKategorie.objects.filter(
+                    ueberkategorie=name,
+                    produktgruppe__isnull=True
+            ).exists():
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Überkategorie "{name}" existiert bereits'
+                }, status=400)
+
+            # Erstelle neue Überkategorie
+            BillaKategorie.objects.create(
+                ueberkategorie=name,
+                produktgruppe=None
+            )
+
+            logger.info(f"Neue Überkategorie erstellt: {name}")
+
+        elif typ == 'produktgruppe':
+            if not ueberkategorie:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Überkategorie muss angegeben werden'
+                }, status=400)
+
+            # Prüfe ob bereits existiert
+            if BillaKategorie.objects.filter(
+                    ueberkategorie=ueberkategorie,
+                    produktgruppe=name
+            ).exists():
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Produktgruppe "{name}" existiert bereits'
+                }, status=400)
+
+            # Erstelle neue Produktgruppe
+            BillaKategorie.objects.create(
+                ueberkategorie=ueberkategorie,
+                produktgruppe=name
+            )
+
+            logger.info(f"Neue Produktgruppe erstellt: {name} in {ueberkategorie}")
+
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Ungültiger Typ'
+            }, status=400)
+
+        return JsonResponse({
+            'status': 'success',
+            'name': name,
+            'message': f'{typ.replace("ueberkategorie", "Überkategorie").replace("produktgruppe", "Produktgruppe")} "{name}" erfolgreich erstellt'
+        })
+
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen der Kategorie: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

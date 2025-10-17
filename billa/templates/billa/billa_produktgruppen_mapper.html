@@ -135,11 +135,29 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-light sticky-top">
                         <tr>
-                            <th style="width: 20%">Original</th>
-                            <th style="width: 20%">Normalisiert</th>
-                            <th style="width: 20%">Korrigiert</th>
-                            <th style="width: 20%">Überkategorie</th>
-                            <th style="width: 20%">Produktgruppe</th>
+                            <th style="width: 18%">Original</th>
+                            <th style="width: 18%">Normalisiert</th>
+                            <th style="width: 18%">Korrigiert</th>
+                            <th style="width: 23%">
+                                Überkategorie
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary ms-2"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#neuUeberkategorieModal"
+                                        title="Neue Überkategorie anlegen">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </th>
+                            <th style="width: 23%">
+                                Produktgruppe
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary ms-2"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#neuProduktgruppeModal"
+                                        title="Neue Produktgruppe anlegen">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -263,9 +281,277 @@
 </nav>
 {% endif %}
 
+<!-- ============================================================================ -->
+<!-- MODAL: Neue Überkategorie -->
+<!-- ============================================================================ -->
+<div class="modal fade" id="neuUeberkategorieModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-folder-plus"></i> Neue Überkategorie anlegen
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="neuUeberkategorieForm">
+                    <div class="mb-3">
+                        <label for="neuUeberkategorieName" class="form-label">Name der Überkategorie</label>
+                        <input type="text"
+                               class="form-control"
+                               id="neuUeberkategorieName"
+                               placeholder="z.B. Getränke, Snacks, ..."
+                               required>
+                        <div class="form-text">Der Name sollte eindeutig und beschreibend sein.</div>
+                    </div>
+                    <div id="ueberkategorieError" class="alert alert-danger d-none"></div>
+                    <div id="ueberkategorieSuccess" class="alert alert-success d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" id="saveUeberkategorieBtn">
+                    <i class="bi bi-check-circle"></i> Anlegen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================================ -->
+<!-- MODAL: Neue Produktgruppe -->
+<!-- ============================================================================ -->
+<div class="modal fade" id="neuProduktgruppeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-tag-fill"></i> Neue Produktgruppe anlegen
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="neuProduktgruppeForm">
+                    <div class="mb-3">
+                        <label for="neuProduktgruppeUeberkat" class="form-label">Überkategorie</label>
+                        <select class="form-select" id="neuProduktgruppeUeberkat" required>
+                            <option value="">-- Bitte wählen --</option>
+                            {% for kat in ueberkategorien %}
+                            <option value="{{ kat }}">{{ kat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="neuProduktgruppeName" class="form-label">Name der Produktgruppe</label>
+                        <input type="text"
+                               class="form-control"
+                               id="neuProduktgruppeName"
+                               placeholder="z.B. Cola, Wasser, Chips, ..."
+                               required>
+                        <div class="form-text">Der Name sollte eindeutig innerhalb der Überkategorie sein.</div>
+                    </div>
+                    <div id="produktgruppeError" class="alert alert-danger d-none"></div>
+                    <div id="produktgruppeSuccess" class="alert alert-success d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" id="saveProduktgruppeBtn">
+                    <i class="bi bi-check-circle"></i> Anlegen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Produktgruppen-Map als JavaScript-Objekt
 const produktgruppenMap = {{ produktgruppen_json|safe }};
+
+// CSRF Token für AJAX
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// ============================================================================
+// NEUE ÜBERKATEGORIE ANLEGEN
+// ============================================================================
+document.getElementById('saveUeberkategorieBtn').addEventListener('click', async function() {
+    const nameInput = document.getElementById('neuUeberkategorieName');
+    const name = nameInput.value.trim();
+    const errorDiv = document.getElementById('ueberkategorieError');
+    const successDiv = document.getElementById('ueberkategorieSuccess');
+
+    // Reset messages
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+
+    if (!name) {
+        errorDiv.textContent = 'Bitte einen Namen eingeben';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    try {
+        const response = await fetch("{% url 'billa:ajax_create_kategorie' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                typ: 'ueberkategorie',
+                name: name
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            successDiv.textContent = data.message;
+            successDiv.classList.remove('d-none');
+
+            // Füge neue Überkategorie zu allen Selects hinzu
+            const option = new Option(name, name);
+            document.querySelectorAll('.ueberkategorie-select').forEach(select => {
+                select.add(option.cloneNode(true));
+            });
+
+            // Auch zu Produktgruppen-Map hinzufügen
+            produktgruppenMap[name] = [];
+
+            // Füge zu Filter-Select hinzu
+            const filterSelect = document.querySelector('select[name="ueberkategorie_filter"]');
+            if (filterSelect) {
+                filterSelect.add(new Option(name, name));
+            }
+
+            // Füge zu Modal-Select für Produktgruppen hinzu
+            const produktgruppeUeberkatSelect = document.getElementById('neuProduktgruppeUeberkat');
+            if (produktgruppeUeberkatSelect) {
+                produktgruppeUeberkatSelect.add(new Option(name, name));
+            }
+
+            // Form zurücksetzen
+            nameInput.value = '';
+
+            // Modal nach 1.5 Sekunden schließen
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('neuUeberkategorieModal')).hide();
+                successDiv.classList.add('d-none');
+            }, 1500);
+
+        } else {
+            errorDiv.textContent = data.message;
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Fehler beim Anlegen: ' + error.message;
+        errorDiv.classList.remove('d-none');
+    }
+});
+
+// ============================================================================
+// NEUE PRODUKTGRUPPE ANLEGEN
+// ============================================================================
+document.getElementById('saveProduktgruppeBtn').addEventListener('click', async function() {
+    const ueberkatSelect = document.getElementById('neuProduktgruppeUeberkat');
+    const nameInput = document.getElementById('neuProduktgruppeName');
+    const ueberkategorie = ueberkatSelect.value;
+    const name = nameInput.value.trim();
+    const errorDiv = document.getElementById('produktgruppeError');
+    const successDiv = document.getElementById('produktgruppeSuccess');
+
+    // Reset messages
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+
+    if (!ueberkategorie) {
+        errorDiv.textContent = 'Bitte eine Überkategorie wählen';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    if (!name) {
+        errorDiv.textContent = 'Bitte einen Namen eingeben';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    try {
+        const response = await fetch("{% url 'billa:ajax_create_kategorie' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                typ: 'produktgruppe',
+                name: name,
+                ueberkategorie: ueberkategorie
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            successDiv.textContent = data.message;
+            successDiv.classList.remove('d-none');
+
+            // Füge neue Produktgruppe zur Map hinzu
+            if (!produktgruppenMap[ueberkategorie]) {
+                produktgruppenMap[ueberkategorie] = [];
+            }
+            produktgruppenMap[ueberkategorie].push(name);
+
+            // Aktualisiere alle Produktgruppen-Selects die diese Überkategorie haben
+            document.querySelectorAll('.ueberkategorie-select').forEach(select => {
+                if (select.value === ueberkategorie) {
+                    const produktId = select.dataset.produktId;
+                    const produktgruppeSelect = document.querySelector(
+                        `.produktgruppe-select[data-produkt-id="${produktId}"]`
+                    );
+                    if (produktgruppeSelect) {
+                        produktgruppeSelect.add(new Option(name, name));
+                    }
+                }
+            });
+
+            // Form zurücksetzen
+            nameInput.value = '';
+            ueberkatSelect.value = '';
+
+            // Modal nach 1.5 Sekunden schließen
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('neuProduktgruppeModal')).hide();
+                successDiv.classList.add('d-none');
+            }, 1500);
+
+        } else {
+            errorDiv.textContent = data.message;
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Fehler beim Anlegen: ' + error.message;
+        errorDiv.classList.remove('d-none');
+    }
+});
+
+// ============================================================================
+// BESTEHENDE FUNKTIONALITÄT
+// ============================================================================
 
 // Dynamisches Befüllen des Produktgruppen-Filters basierend auf Überkategorie-Filter
 const ueberkategorieFilter = document.querySelector('select[name="ueberkategorie_filter"]');
@@ -386,6 +672,10 @@ if (filterCollapse) {
 }
 
 .table td {
+    vertical-align: middle;
+}
+
+.table th {
     vertical-align: middle;
 }
 </style>

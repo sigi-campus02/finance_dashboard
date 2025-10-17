@@ -5,6 +5,24 @@ from django.db import models
 
 # ===== BILLA MODELS =====
 
+class BillaKategorie(models.Model):
+    """
+    Speichert verfügbare Überkategorien und Produktgruppen
+    Unabhängig von tatsächlichen Produkten
+    """
+    ueberkategorie = models.CharField(max_length=200)
+    produktgruppe = models.CharField(max_length=200, blank=True, null=True)
+    erstellt_am = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['ueberkategorie', 'produktgruppe']
+        ordering = ['ueberkategorie', 'produktgruppe']
+
+    def __str__(self):
+        if self.produktgruppe:
+            return f"{self.ueberkategorie} → {self.produktgruppe}"
+        return self.ueberkategorie
+
 
 class BillaEinkauf(models.Model):
     """Billa Einkauf - Haupt-Rechnung"""
