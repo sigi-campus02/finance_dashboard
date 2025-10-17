@@ -5,7 +5,7 @@ from .produkte import (
     billa_produktgruppen_liste, billa_produktgruppe_detail,
     billa_ueberkategorien_liste, billa_ueberkategorie_detail,
     billa_marken_liste, billa_marke_detail,
-    produktgruppen_mapper, produktgruppen_speichern,
+    billa_produktgruppen_mapper,
     bulk_update_by_name
 )
 from .import_views import billa_import_upload
@@ -17,7 +17,7 @@ __all__ = [
     'billa_produktgruppen_liste', 'billa_produktgruppe_detail',
     'billa_ueberkategorien_liste', 'billa_ueberkategorie_detail',
     'billa_marken_liste', 'billa_marke_detail',
-    'produktgruppen_mapper', 'produktgruppen_speichern',
+    'billa_produktgruppen_mapper',
     'billa_import_upload',
     'bulk_update_by_name',
 ]

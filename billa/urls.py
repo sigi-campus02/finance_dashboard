@@ -26,8 +26,7 @@ urlpatterns = [
     path('produktgruppe/<str:produktgruppe>/', views.billa_produktgruppe_detail, name='billa_produktgruppe_detail'),
 
     # Mapper & Speichern
-    path('produktgruppen-mapper/', views.produktgruppen_mapper, name='billa_produktgruppen_mapper'),
-    path('produktgruppen-speichern/', views.produktgruppen_speichern, name='produktgruppen_speichern'),
+    path('produktgruppen/mapper/', views.billa_produktgruppen_mapper, name='billa_produktgruppen_mapper'),
 
     # Marken
     path('marken/', views.billa_marken_liste, name='billa_marken_liste'),

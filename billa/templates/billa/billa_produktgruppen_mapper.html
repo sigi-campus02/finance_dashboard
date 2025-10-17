@@ -4,525 +4,390 @@
 {% block title %}Produktgruppen Mapper{% endblock %}
 
 {% block content %}
-<div id="root"></div>
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-tags"></i> Produktgruppen Mapper
+    </h1>
+</div>
 
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<script type="text/babel">
-const { useState, useEffect } = React;
-
-const ProduktgruppenMapper = () => {
-  const [produktListe, setProduktListe] = useState([]);
-  const [filter, setFilter] = useState('alle');
-  const [suchbegriff, setSuchbegriff] = useState('');
-  const [stats, setStats] = useState({ mitGruppe: 0, ohneGruppe: 0, gesamt: 0 });
-
-  // Produktgruppen-Definitionen mit Überkategorien
-    // Vollständige Produktgruppen-Definitionen mit Überkategorien
-    const produktGruppenMitUeberkategorie = {
-      // ========== GEMÜSE ==========
-      'Gemüse': {
-        'Paprika': ['paprika', 'spitzpaprika'],
-        'Tomaten': ['tomat', 'paradeiser', 'cherry', 'rispenparadeiser', 'markttomaten', 'rispenpara'],
-        'Gurken': ['gurke', 'gurk'],
-        'Salat': ['salat', 'rucola', 'eisberg', 'lollo', 'vogerlsalat', 'krauthäuptel'],
-        'Zwiebeln': ['zwiebel', 'schalott', 'zwieb'],
-        'Kartoffeln': ['kartoffel', 'erdäpfel', 'erdapfel', 'süßkartoffel', 'heurige'],
-        'Karotten': ['karott', 'möhre', 'wurzel'],
-        'Knoblauch': ['knoblauch'],
-        'Kräuter': ['petersilie', 'schnittlauch', 'basilikum', 'koriander', 'dill', 'thymian', 'rosmarin', 'salbei', 'kerbel', 'lorbeerbl', '8 kräutermix'],
-        'Radieschen': ['radieschen'],
-        'Zucchini': ['zucchini'],
-        'Auberginen': ['aubergine', 'melanzani'],
-        'Brokkoli': ['brokkoli', 'brocoli'],
-        'Blumenkohl': ['blumenkohl', 'karfiol'],
-        'Mais': ['mais', 'zuckermais'],
-        'Erbsen': ['erbse', 'kichererbs'],
-        'Bohnen': ['bohne', 'bohn', 'sojabohne', 'kidneybohne', 'riesenbohne', 'fisolen', 'edamame'],
-        'Spinat': ['spinat', 'jungspinat', 'blattspinat'],
-        'Lauch': ['lauch', 'porree'],
-        'Kürbis': ['kürbis', 'hokkaido', 'butternuss'],
-        'Ingwer': ['ingwer'],
-        'Chili': ['chili', 'chiliwurzerl', 'peperoni'],
-        'Spargel': ['spargel'],
-        'Rüben': ['rübe', 'rote rübe', 'rote bete'],
-        'Fenchel': ['fenchel'],
-        'Kohl': ['kohl', 'kohlrabi', 'weißkohl', 'rotkohl', 'blumenkohl', 'rosenkohl', 'grünkohl', 'chinakohl', 'pak choi'],
-        'Sellerie': ['sellerie', 'stangensellerie'],
-        'Gemüse Allgemein': ['gemüse', 'suppengemüse'],
-        'Sprossen': ['sprossen', 'sprossengarten', 'kresse'],
-        'Linsen': ['linsen', 'berglinsen'],
-        'Polenta': ['polenta'],
-        'Pilze': ['pilze', 'champignon', 'eierschwammerl', 'schwammerl'],
-      },
-    
-      // ========== OBST ==========
-      'Obst': {
-        'Äpfel': ['apfel', 'äpfel'],
-        'Bananen': ['banane'],
-        'Orangen': ['orange', 'apfelsine'],
-        'Zitronen': ['zitrone', 'limette', 'lime'],
-        'Beeren': ['erdbeere', 'himbeere', 'heidelbeere', 'brombeere', 'beere', 'blaubeere'],
-        'Trauben': ['traube', 'weintraube'],
-        'Birnen': ['birne'],
-        'Kiwi': ['kiwi'],
-        'Mango': ['mango'],
-        'Ananas': ['ananas'],
-        'Pfirsich': ['pfirsich', 'nektarine'],
-        'Melone': ['melone', 'wassermelone', 'honigmelone'],
-        'Avocado': ['avocado'],
-        'Granatapfel': ['granatapfel'],
-        'Zwetschken': ['zwetschke', 'zwetsch', 'pflaume'],
-        'Pomelo': ['pomelo'],
-      },
-    
-      // ========== MILCHPRODUKTE ==========
-      'Milchprodukte': {
-        'Milch': ['milch', 'h-milch', 'vollmilch', 'frischmilch'],
-        'Joghurt': ['joghurt', 'jogurt', 'naturjoghurt', 'fruchtjoghu', 'billa bio fairtrade kokos'],
-        'Käse': ['traungold', 'alpenprinz', 'käse', 'gruyere', 'baron', 'schlossdamer', 'brie', 'jerome', 'moosbacher', 'schärd.', 'dachsteiner', 'halloumi','baronesse', 'gouda', 'emmentaler','mozzarella', 'burrata', 'cheddar', 'camembert', 'feta', 'ziegen', 'schafkäse', 'almkäse', 'bergkäse', 'edamer', 'tilsiter', 'parm.', 'regg.', 'almkönig', 'goudette'],
-        'Butter': ['butter', 'kräuterbutter', 'rama', 'lätta', 'margarine', 'viospread'],
-        'Sahne': ['sahne', 'schlagobers', 'obers', 'creme fraiche', 'cremefine', 'kochcreme'],
-        'Topfen': ['topfen', 'quark', 'magertopfen'],
-        'Frischkäse': ['frischkäse', 'cottage'],
-        'Mascarpone': ['mascarpone'],
-        'Parmesan': ['parmesan', 'parmigiano', 'grana', 'padano'],
-        'Ricotta': ['ricotta'],
-        'Babybel': ['babybel'],
-        'Eier': ['eier', 'ei ', 'freilandeier', 'fl-eier', 'bh-eier', 'bio eier'],    
-      },
-    
-      // ========== FLEISCH & WURST ==========
-      'Fleisch & Wurst': {
-        'Rindfleisch': ['rindfleisch', 'rind ', 'steak', 'filetsteaks', 'tafelspitz', 'gulasch', 'grillmix'],
-        'Schweinefleisch': ['schweinefleisch', 'schwein', 'karree'],
-        'Hühnerfleisch': ['huhn', 'hähnchen', 'hühner', 'poulet', 'chicken', 'hendl', 'h-filet', 'geflügel', 'unterkeulen'],
-        'Putenfleisch': ['puten', 'pute'],
-        'Wurst': ['wurst', 'würstel', 'würstchen', 'salami', 'leberkäse', 'knacker', 'debreziner', 'frankfurter', 'kabanossi', 'griller', 'kaminwurzerl'],
-        'Schinken': ['schinken', 'speck', 'bratl', 'bratenaufschnitt', 'prosciutto'],
-        'Faschiertes': ['faschiert', 'hackfleisch', 'burger', 'beefburger'],
-        'Würstchen': ['neuburger', 'braunschweiger','chorizo', 'salsiccia', 'cevapcici'],
-
-      },
-    
-      // ========== FISCH ==========
-      'Fisch': {
-        'Lachs': ['lachs'],
-        'Thunfisch': ['thunfisch'],
-        'Forelle': ['forelle'],
-        'Garnelen': ['garnele', 'shrimp', 'crevette'],
-        'Fisch': ['fisch', 'scholle'],
-        'Makrelen': ['makrel'],
-      },
-    
-      // ========== BROT & BACKWAREN ==========
-      'Brot & Backwaren': {
-        'Brot': ['brot', 'bauernbrot', 'vollkornbrot', 'weißbrot', 'schwarzbrot', 'landbrot', 'krustenbrot', 'baguette', 'ciabatta', 'fladenbrot', 'dinkel sandwich', 'sonntagsb'],
-        'Semmeln': ['semmel', 'brötchen', 'weckerl', 'wecken', 'dachsteinweckerl'],
-        'Toast': ['toast', 'toastbrot', 'mehrkorntoast', 'wasa'],
-        'Gebäck': ['gebäck', 'croissant', 'plunder', 'krapfen', 'nougattasche', 'clever kräuter bag'],
-        'Knäckebrot': ['knäcke', 'leicht cross', 'leicht & cross'],
-        'Blätterteig': ['blätterteig'], 
-        'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat', 'fajita', 'tort.'],
-      },
-    
-      // ========== NUDELN & REIS ==========
-      'Nudeln & Reis': {
-        'Nudeln': ['nudel', 'pasta', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'rigatoni', 'farfalle', 'tortellini', 'ravioli', 'parpadelle', 'fleckerl', 'bucati', 'girandole', 'lasagne'],
-        'Gnocchi': ['gnocchi', 'schupfnudeln'],
-        'Tortelloni': ['tortelloni'],
-        'Reis': ['reis', 'basmati', 'risotto', 'reisfleisch'],
-        'Quinoa': ['quinoa'],
-        'Couscous': ['couscous'],
-      },
-    
-      // ========== BACKEN ==========
-      'Backen': {
-        'Mehl': ['mehl'],
-        'Backpulver': ['backpulver'],
-        'Hefe': ['hefe', 'backhefe', 'germ', 'keimkraft'],
-        'Vanille': ['vanille', 'bourbon'],
-        'Pudding': ['pudding'],
-        'Gelatine': ['blattgelat'],
-        'Panier': ['panko', 'panier', 'crumbs'],
-      },
-    
-      // ========== SÜSSES ==========
-      'Süßes': {
-        'Zucker': ['zucker', 'puderzucker', 'normalkristallz'],
-        'Honig': ['honig'],
-      },
-    
-      // ========== GEWÜRZE & WÜRZMITTEL ==========
-      'Gewürze & Würzmittel': {
-        'Salz': ['salz'],
-        'Pfeffer': ['pfeffer', 'cayennepf'],
-        'Gewürze': ['gewürz', 'curry', 'paprikapulver', 'muskat', 'kümmel', 'zimt', 'sternanis', 'anis', 'nelke', 'senf', 'koriander', 'kotanyi'],
-
-      },
-    
-      // ========== ÖLE & ESSIG ==========
-      'Öle & Essig': {
-        'Olivenöl': ['olivenöl'],
-        'Sonnenblumenöl': ['sonnenblumenöl'],
-        'Kürbisöl': ['kürbisöl'],
-        'Essig': ['essig', 'balsamico'],
-        'Natron': ['natron'],
-        'Kokosöl': ['kokosöl'],
-      },
-    
-      // ========== SOSSEN & AUFSTRICHE ==========
-      'Soßen & Aufstriche': {
-        'Ketchup': ['ketchup'],
-        'Mayonnaise': ['mayonnaise', 'mayo'],
-        'Soßen': ['soße', 'sauce', 'hollandaise', 'pizzasauce'],
-        'Dips': ['dip', 'tahin', 'sesam'],
-        'Fond': ['fond'],
-        'Letscho': ['letscho'],
-        'Kren': ['kren', 'meerrettich'],
-        'Aufstrich': ['aufstrich', 'grammel', 'liptauer'],
-      },
-    
-      // ========== FRÜHSTÜCK ==========
-      'Frühstück': {
-        'Müsli': ['müsli', 'knusperli', 'knusper pur', 'oetker knusper'],
-        'Cornflakes': ['cornflakes', 'color loops'],
-        'Haferflocken': ['haferflocken', 'hafer'],
-        'Kaffee': ['kaffee', 'nescafé', 'nescafe', 'crema intenso', 'hornig'],
-        'Porridge': ['porridge'],
-      },
-    
-      // ========== SÜSSIGKEITEN & SNACKS ==========
-      'Süßigkeiten & Snacks': {
-        'Schokolade': ['schokolade', 'schoko', 'nutella', 'kinder-pingui', 'manner'],
-        'Kekse': ['keks', 'biskuit', 'cookie', 'biskotten', 'leibniz', 'pick up'],
-        'Chips': ['chips', 'snips', 'best foodies bio bunte'],
-        'Nüsse': ['nuss', 'mandel', 'haselnuss', 'walnuss', 'walnüsse', 'cashew', 'pistazie', 'erdnuss', 'studentenfutter', 'studentenfutt', 'pinienkerne', 'sonnenblumenkerne', 'chiasamen'],
-        'Trockenfrüchte': ['rosine', 'dattel', 'maroni'],
-        'Süßigkeiten': ['tiramisu', 'duplo', 'suchard', 'celebrations', 'corny', 'trüffeltortenstück', 'sorger schwarzwälder', 'waffeleier'],
-        'Proteinriegel': ['proteinriegel', 'barebells', 'neoh'],
-        'Mohn': ['mohn'],
-
-      },
-    
-      // ========== GETRÄNKE ==========
-      'Getränke': {
-        'Wasser': ['wasser', 'mineralwasser', 'sicheldorfer', 'vöslauer'],
-        'Saft': ['saft', 'nektar', 'rübensaft', 'fruchtik', 'innocent'],
-        'Limonade': ['cola', 'sprite', 'fanta', 'limo'],
-        'Bier': ['bier', 'radler', 'puntigamer'],
-        'Wein': ['wein', 'rotwein', 'weißwein', 'weisswein', 'kremser', 'veltl', 'sandgrube', 'sauvignon', 'les fumees', 'drautaler'],
-        'Energy Drinks': ['red bull', 'energy'],
-        'Hafermilch': ['hafermilch', 'haferdrink', 'oatly', 'barista', 'natrue coco'],
-        'Sojamilch': ['sojamilch', 'sojadrink'],
-        'Tee': ['tee', 'halsfreund', 'kamille', 'immun bio'],
-        'Milchdrinks': ['lattella', 'nöm mix'],
-        'Vegane Milch': ['vegavita no muuh'],
-      },
-    
-      // ========== HYGIENE & KOSMETIK ==========
-      'Hygiene & Kosmetik': {
-        'Shampoo': ['shampoo'],
-        'Duschgel': ['duschgel', 'dusche'],
-        'Deo': ['deo'],
-        'Lippenpflege': ['lippenpflege'],
-        'Zahnpflege': ['zahncreme', 'zahnspül', 'zahnpasta', 'colgate', 'blend-a-med', 'elmex', 'sensodyne', 'corega', 'zahnseide'],
-        'Wattestäbchen': ['wattestäbch', 'wattepads'],
-        'Haargummis': ['haargummi', 'zopfhalter'],
-        'Seife': ['seife', 'cremeseife'],
-        'Desinfektionsmittel': ['desinfektions', 'dettol', 'lysoform'],
-        'Haarspray': ['haarspray', 'taft'],
-        'Sonnenschutz': ['sonnenspray', 'sonnenschutz', 'apres spray', 'nivea'],
-        'Gel Pads': ['gel pads'],
-        'Wachsstreifen': ['kaltwachs', 'veet'],
-        'Waschgel': ['waschgel', 'gänseb'],
-      },
-    
-      // ========== HAUSHALT & REINIGUNG ==========
-      'Haushalt & Reinigung': {
-        'Reiniger': ['reiniger', 'frosch', 'dr. beckmann', 'rorax', 'clean&clear', 'bihome', 'lysofrom'],
-        'Spülmittel': ['spülmittel'],
-        'Toilettenpapier': ['toilettenpapier', 'klopapier'],
-        'Küchenrolle': ['küchenrolle', 'kitchen towel'],
-        'Backpapier': ['backpapier'],
-        'Alufolie': ['alufolie', 'aluminiumfolie'],
-        'Gefrierbeutel': ['gefrierbeutel', 'frischhaltebeutel', 'knotenbeutel'],
-        'Müllbeutel': ['müllbeutel', 'mülltüte', 'swirl active frische', 'swirl aktive frische'],
-        'Taschentücher': ['taschentuch', 'papiertaschentuch', 'tempo', 'feh taschentücher'],
-        'Frischhaltefolie': ['toppits', 'frischhalte', 'swiffer'],
-        'Weichspüler': ['silan'],
-        'Brillenreiniger': ['brillenputz', 'brillenputztücher'],
-        'Ohrstöpsel': ['ohropax'],
-        'Waschmittel': ['persil', 'ariel', 'pulver', 'megapearls', 'dr. beck.gardinen'],
-        'Entkalker': ['durgol', 'calgon'],
-        'Geschirrspüler': ['finish', 'somat', 'klarspüler'],
-        'WC-Reiniger': ['wc ente', 'wc power'],
-        'Spülschwamm': ['spülschwamm', 'vileda', 'schwammtuch'],
-        'Reinigungstücher': ['reinigungstücher', 'bi care'],
-        'Feuchttücher': ['feucht', 'topa'],
-        'Wundspray': ['wund reinigungsspr'],
-      },
-    
-      // ========== TIEFKÜHL ==========
-      'Tiefkühl': {
-        'Tiefkühlkost': ['iglo', 'tk ', 'tiefkühl'],
-        'Pizza': ['pizza', 'pizzamehl'],
-        'Eis': ['eis ', 'cornetto', 'langnese', 'magnum', 'eskimo', 'cremissimo', 'mälzer&fu'],
-        'Tortillas': ['tortilla', 'wrap', 'tex mex', 'corn&wheat'],
-      },
-    
-      // ========== FERTIGGERICHTE ==========
-      'Fertiggerichte': {
-        'Suppen': ['suppe', 'rindsuppe', 'eierschöberl'],
-        'Cornichons': ['cornichons'],
-      },
-    
-      // ========== TEXTILIEN & NON-FOOD ==========
-      'Textilien & Non-Food': {
-        'Textilien': ['thermohose', 'mütze', 'kissen'],
-        'Blumen & Pflanzen': ['palmkätzchen', 'blühplfanzen', 'adventkranz', 'markttulpen', 'blumen'],
-        'Batterien': ['batterien', 'batter', 'varta'],
-        'Geschenke & Deko': ['bon ', 'geschenk', 'neujahrsguß', 'happy birthay'],
-        'Lichterketten': ['lichterkette', 'lichter', 'magnet-lichter'],
-        'Diverses': ['non food', 'abverkauf', 'aktion', 'mailing', 'limited edition', 'bonus'],
-      },
-    
-      // ========== SONSTIGES ==========
-      'Sonstiges': {
-        'Pfandartikel': ['pfand', 'einwegpfand', 'pfandartikel', 'leergut', 'leergut-ret', 'leerflasche'],
-        'Tragetaschen': ['tragetasche'],
-        'Sonstiges': ['sonstiges', 'frisch gekocht', 'ready to eat', 'billa bon', 'äpp-only', 'unsere besten 6er', '8 x nimm mehr', 'stifterl', 'schütt-streubehälter', 'tatü box', 'koro', 'bi good', 'gärtnerbund', 'lieblingsprodukt', 'bio gourmet', 'landfr', 'jö', 'rabattsammler', 'vorteilsbox', 'äpp extrem', 'teuerstes prod'],
-      },
-    };
-
-  const findeProduktGruppeUndUeberkategorie = (produktName) => {
-    if (!produktName) return { ueberkategorie: null, produktgruppe: null };
-    const nameLower = produktName.toLowerCase();
-    
-    for (const [ueberkategorie, gruppen] of Object.entries(produktGruppenMitUeberkategorie)) {
-      for (const [produktgruppe, keywords] of Object.entries(gruppen)) {
-        for (const keyword of keywords) {
-          if (nameLower.includes(keyword)) {
-            return { ueberkategorie, produktgruppe };
-          }
-        }
-      }
-    }
-    return { ueberkategorie: null, produktgruppe: null };
-  };
-
-  useEffect(() => {
-    const produkteVonDjango = {{ produkte_json|safe }};
-    
-    const mitGruppen = produkteVonDjango.map(produkt => {
-      const gefunden = findeProduktGruppeUndUeberkategorie(produkt.name_normalisiert);
-      return {
-        ...produkt,
-        name_korrigiert: produkt.name_korrigiert || produkt.name_normalisiert,
-        ueberkategorie: produkt.ueberkategorie || gefunden.ueberkategorie,
-        produktgruppe: produkt.produktgruppe || gefunden.produktgruppe
-
-      };
-    });
-
-    setProduktListe(mitGruppen);
-    
-    const mitGruppe = mitGruppen.filter(p => p.ueberkategorie !== null).length;
-    setStats({
-      gesamt: mitGruppen.length,
-      mitGruppe,
-      ohneGruppe: mitGruppen.length - mitGruppe
-    });
-  }, []);
-
-      // NEU: Handler zum Ändern von Überkategorie
-    const aendereUeberkategorie = (produktId, neueUeberkategorie) => {
-      setProduktListe(produktListe.map(p => 
-        p.id === produktId 
-          ? { ...p, ueberkategorie: neueUeberkategorie, produktgruppe: '' }
-          : p
-      ));
-    };
-    
-    // NEU: Handler zum Ändern von Produktgruppe
-    const aendereProduktgruppe = (produktId, neueProduktgruppe) => {
-      setProduktListe(produktListe.map(p => 
-        p.id === produktId 
-          ? { ...p, produktgruppe: neueProduktgruppe }
-          : p
-      ));
-    };
-
-    // NEU: Handler zum Ändern von korrigiertem Namen
-    const aendereNameKorrigiert = (produktId, neuerName) => {
-      setProduktListe(produktListe.map(p =>
-        p.id === produktId
-          ? { ...p, name_korrigiert: neuerName }
-          : p
-      ));
-    };
-
-
-  const gefiltert = produktListe.filter(p => {
-    const matchFilter = filter === 'alle' || 
-      (filter === 'mit' && p.ueberkategorie) || 
-      (filter === 'ohne' && !p.ueberkategorie);
-    
-    const matchSuche = !suchbegriff ||
-      p.name_normalisiert?.toLowerCase().includes(suchbegriff.toLowerCase()) ||
-      p.name_original?.toLowerCase().includes(suchbegriff.toLowerCase()) ||
-      p.name_korrigiert?.toLowerCase().includes(suchbegriff.toLowerCase());
-    
-    return matchFilter && matchSuche;
-  });
-
-  const speichereMapping = async () => {
-    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-    try {
-      const response = await fetch('{% url "billa:produktgruppen_speichern" %}', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
-        },
-        body: JSON.stringify({
-          updates: produktListe.map(p => ({
-            id: p.id,
-            ueberkategorie: p.ueberkategorie,
-            produktgruppe: p.produktgruppe,
-            name_korrigiert: p.name_korrigiert  // NEU: diese Zeile hinzufügen
-          }))
-        })
-      });
-      
-      if (response.ok) {
-        alert('✓ Produktgruppen erfolgreich gespeichert!');
-      } else {
-        alert('❌ Fehler beim Speichern');
-      }
-    } catch (error) {
-      alert('❌ Netzwerkfehler: ' + error.message);
-    }
-  };
-
-  return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Produktgruppen Mapper</h1>
-      
-      <div className="bg-blue-50 p-4 rounded mb-6">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold">{stats.gesamt}</div>
-            <div className="text-sm">Gesamt</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-green-600">{stats.mitGruppe}</div>
-            <div className="text-sm">Mit Gruppe</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">{stats.ohneGruppe}</div>
-            <div className="text-sm">Ohne Gruppe</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Suche nach Produktname..."
-          value={suchbegriff}
-          onChange={(e) => setSuchbegriff(e.target.value)}
-          className="flex-1 p-2 border rounded"
-        />
-        <select 
-          value={filter} 
-          onChange={(e) => setFilter(e.target.value)}
-          className="p-2 border rounded"
-        >
-          <option value="alle">Alle</option>
-          <option value="mit">Mit Gruppe</option>
-          <option value="ohne">Ohne Gruppe</option>
-        </select>
-        <button
-          onClick={speichereMapping}
-          className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Speichern
-        </button>
-      </div>
-
-        <div className="bg-white shadow rounded overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="p-3 text-left">Original</th>
-                <th className="p-3 text-left">Normalisiert</th>
-                <th className="p-3 text-left">Korrigiert</th>
-                <th className="p-3 text-left">Überkategorie</th>
-                <th className="p-3 text-left">Produktgruppe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gefiltert.map(produkt => {
-                const verfuegbareGruppen = produkt.ueberkategorie 
-                  ? Object.keys(produktGruppenMitUeberkategorie[produkt.ueberkategorie] || {})
-                  : [];
-                
-                return (
-                    <tr key={produkt.id} className="border-t hover:bg-gray-50">
-                      <td className="p-3 text-sm text-gray-500">{produkt.name_original}</td>
-                      <td className="p-3 text-sm">{produkt.name_normalisiert}</td>
-                      <td className="p-3">
-                        <input
-                          type="text"
-                          value={produkt.name_korrigiert || ''}
-                          onChange={(e) => aendereNameKorrigiert(produkt.id, e.target.value)}
-                          placeholder="Korrigierter Name..."
-                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="p-3">
-                      <select
-                        value={produkt.ueberkategorie || ''}
-                        onChange={(e) => aendereUeberkategorie(produkt.id, e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">-- Wählen --</option>
-                        {Object.keys(produktGruppenMitUeberkategorie).map(kat => (
-                          <option key={kat} value={kat}>{kat}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={produkt.produktgruppe || ''}
-                        onChange={(e) => aendereProduktgruppe(produkt.id, e.target.value)}
-                        disabled={!produkt.ueberkategorie}
-                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      >
-                        <option value="">-- Wählen --</option>
-                        {verfuegbareGruppen.map(gruppe => (
-                          <option key={gruppe} value={gruppe}>{gruppe}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-      <div className="text-sm text-gray-500 mt-4">
-        {gefiltert.length} von {stats.gesamt} Produkten angezeigt
-      </div>
+<!-- Success/Error Messages -->
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {% if message.tags == 'success' %}
+            <i class="bi bi-check-circle"></i>
+        {% else %}
+            <i class="bi bi-exclamation-triangle"></i>
+        {% endif %}
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-  );
-};
+    {% endfor %}
+{% endif %}
 
-ReactDOM.render(<ProduktgruppenMapper />, document.getElementById('root'));
+<!-- Statistik Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Gesamt</h5>
+                <p class="display-6">{{ stats.gesamt }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Mit Gruppe</h5>
+                <p class="display-6 text-success">{{ stats.mit_gruppe }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Ohne Gruppe</h5>
+                <p class="display-6 text-danger">{{ stats.ohne_gruppe }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter und Suche -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         data-bs-toggle="collapse"
+         data-bs-target="#filterCollapse"
+         style="cursor: pointer;">
+        <span>
+            <i class="bi bi-funnel"></i> Filter & Suche
+        </span>
+        <i class="bi bi-chevron-down"></i>
+    </div>
+    <div class="collapse show" id="filterCollapse">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-3">
+                    <label class="form-label">Suche nach Produktname</label>
+                    <input type="text"
+                           name="suche"
+                           class="form-control"
+                           placeholder="Produktname eingeben..."
+                           value="{{ suche }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="filter" class="form-select">
+                        <option value="alle" {% if filter == 'alle' %}selected{% endif %}>Alle</option>
+                        <option value="mit" {% if filter == 'mit' %}selected{% endif %}>Mit Gruppe</option>
+                        <option value="ohne" {% if filter == 'ohne' %}selected{% endif %}>Ohne Gruppe</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Überkategorie</label>
+                    <select name="ueberkategorie_filter" class="form-select">
+                        <option value="">Alle Überkategorien</option>
+                        {% for kat in ueberkategorien %}
+                        <option value="{{ kat }}" {% if ueberkategorie_filter == kat %}selected{% endif %}>
+                            {{ kat }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Produktgruppe</label>
+                    <select name="produktgruppe_filter" class="form-select" id="produktgruppeFilter">
+                        <option value="">Alle Produktgruppen</option>
+                        {% if produktgruppe_filter %}
+                        <option value="{{ produktgruppe_filter }}" selected>{{ produktgruppe_filter }}</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-search"></i> Filtern
+                    </button>
+                    <a href="{% url 'billa:billa_produktgruppen_mapper' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Mapping Formular -->
+<form method="post" id="mappingForm">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                Zeige <strong>{{ page_obj.start_index }} - {{ page_obj.end_index }}</strong> von <strong>{{ page_obj.paginator.count }}</strong> Produkten
+                (Gesamt: <strong>{{ stats.gesamt }}</strong>)
+            </span>
+            <button type="submit" class="btn btn-success" id="saveBtn">
+                <i class="bi bi-save"></i> Änderungen speichern
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 20%">Original</th>
+                            <th style="width: 20%">Normalisiert</th>
+                            <th style="width: 20%">Korrigiert</th>
+                            <th style="width: 20%">Überkategorie</th>
+                            <th style="width: 20%">Produktgruppe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for produkt in produkte %}
+                        <tr class="produkt-row">
+                            <td class="text-muted small">{{ produkt.name_original }}</td>
+                            <td class="small">{{ produkt.name_normalisiert }}</td>
+                            <td>
+                                <input type="text"
+                                       name="name_korrigiert_{{ produkt.id }}"
+                                       class="form-control form-control-sm"
+                                       placeholder="Korrigierter Name..."
+                                       value="{{ produkt.name_korrigiert|default:'' }}">
+                            </td>
+                            <td>
+                                <select name="ueberkategorie_{{ produkt.id }}"
+                                        class="form-select form-select-sm ueberkategorie-select"
+                                        data-produkt-id="{{ produkt.id }}">
+                                    <option value="">-- Wählen --</option>
+                                    {% for kat in ueberkategorien %}
+                                    <option value="{{ kat }}"
+                                            {% if produkt.ueberkategorie == kat %}selected{% endif %}>
+                                        {{ kat }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="produktgruppe_{{ produkt.id }}"
+                                        class="form-select form-select-sm produktgruppe-select"
+                                        data-produkt-id="{{ produkt.id }}"
+                                        {% if not produkt.ueberkategorie %}disabled{% endif %}>
+                                    <option value="">-- Wählen --</option>
+                                    {% for gruppe in produkt.verfuegbare_gruppen %}
+                                    <option value="{{ gruppe }}"
+                                            {% if produkt.produktgruppe == gruppe %}selected{% endif %}>
+                                        {{ gruppe }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                Keine Produkte gefunden
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Produktgruppen Pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        <!-- Erste Seite -->
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+                <i class="bi bi-chevron-double-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+        </li>
+        {% endif %}
+
+        <!-- Seitenzahlen -->
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+                    {{ num }}
+                </a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Letzte Seite -->
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+                <i class="bi bi-chevron-double-right"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
+        </li>
+        {% endif %}
+    </ul>
+    <p class="text-center text-muted">
+        Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+    </p>
+</nav>
+{% endif %}
+
+<script>
+// Produktgruppen-Map als JavaScript-Objekt
+const produktgruppenMap = {{ produktgruppen_json|safe }};
+
+// Dynamisches Befüllen des Produktgruppen-Filters basierend auf Überkategorie-Filter
+const ueberkategorieFilter = document.querySelector('select[name="ueberkategorie_filter"]');
+const produktgruppeFilter = document.getElementById('produktgruppeFilter');
+const currentProduktgruppe = "{{ produktgruppe_filter }}";
+
+if (ueberkategorieFilter) {
+    ueberkategorieFilter.addEventListener('change', function() {
+        const ueberkategorie = this.value;
+
+        // Produktgruppen-Filter zurücksetzen
+        produktgruppeFilter.innerHTML = '<option value="">Alle Produktgruppen</option>';
+
+        if (ueberkategorie && produktgruppenMap[ueberkategorie]) {
+            produktgruppenMap[ueberkategorie].forEach(gruppe => {
+                const option = document.createElement('option');
+                option.value = gruppe;
+                option.textContent = gruppe;
+                produktgruppeFilter.appendChild(option);
+            });
+            produktgruppeFilter.disabled = false;
+        } else {
+            // Wenn "Alle" gewählt, zeige alle Produktgruppen
+            const alleGruppen = new Set();
+            Object.values(produktgruppenMap).forEach(gruppen => {
+                gruppen.forEach(gruppe => alleGruppen.add(gruppe));
+            });
+            [...alleGruppen].sort().forEach(gruppe => {
+                const option = document.createElement('option');
+                option.value = gruppe;
+                option.textContent = gruppe;
+                produktgruppeFilter.appendChild(option);
+            });
+        }
+    });
+
+    // Initial befüllen beim Laden der Seite
+    const currentUeberkat = ueberkategorieFilter.value;
+    if (currentUeberkat) {
+        ueberkategorieFilter.dispatchEvent(new Event('change'));
+        // Aktuell gewählte Produktgruppe wieder selektieren
+        if (currentProduktgruppe) {
+            setTimeout(() => {
+                produktgruppeFilter.value = currentProduktgruppe;
+            }, 0);
+        }
+    }
+}
+
+// Event Listener für Überkategorie-Änderungen in der Tabelle
+document.querySelectorAll('.ueberkategorie-select').forEach(select => {
+    select.addEventListener('change', function() {
+        const produktId = this.dataset.produktId;
+        const produktgruppeSelect = document.querySelector(
+            `.produktgruppe-select[data-produkt-id="${produktId}"]`
+        );
+        const ueberkategorie = this.value;
+
+        // Produktgruppe zurücksetzen und neu befüllen
+        produktgruppeSelect.innerHTML = '<option value="">-- Wählen --</option>';
+
+        if (ueberkategorie && produktgruppenMap[ueberkategorie]) {
+            produktgruppeSelect.disabled = false;
+            produktgruppenMap[ueberkategorie].forEach(gruppe => {
+                const option = document.createElement('option');
+                option.value = gruppe;
+                option.textContent = gruppe;
+                produktgruppeSelect.appendChild(option);
+            });
+        } else {
+            produktgruppeSelect.disabled = true;
+        }
+    });
+});
+
+// Warnung bei ungespeicherten Änderungen
+let formChanged = false;
+
+document.getElementById('mappingForm').addEventListener('change', function() {
+    formChanged = true;
+});
+
+document.getElementById('mappingForm').addEventListener('submit', function() {
+    formChanged = false;
+});
+
+window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// Toggle Icon bei Collapse
+const filterCollapse = document.getElementById('filterCollapse');
+if (filterCollapse) {
+    filterCollapse.addEventListener('show.bs.collapse', function() {
+        document.querySelector('[data-bs-target="#filterCollapse"] .bi-chevron-down')
+            .classList.replace('bi-chevron-down', 'bi-chevron-up');
+    });
+    filterCollapse.addEventListener('hide.bs.collapse', function() {
+        document.querySelector('[data-bs-target="#filterCollapse"] .bi-chevron-up')
+            .classList.replace('bi-chevron-up', 'bi-chevron-down');
+    });
+}
 </script>
+
+<style>
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f8f9fa;
+}
+
+.produkt-row:hover {
+    background-color: #f8f9fa;
+}
+
+.table td {
+    vertical-align: middle;
+}
+</style>
+
 {% endblock %}
