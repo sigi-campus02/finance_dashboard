@@ -536,3 +536,41 @@ class RegisteredDevice(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.device_name}"
+
+
+class FactUrlaube(models.Model):
+    """Urlaube mit Kostenaufteilung"""
+    id = models.AutoField(primary_key=True)
+    datum = models.DateField()
+    beschreibung = models.CharField(max_length=500)
+    gesamt_ausgaben = models.DecimalField(max_digits=18, decimal_places=2)
+    anteil_robert = models.DecimalField(max_digits=18, decimal_places=2)
+    anteil_sigi = models.DecimalField(max_digits=18, decimal_places=2)
+
+    class Meta:
+        db_table = 'fact_urlaube'
+        managed = False
+        ordering = ['-datum']
+        verbose_name = 'Urlaub'
+        verbose_name_plural = 'Urlaube'
+
+    def __str__(self):
+        return f"{self.datum.strftime('%d.%m.%Y')} - {self.beschreibung}"
+
+    @property
+    def calender(self):
+        """Holt das zugehörige DimCalender Objekt über das datum"""
+        try:
+            return DimCalender.objects.get(datum=self.datum)
+        except DimCalender.DoesNotExist:
+            return None
+
+    @property
+    def jahr(self):
+        """Gibt das Jahr zurück"""
+        return self.datum.year
+
+    @property
+    def monat(self):
+        """Gibt den Monat zurück"""
+        return self.datum.month
