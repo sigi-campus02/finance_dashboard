@@ -37,84 +37,97 @@
 <!-- KPI Cards -->
 <div class="row mb-4">
     <div class="col-6 col-md-3 mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-subtitle mb-2 text-muted">Einnahmen</h6>
-                        <h3 class="card-title mb-0">{{ total_inflow|currency }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-arrow-down-circle text-success" style="font-size: 2rem;"></i>
-                    </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="card-subtitle mb-2 text-muted">Einnahmen</h6>
+                    <h3 class="card-title mb-0">{{ total_inflow|currency }}</h3>
+                </div>
+                <div class="align-self-center">
+                    <i class="bi bi-arrow-down-circle text-success" style="font-size: 2rem;"></i>
                 </div>
             </div>
+        </div>
     </div>
     
     <div class="col-6 col-md-3 mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-subtitle mb-2 text-muted">Ausgaben</h6>
-                        <h3 class="card-title mb-0">{{ total_outflow|currency }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-arrow-up-circle text-danger" style="font-size: 2rem;"></i>
-                    </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="card-subtitle mb-2 text-muted">Ausgaben</h6>
+                    <h3 class="card-title mb-0">{{ total_outflow|currency }}</h3>
+                </div>
+                <div class="align-self-center">
+                    <i class="bi bi-arrow-up-circle text-danger" style="font-size: 2rem;"></i>
                 </div>
             </div>
+        </div>
     </div>
     
     <div class="col-6 col-md-3 mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-subtitle mb-2 text-muted">Saldo</h6>
-                        <h3 class="card-title mb-0" style="color: {% if netto >= 0 %}#28a745{% else %}#dc3545{% endif %}">
-                            {{ netto|currency }}
-                        </h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-wallet2 text-primary" style="font-size: 2rem;"></i>
-                    </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="card-subtitle mb-2 text-muted">Saldo</h6>
+                    <h3 class="card-title mb-0" style="color: {% if netto >= 0 %}#28a745{% else %}#dc3545{% endif %}">
+                        {{ netto|currency }}
+                    </h3>
+                </div>
+                <div class="align-self-center">
+                    <i class="bi bi-wallet2 text-primary" style="font-size: 2rem;"></i>
                 </div>
             </div>
+        </div>
     </div>
     
     <div class="col-6 col-md-3 mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-subtitle mb-2 text-muted">Transaktionen</h6>
-                        <h3 class="card-title mb-0">{{ transaction_count|thousand }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-receipt text-warning" style="font-size: 2rem;"></i>
-                    </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="card-subtitle mb-2 text-muted">Transaktionen</h6>
+                    <h3 class="card-title mb-0">{{ transaction_count|thousand }}</h3>
+                </div>
+                <div class="align-self-center">
+                    <i class="bi bi-receipt text-warning" style="font-size: 2rem;"></i>
                 </div>
             </div>
+        </div>
     </div>
 </div>
 
 <!-- Charts -->
+<!-- Charts -->
 <div class="row mb-4">
+    <!-- Monthly Chart OHNE Drilldown -->
     <div class="col-md-8 mb-3">
         <div class="card">
             <div class="card-header bg-white">
                 <h5 class="card-title mb-0">Monatliche Übersicht {{ current_year }}</h5>
             </div>
             <div class="card-body">
-                <canvas id="monthlyChart" height="80"></canvas>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Category Doughnut Chart MIT Drilldown -->
     <div class="col-md-4 mb-3">
         <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="card-title mb-0">Ausgaben nach Kategorie</h5>
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0" id="categoryChartTitle">Ausgaben nach Kategorie</h5>
+                <button id="backToOverview" class="btn btn-sm btn-outline-secondary" style="display: none;">
+                    <i class="bi bi-arrow-left"></i> Zurück
+                </button>
             </div>
             <div class="card-body">
-                <canvas id="categoryChart"></canvas>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+                <div class="mt-2 text-muted small text-center" id="drilldownHint">
+                    <i class="bi bi-info-circle"></i> Klicke auf eine Kategorie um Details zu sehen
+                </div>
             </div>
         </div>
     </div>
@@ -131,7 +144,9 @@
                 <small class="text-muted">Netto-Ausgaben mit Trendlinie</small>
             </div>
             <div class="card-body">
-                <canvas id="trendChart" height="60"></canvas>
+                <div style="position: relative; height: 350px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -218,7 +233,9 @@
                 <small class="text-muted">Gestapelte Ansicht aller Income-Quellen</small>
             </div>
             <div class="card-body">
-                <canvas id="incomePayeesChart" height="80"></canvas>
+                <div style="position: relative; height: 350px;">
+                    <canvas id="incomePayeesChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -227,23 +244,62 @@
 {% endblock %}
 
 {% block extra_js %}
+
 <script>
-// Monatlicher Chart (aktuelles Jahr)
+// ===== DASHBOARD MIT CATEGORY DOUGHNUT DRILLDOWN =====
+
+// Globale Variablen
+let categoryChartInstance = null;
+let currentDrilldownState = {
+    level: 'overview',
+    categorygroupName: null
+};
+
+// Mobile Detection
+function isMobileDevice() {
+    return window.innerWidth < 768;
+}
+
+function isSmallMobile() {
+    return window.innerWidth < 576;
+}
+
+// ===== 1. MONTHLY CHART (OHNE DRILLDOWN) =====
 fetch("{% url 'finance:api_monthly_spending' %}?year={{ current_year }}")
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('monthlyChart').getContext('2d');
+        const isMobile = isMobileDevice();
+        const isSmall = isSmallMobile();
+        
         new Chart(ctx, {
             type: 'bar',
             data: data,
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 scales: {
+                    x: {
+                        stacked: true,
+                        ticks: {
+                            font: { size: isSmall ? 9 : (isMobile ? 10 : 12) },
+                            maxRotation: isMobile ? 45 : 0,
+                            minRotation: isMobile ? 45 : 0
+                        }
+                    },
                     y: {
+                        stacked: true,
                         beginAtZero: true,
                         ticks: {
+                            font: { size: isSmall ? 9 : (isMobile ? 10 : 12) },
                             callback: function(value) {
+                                if (isMobile && value >= 1000) {
+                                    return '€' + (value / 1000).toFixed(0) + 'k';
+                                }
                                 return '€ ' + value.toLocaleString('de-DE');
                             }
                         }
@@ -252,7 +308,12 @@ fetch("{% url 'finance:api_monthly_spending' %}?year={{ current_year }}")
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: isMobile ? 'bottom' : 'top',
+                        labels: {
+                            font: { size: isSmall ? 10 : (isMobile ? 11 : 12) },
+                            padding: isSmall ? 8 : (isMobile ? 10 : 15),
+                            boxWidth: isMobile ? 12 : 15
+                        }
                     },
                     tooltip: {
                         callbacks: {
@@ -265,41 +326,151 @@ fetch("{% url 'finance:api_monthly_spending' %}?year={{ current_year }}")
                 }
             }
         });
-    });
+    })
+    .catch(error => console.error('Fehler beim Laden des Monthly Chart:', error));
 
-// Kategorien Pie Chart
-fetch("{% url 'finance:api_category_breakdown' %}?year={{ current_year }}")
-    .then(response => response.json())
-    .then(data => {
-        const ctx = document.getElementById('categoryChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: data,
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom'
+// ===== 2. CATEGORY DOUGHNUT OVERVIEW (MIT DRILLDOWN) =====
+function loadCategoryOverview() {
+    fetch("{% url 'finance:api_category_breakdown' %}?year={{ current_year }}")
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+            
+            const isMobile = isMobileDevice();
+            const isSmall = isSmallMobile();
+            
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                font: { size: isSmall ? 10 : (isMobile ? 11 : 12) },
+                                padding: isSmall ? 8 : 10,
+                                boxWidth: isMobile ? 12 : 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return label + ': € ' + value.toLocaleString('de-DE', {minimumFractionDigits: 2}) + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.label + ': € ' +
-                                       context.parsed.toLocaleString('de-DE', {minimumFractionDigits: 2});
+                    onClick: function(event, elements, chart) {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const categorygroupName = chart.data.labels[index];
+                            
+                            console.log('Category clicked:', categorygroupName);
+                            loadCategoryDrilldown(categorygroupName);
+                        }
+                    }
+                }
+            });
+            
+            currentDrilldownState.level = 'overview';
+            currentDrilldownState.categorygroupName = null;
+            
+            document.getElementById('backToOverview').style.display = 'none';
+            document.getElementById('categoryChartTitle').textContent = 'Ausgaben nach Kategorie';
+            
+            const drilldownHint = document.getElementById('drilldownHint');
+            if (drilldownHint) {
+                drilldownHint.style.display = 'block';
+            }
+        })
+        .catch(error => console.error('Fehler beim Laden des Category Chart:', error));
+}
+
+// ===== 3. CATEGORY DRILLDOWN (EINZELNE CATEGORIES) =====
+function loadCategoryDrilldown(categorygroupName) {
+    fetch(`{% url 'finance:api_category_breakdown' %}?year={{ current_year }}&categorygroup=${encodeURIComponent(categorygroupName)}`)
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+            
+            const isMobile = isMobileDevice();
+            const isSmall = isSmallMobile();
+            
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                font: { size: isSmall ? 10 : (isMobile ? 11 : 12) },
+                                padding: isSmall ? 8 : 10,
+                                boxWidth: isMobile ? 12 : 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return label + ': € ' + value.toLocaleString('de-DE', {minimumFractionDigits: 2}) + ' (' + percentage + '%)';
+                                }
                             }
                         }
                     }
                 }
+            });
+            
+            currentDrilldownState.level = 'drilldown';
+            currentDrilldownState.categorygroupName = categorygroupName;
+            
+            document.getElementById('backToOverview').style.display = 'inline-block';
+            document.getElementById('categoryChartTitle').textContent = categorygroupName;
+            
+            const drilldownHint = document.getElementById('drilldownHint');
+            if (drilldownHint) {
+                drilldownHint.style.display = 'none';
             }
-        });
-    });
+        })
+        .catch(error => console.error('Fehler beim Laden des Category Drilldown:', error));
+}
 
+// ===== BACK BUTTON =====
+document.getElementById('backToOverview').addEventListener('click', function() {
+    loadCategoryOverview();
+});
+
+// ===== INITIAL LOAD =====
+loadCategoryOverview();
+
+// ===== 3. TREND CHART =====
 fetch("{% url 'finance:api_spending_trend' %}")
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('trendChart').getContext('2d');
+        const isMobile = isMobileDevice();
+        const isSmall = isSmallMobile();
 
         new Chart(ctx, {
             type: 'line',
@@ -314,9 +485,8 @@ fetch("{% url 'finance:api_spending_trend' %}")
                         borderWidth: 2,
                         tension: 0.1,
                         fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgb(243,123,123)',
+                        pointRadius: isMobile ? 2 : 3,
+                        pointHoverRadius: isMobile ? 4 : 5,
                     },
                     {
                         label: 'Einnahmen',
@@ -326,27 +496,25 @@ fetch("{% url 'finance:api_spending_trend' %}")
                         borderWidth: 2,
                         tension: 0.1,
                         fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgb(115,239,100)',
+                        pointRadius: isMobile ? 2 : 3,
+                        pointHoverRadius: isMobile ? 4 : 5,
                     },
                     {
                         label: 'Ausgaben-Trend',
                         data: data.trend,
                         borderColor: 'rgba(236,119,0,0.59)',
                         backgroundColor: 'transparent',
-                        borderWidth: 3,
+                        borderWidth: isMobile ? 2 : 3,
                         borderDash: [10, 5],
                         tension: 0,
                         fill: false,
                         pointRadius: 0,
-                        pointHoverRadius: 0,
                     }
                 ]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
                     intersect: false,
@@ -355,38 +523,42 @@ fetch("{% url 'finance:api_spending_trend' %}")
                     y: {
                         beginAtZero: true,
                         ticks: {
+                            font: { size: isSmall ? 9 : (isMobile ? 10 : 12) },
                             callback: function(value) {
+                                if (isMobile && value >= 1000) {
+                                    return '€' + (value / 1000).toFixed(0) + 'k';
+                                }
                                 return '€ ' + value.toLocaleString('de-DE');
                             }
                         },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
-                        grid: {
-                            display: false
-                        },
+                        grid: { display: false },
                         ticks: {
-                            maxRotation: 45,
-                            minRotation: 45,
+                            font: { size: isSmall ? 8 : (isMobile ? 9 : 11) },
+                            maxRotation: isMobile ? 45 : 45,
+                            minRotation: isMobile ? 45 : 0,
                             autoSkip: true,
-                            maxTicksLimit: 24
+                            maxTicksLimit: isMobile ? 8 : 24
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top',
+                        position: isMobile ? 'bottom' : 'top',
+                        labels: {
+                            font: { size: isSmall ? 10 : (isMobile ? 11 : 12) },
+                            padding: isSmall ? 8 : (isMobile ? 10 : 15),
+                            boxWidth: isMobile ? 12 : 15
+                        }
                     },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
                                 let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
+                                if (label) label += ': ';
                                 label += '€ ' + context.parsed.y.toLocaleString('de-DE', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
@@ -398,93 +570,106 @@ fetch("{% url 'finance:api_spending_trend' %}")
                 }
             }
         });
-    });
+    })
+    .catch(error => console.error('Fehler beim Laden des Trend Chart:', error));
 
-    // Income Payees Chart (Gestapelt)
-    fetch('/api/income-payees/?year={{ current_year }}')
-        .then(response => response.json())
-        .then(data => {
-            const ctx = document.getElementById('incomePayeesChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.labels,
-                    datasets: data.datasets
+// ===== 4. INCOME PAYEES CHART =====
+fetch('/api/income-payees/?year={{ current_year }}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('incomePayeesChart').getContext('2d');
+        const isMobile = isMobileDevice();
+        const isSmall = isSmallMobile();
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: data.datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        x: {
-                            stacked: true,
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return '€ ' + value.toLocaleString('de-DE');
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: {
+                            font: { size: isSmall ? 9 : (isMobile ? 10 : 11) },
+                            maxRotation: isMobile ? 45 : 45,
+                            minRotation: isMobile ? 45 : 0,
+                            autoSkip: true,
+                            maxTicksLimit: isMobile ? 6 : 12
                         }
                     },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                boxWidth: 15,
-                                padding: 10,
-                                font: {
-                                    size: 11
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            font: { size: isSmall ? 9 : (isMobile ? 10 : 12) },
+                            callback: function(value) {
+                                if (isMobile && value >= 1000) {
+                                    return '€' + (value / 1000).toFixed(0) + 'k';
                                 }
+                                return '€ ' + value.toLocaleString('de-DE');
                             }
                         },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    label += '€ ' + context.parsed.y.toLocaleString('de-DE', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    });
-                                    return label;
-                                },
-                                footer: function(tooltipItems) {
-                                    // Zeige Gesamtsumme für diesen Monat
-                                    let sum = 0;
-                                    tooltipItems.forEach(function(tooltipItem) {
-                                        sum += tooltipItem.parsed.y;
-                                    });
-                                    return 'Gesamt: € ' + sum.toLocaleString('de-DE', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    });
-                                }
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: isMobile ? 'bottom' : 'top',
+                        labels: {
+                            boxWidth: isMobile ? 10 : 15,
+                            padding: isSmall ? 8 : (isMobile ? 10 : 10),
+                            font: { size: isSmall ? 10 : (isMobile ? 11 : 11) }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                label += '€ ' + context.parsed.y.toLocaleString('de-DE', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                });
+                                return label;
+                            },
+                            footer: function(tooltipItems) {
+                                let sum = 0;
+                                tooltipItems.forEach(item => sum += item.parsed.y);
+                                return 'Gesamt: € ' + sum.toLocaleString('de-DE', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                });
                             }
                         }
                     }
                 }
-            });
-        })
-.catch(error => console.error('Fehler beim Laden der Income Payees:', error));
+            }
+        });
+    })
+    .catch(error => console.error('Fehler beim Laden der Income Payees:', error));
 
+// ===== RESIZE HANDLER =====
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        if (currentDrilldownState.level === 'overview') {
+            loadCategoryOverview();
+        } else {
+            loadCategoryDrilldown(currentDrilldownState.categorygroupName);
+        }
+    }, 500);
+});
 </script>
+
 {% endblock %}

@@ -31,6 +31,7 @@ urlpatterns = [
 
     # API Endpoints für Charts
     path('api/monthly-spending/', views.api_monthly_spending, name='api_monthly_spending'),
+    path('api/monthly-spending-drilldown/', views.api_monthly_spending_drilldown, name='api_monthly_spending_drilldown'),
     path('api/category-breakdown/', views.api_category_breakdown, name='api_category_breakdown'),
     path('api/top-payees/', views.api_top_payees, name='api_top_payees'),
     path('api/spending-trend/', views.api_spending_trend, name='api_spending_trend'),

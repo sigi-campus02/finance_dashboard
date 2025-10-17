@@ -480,82 +480,66 @@ def household_transactions(request):
     return render(request, 'finance/household_transactions.html', context)
 
 
+# finance/views.py - Ergänzungen für Drilldown
+
 @login_required
 def api_monthly_spending(request):
-    """API: Monatliche Ausgaben für Chart"""
+    """API: Monatliche Ausgaben für Chart mit CategoryGroup-Level"""
     if request.user.username == 'robert':
         return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
 
     year = request.GET.get('year', datetime.now().year)
 
+    # Aggregiere nach Monat und CategoryGroup
     monthly_data = FactTransactionsSigi.objects.filter(
         date__year=year
-    ).annotate(
-        month=TruncMonth('date')
-    ).values('month').annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    ).order_by('month')
-
-    labels = []
-    inflow_data = []
-    outflow_data = []
-
-    for item in monthly_data:
-        labels.append(item['month'].strftime('%B'))
-        inflow_data.append(float(item['inflow'] or 0))
-        outflow_data.append(float(item['outflow'] or 0))
-
-    return JsonResponse({
-        'labels': labels,
-        'datasets': [
-            {
-                'label': 'Einnahmen',
-                'data': inflow_data,
-                'backgroundColor': 'rgba(75, 192, 192, 0.6)',
-                'borderColor': 'rgba(75, 192, 192, 1)',
-                'borderWidth': 2
-            },
-            {
-                'label': 'Ausgaben',
-                'data': outflow_data,
-                'backgroundColor': 'rgba(255, 99, 132, 0.6)',
-                'borderColor': 'rgba(255, 99, 132, 1)',
-                'borderWidth': 2
-            }
-        ]
-    })
-
-
-@login_required
-def api_category_breakdown(request):
-    """API: Ausgaben nach Kategorie für Pie Chart"""
-    if request.user.username == 'robert':
-        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
-
-    year = request.GET.get('year', datetime.now().year)
-
-    category_data = FactTransactionsSigi.objects.filter(
-        date__year=year,
-        outflow__gt=0
-    ).values(
-        'category__categorygroup__category_group'
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1  # Ready to Assign
     ).exclude(
         category__categorygroup__category_group__iexact='NoCategory'
     ).exclude(
-        category__categorygroup__category_group__iexact='Inflow'
+        category__categorygroup_id__isnull=True  # NEU: Keine NULL-Werte
     ).annotate(
-        total=Sum('outflow')
-    ).order_by('-total')[:10]
+        month=TruncMonth('date')
+    ).values(
+        'month',
+        'category__categorygroup_id',
+        'category__categorygroup__category_group'
+    ).annotate(
+        inflow=Sum('inflow'),
+        outflow=Sum('outflow')
+    ).order_by('month', 'category__categorygroup_id')
 
-    labels = []
-    data = []
+    # Strukturiere Daten für gestapeltes Balkendiagramm
+    from collections import defaultdict
 
-    for item in category_data:
-        category_name = item['category__categorygroup__category_group'] or 'Unbekannt'
-        labels.append(category_name)
-        data.append(float(item['total'] or 0))
+    months_data = defaultdict(lambda: defaultdict(float))
+    category_groups = set()
 
+    for item in monthly_data:
+        month_str = item['month'].strftime('%B')  # Englischer Monatsname
+        group_id = item['category__categorygroup_id']
+        group_name = item['category__categorygroup__category_group'] or 'Sonstige'
+
+        # Überspringe wenn group_id None ist
+        if group_id is None:
+            continue
+
+        # Netto-Ausgaben
+        netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+
+        months_data[month_str][group_name] = netto
+        category_groups.add((group_id, group_name))
+
+    # Erstelle Labels (Monate) - ENGLISCH für Chart.js
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December']
+    labels = month_names
+
+    # Erstelle Datasets für jede CategoryGroup
+    datasets = []
     colors = [
         'rgba(255, 99, 132, 0.8)',
         'rgba(54, 162, 235, 0.8)',
@@ -569,14 +553,215 @@ def api_category_breakdown(request):
         'rgba(99, 255, 132, 0.8)',
     ]
 
+    for idx, (group_id, group_name) in enumerate(sorted(category_groups, key=lambda x: x[1])):
+        data = [months_data[month].get(group_name, 0) for month in month_names]
+
+        # WICHTIG: Überspringe Kategorien mit group_id = None
+        if group_id is None:
+            continue
+
+        datasets.append({
+            'label': group_name,
+            'data': data,
+            'backgroundColor': colors[idx % len(colors)],
+            'borderColor': colors[idx % len(colors)].replace('0.8', '1'),
+            'borderWidth': 1,
+            'categorygroup_id': int(group_id),  # Stelle sicher dass es eine Integer ist
+        })
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': datasets
+    })
+
+
+@login_required
+def api_monthly_spending_drilldown(request):
+    """API: Drilldown zu einzelnen Categories einer CategoryGroup"""
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
+    year = request.GET.get('year', datetime.now().year)
+    categorygroup_id = request.GET.get('categorygroup_id')
+    month = request.GET.get('month')  # z.B. "June" (englisch)
+
+    if not categorygroup_id or categorygroup_id == 'undefined':
+        return JsonResponse({
+            'error': 'categorygroup_id required and must not be undefined'
+        }, status=400)
+
+    try:
+        categorygroup_id = int(categorygroup_id)
+    except (ValueError, TypeError):
+        return JsonResponse({
+            'error': f'Invalid categorygroup_id: {categorygroup_id}'
+        }, status=400)
+
+    # Basis-Query
+    query = FactTransactionsSigi.objects.filter(
+        date__year=year,
+        category__categorygroup_id=categorygroup_id
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).exclude(
+        category_id=1
+    )
+
+    # Optional: Filter auf bestimmten Monat
+    if month and month != 'undefined':
+        # Unterstütze englische Monatsnamen (von Chart.js)
+        month_names_en = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December']
+
+        try:
+            month_num = month_names_en.index(month) + 1
+            query = query.filter(date__month=month_num)
+        except (ValueError, AttributeError):
+            # Falls Monat ungültig, ignorieren wir den Filter
+            pass
+
+    # Aggregiere nach Category
+    category_data = query.values(
+        'category_id',
+        'category__category'
+    ).annotate(
+        total_inflow=Sum('inflow'),
+        total_outflow=Sum('outflow')
+    ).order_by('-total_outflow')
+
+    labels = []
+    data = []
+
+    for item in category_data:
+        category_name = item['category__category'] or 'Unbekannt'
+        netto = float((item['total_outflow'] or 0) - (item['total_inflow'] or 0))
+
+        if netto > 0:  # Nur Ausgaben anzeigen
+            labels.append(category_name)
+            data.append(netto)
+
+    # Falls keine Daten vorhanden
+    if not labels:
+        return JsonResponse({
+            'labels': ['Keine Daten'],
+            'datasets': [{
+                'label': 'Ausgaben',
+                'data': [0],
+                'backgroundColor': 'rgba(200, 200, 200, 0.6)',
+                'borderColor': 'rgba(200, 200, 200, 1)',
+                'borderWidth': 2
+            }]
+        })
+
     return JsonResponse({
         'labels': labels,
         'datasets': [{
+            'label': 'Ausgaben',
             'data': data,
-            'backgroundColor': colors[:len(data)],
-            'borderWidth': 1
+            'backgroundColor': 'rgba(54, 162, 235, 0.6)',
+            'borderColor': 'rgba(54, 162, 235, 1)',
+            'borderWidth': 2
         }]
     })
+
+
+@login_required
+def api_category_breakdown(request):
+    """API: Ausgaben nach Kategorie für Pie Chart mit Drilldown-Support"""
+    if request.user.username == 'robert':
+        return JsonResponse({'error': 'Keine Berechtigung'}, status=403)
+
+    year = request.GET.get('year', datetime.now().year)
+    categorygroup = request.GET.get('categorygroup')  # NEU: Optional für Drilldown
+
+    if categorygroup:
+        # DRILLDOWN: Zeige Categories dieser CategoryGroup
+        category_data = FactTransactionsSigi.objects.filter(
+            date__year=year,
+            outflow__gt=0,
+            category__categorygroup__category_group=categorygroup
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).values(
+            'category__category'
+        ).annotate(
+            total=Sum('outflow')
+        ).order_by('-total')
+
+        labels = []
+        data = []
+
+        for item in category_data:
+            category_name = item['category__category'] or 'Unbekannt'
+            labels.append(category_name)
+            data.append(float(item['total'] or 0))
+
+        colors = [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 206, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(199, 199, 199, 0.8)',
+            'rgba(83, 102, 255, 0.8)',
+            'rgba(255, 99, 255, 0.8)',
+            'rgba(99, 255, 132, 0.8)',
+        ]
+
+        return JsonResponse({
+            'labels': labels,
+            'datasets': [{
+                'data': data,
+                'backgroundColor': colors[:len(data)],
+                'borderWidth': 1
+            }]
+        })
+
+    else:
+        # OVERVIEW: Zeige CategoryGroups (wie bisher)
+        category_data = FactTransactionsSigi.objects.filter(
+            date__year=year,
+            outflow__gt=0
+        ).values(
+            'category__categorygroup__category_group'
+        ).exclude(
+            category__categorygroup__category_group__iexact='NoCategory'
+        ).exclude(
+            category__categorygroup__category_group__iexact='Inflow'
+        ).annotate(
+            total=Sum('outflow')
+        ).order_by('-total')[:10]
+
+        labels = []
+        data = []
+
+        for item in category_data:
+            category_name = item['category__categorygroup__category_group'] or 'Unbekannt'
+            labels.append(category_name)
+            data.append(float(item['total'] or 0))
+
+        colors = [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 206, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(199, 199, 199, 0.8)',
+            'rgba(83, 102, 255, 0.8)',
+            'rgba(255, 99, 255, 0.8)',
+            'rgba(99, 255, 132, 0.8)',
+        ]
+
+        return JsonResponse({
+            'labels': labels,
+            'datasets': [{
+                'data': data,
+                'backgroundColor': colors[:len(data)],
+                'borderWidth': 1
+            }]
+        })
 
 
 @login_required
