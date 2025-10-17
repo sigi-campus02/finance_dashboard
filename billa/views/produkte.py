@@ -472,7 +472,7 @@ def billa_produktgruppen_liste(request):
 
 
 @login_required
-def billa_produktgruppe_detail(request, produktgruppe):
+def billa_produktgruppe_detail(request, produktgruppe_id):
     """Detailansicht einer Produktgruppe"""
 
     # Hole Produktgruppe per ID
@@ -665,7 +665,7 @@ def billa_ueberkategorien_liste(request):
 
 
 @login_required
-def billa_ueberkategorie_detail(request, ueberkategorie):
+def billa_ueberkategorie_detail(request, ueberkategorie_id):
     """Detailansicht einer Überkategorie"""
 
     # Hole Überkategorie-Objekt per ID
