@@ -152,18 +152,29 @@ def _create_einkauf_with_artikel(data):
     for artikel_data in artikel_liste:
         artikel_data['einkauf'] = einkauf
 
-        produkt_name_norm = artikel_data['produkt_name_korrigiert']
         produkt_name_original = artikel_data['produkt_name']
+        produkt_name_normalisiert = artikel_data['produkt_name_normalisiert']
+        produkt_name_korrigiert = artikel_data.get('produkt_name_korrigiert') or produkt_name_original
 
-        # Finde oder erstelle Produkt
+        # Finde oder erstelle Produkt (Lookup über den normalisierten Namen)
         produkt, created = BillaProdukt.objects.get_or_create(
-            name_korrigiert=produkt_name_norm,
+            name_normalisiert=produkt_name_normalisiert,
             defaults={
                 'name_original': produkt_name_original,
+                'name_korrigiert': produkt_name_korrigiert,
                 'letzter_preis': artikel_data['gesamtpreis'],
                 'marke': BrandMapper.extract_brand(produkt_name_original)
             }
         )
+
+        # Falls das Produkt neu ist aber bereits eine korrigierte Variante vorhanden wäre,
+        # übernehme sie als Ausgangspunkt für manuelle Nachbearbeitung
+        if created and produkt_name_korrigiert and produkt.name_korrigiert != produkt_name_korrigiert:
+            produkt.name_korrigiert = produkt_name_korrigiert
+            produkt.save(update_fields=['name_korrigiert'])
+        elif not created and produkt_name_korrigiert and not produkt.name_korrigiert:
+            produkt.name_korrigiert = produkt_name_korrigiert
+            produkt.save(update_fields=['name_korrigiert'])
 
         # Aktualisiere Marke falls noch nicht gesetzt
         if not created and not produkt.marke:

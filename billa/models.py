@@ -1,6 +1,7 @@
 from django.core.validators import MinValueValidator
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
+from django.db.models import Avg, Count
 
 
 class BillaUeberkategorie(models.Model):
@@ -241,6 +242,41 @@ class BillaProdukt(models.Model):
 
     def __str__(self):
         return self.name_korrigiert or self.name_normalisiert
+
+    def update_statistiken(self):
+        """Aktualisiert aggregierte Kennzahlen basierend auf vorhandenen Artikeln."""
+
+        artikel_qs = self.artikel.select_related('einkauf')
+        stats = artikel_qs.aggregate(
+            total=Count('id'),
+            avg_price=Avg('preis_pro_einheit'),
+        )
+
+        self.anzahl_kaeufe = stats['total'] or 0
+
+        avg_price = stats['avg_price']
+        if avg_price is None:
+            avg_price = Decimal('0')
+        else:
+            avg_price = Decimal(avg_price).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        self.durchschnittspreis = avg_price
+
+        letzter_preis = None
+        neuester_preis = self.preishistorie.order_by('-datum', '-id').first()
+        if neuester_preis:
+            letzter_preis = neuester_preis.preis
+        else:
+            letzter_artikel = artikel_qs.order_by('-einkauf__datum', '-einkauf__zeit', '-id').first()
+            if letzter_artikel:
+                letzter_preis = letzter_artikel.preis_pro_einheit
+
+        if letzter_preis is None:
+            letzter_preis = Decimal('0')
+        else:
+            letzter_preis = Decimal(letzter_preis)
+
+        self.letzter_preis = letzter_preis.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        self.save(update_fields=['anzahl_kaeufe', 'durchschnittspreis', 'letzter_preis'])
 
 
 class BillaPreisHistorie(models.Model):
