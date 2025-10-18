@@ -271,7 +271,7 @@
 
 {% block extra_js %}
 {{ chart_labels|json_script:"energy-chart-labels" }}
-{{ chart_werte|json_script:"energy-chart-values" }}
+{{ chart_datasets|json_script:"energy-chart-datasets" }}
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const canvas = document.getElementById('energyConsumptionChart');
@@ -281,40 +281,25 @@
 
         const ctx = canvas.getContext('2d');
         const labelsElement = document.getElementById('energy-chart-labels');
-        const valuesElement = document.getElementById('energy-chart-values');
+        const datasetsElement = document.getElementById('energy-chart-datasets');
 
-        if (!labelsElement || !valuesElement) {
+        if (!labelsElement || !datasetsElement) {
             return;
         }
 
         const labels = JSON.parse(labelsElement.textContent);
-        const values = JSON.parse(valuesElement.textContent);
+        const datasets = JSON.parse(datasetsElement.textContent);
 
-        if (!labels.length) {
+        if (!labels.length || !datasets.length) {
             canvas.parentElement.innerHTML = '<p class="text-muted mb-0">Keine Daten für die Visualisierung verfügbar.</p>';
             return;
         }
-
-        const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-        gradient.addColorStop(0, 'rgba(13, 110, 253, 0.4)');
-        gradient.addColorStop(1, 'rgba(13, 110, 253, 0.05)');
 
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Verbrauch (kWh)',
-                    data: values,
-                    fill: true,
-                    backgroundColor: gradient,
-                    borderColor: '#0d6efd',
-                    tension: 0.35,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#0d6efd',
-                    pointHoverRadius: 6,
-                    pointRadius: 4,
-                }]
+                datasets: datasets
             },
             options: {
                 maintainAspectRatio: false,
@@ -328,11 +313,12 @@
                 },
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'bottom'
                     },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.formattedValue} kWh`
+                            label: (context) => `${context.dataset.label}: ${context.formattedValue} kWh`
                         }
                     }
                 }

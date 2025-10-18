@@ -1,8 +1,11 @@
 # views.py
+from collections import defaultdict
+from datetime import datetime, timedelta
+
 from django.shortcuts import render
 from django.db.models import Sum, Avg, Max, Min, Count
-from django.db.models.functions import TruncMonth, TruncWeek, TruncYear
-from datetime import datetime, timedelta
+from django.db.models.functions import TruncMonth
+
 from .models import Stromverbrauch
 
 
@@ -39,12 +42,17 @@ def energiedaten_dashboard(request):
         tage=Count('id')
     ).order_by('-monat')[:12]
 
-    # Wöchentliche Aggregation für Chart
-    woechentlich = daten.annotate(
-        woche=TruncWeek('datum')
-    ).values('woche').annotate(
-        verbrauch=Sum('verbrauch_kwh')
-    ).order_by('woche')
+    # Wöchentliche Aggregation für Chart (Kalenderwochen nach Jahr)
+    woechentlich_werte = defaultdict(lambda: defaultdict(float))
+
+    for datum, verbrauch in daten.values_list('datum', 'verbrauch_kwh'):
+        if datum is None or verbrauch is None:
+            continue
+
+        iso_cal = datum.isocalendar()
+        iso_jahr = iso_cal[0]
+        iso_kw = iso_cal[1]
+        woechentlich_werte[iso_jahr][iso_kw] += float(verbrauch)
 
     # Verbrauch nach Wochentag
     wochentage = []
@@ -64,8 +72,41 @@ def energiedaten_dashboard(request):
     aktuelle_daten = daten.order_by('-datum')[:30]
 
     # Daten für Charts vorbereiten
-    chart_labels = [w['woche'].strftime('%d.%m.%Y') for w in woechentlich]
-    chart_werte = [float(w['verbrauch']) for w in woechentlich]
+    kw_labels = sorted({kw for jahreswerte in woechentlich_werte.values() for kw in jahreswerte})
+    jahre = sorted(woechentlich_werte.keys())
+
+    chart_labels = [f"KW {kw:02d}" for kw in kw_labels]
+
+    farben = [
+        '#0d6efd',  # Blau
+        '#20c997',  # Grün
+        '#ffc107',  # Gelb
+        '#dc3545',  # Rot
+        '#6f42c1',  # Lila
+        '#198754',  # Dunkelgrün
+        '#fd7e14',  # Orange
+    ]
+
+    chart_datasets = []
+    for index, jahr in enumerate(jahre):
+        farbe = farben[index % len(farben)]
+        werte = []
+        for kw in kw_labels:
+            wert = woechentlich_werte[jahr].get(kw)
+            werte.append(round(wert, 2) if wert is not None else None)
+
+        chart_datasets.append({
+            'label': str(jahr),
+            'data': werte,
+            'borderColor': farbe,
+            'backgroundColor': farbe,
+            'tension': 0.35,
+            'fill': False,
+            'pointRadius': 3,
+            'pointBackgroundColor': '#ffffff',
+            'pointBorderColor': farbe,
+            'pointHoverRadius': 5,
+        })
 
     context = {
         'titel': titel,
@@ -75,7 +116,7 @@ def energiedaten_dashboard(request):
         'wochentage': wochentage,
         'aktuelle_daten': aktuelle_daten,
         'chart_labels': chart_labels,
-        'chart_werte': chart_werte,
+        'chart_datasets': chart_datasets,
     }
 
     return render(request, 'energiedaten/dashboard.html', context)
