@@ -3,8 +3,8 @@ from django.shortcuts import render
 from django.db.models import Sum, Avg, Max, Min, Count
 from django.db.models.functions import (
     TruncMonth,
-    ExtractIsoWeek,
-    ExtractIsoYear,
+    ExtractWeek,
+    ExtractYear,
 )
 from datetime import datetime, timedelta
 from .models import Stromverbrauch
@@ -45,8 +45,8 @@ def energiedaten_dashboard(request):
 
     # Wöchentliche Aggregation für Chart (Kalenderwochen nach Jahr)
     woechentlich = daten.annotate(
-        jahr=ExtractIsoYear('datum'),
-        kw=ExtractIsoWeek('datum')
+        jahr=ExtractYear('datum'),
+        kw=ExtractWeek('datum')
     ).values('jahr', 'kw').annotate(
         verbrauch=Sum('verbrauch_kwh')
     ).order_by('jahr', 'kw')
