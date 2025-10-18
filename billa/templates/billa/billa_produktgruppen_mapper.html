@@ -106,7 +106,7 @@
                     <select name="produktgruppe_filter" class="form-select" id="produktgruppeFilter">
                         <option value="">Alle Produktgruppen</option>
                         {% if produktgruppe_filter %}
-                        <option value="{{ produktgruppe_filter }}" selected>{{ produktgruppe_filter }}</option>
+                        <option value="{{ produktgruppe_filter }}" selected>{{ produktgruppe_filter_name|default:produktgruppe_filter }}</option>
                         {% endif %}
                     </select>
                 </div>
@@ -118,6 +118,20 @@
                         <option value="{{ marke }}" {% if marke_filter == marke %}selected{% endif %}>{{ marke }}</option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sortierung</label>
+                    <div class="input-group">
+                        <select name="sort" class="form-select">
+                            {% for value, label in sort_options %}
+                            <option value="{{ value }}" {% if sort_field == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="direction" class="form-select">
+                            <option value="asc" {% if sort_direction == 'asc' %}selected{% endif %}>A → Z</option>
+                            <option value="desc" {% if sort_direction == 'desc' %}selected{% endif %}>Z → A</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-2 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary flex-fill">
@@ -151,33 +165,33 @@
                 <table class="table table-hover mb-0 align-middle mapper-table">
                     <thead class="table-light sticky-top">
                         <tr>
-                            <th style="width: 15%" data-column="0">
-                                <button type="button" class="sort-button" data-column="0">
+                            <th style="width: 15%" data-column="0" data-sort-field="name_original">
+                                <button type="button" class="sort-button" data-column="0" data-sort-field="name_original">
                                     <span>Original</span>
                                     <i class="bi bi-arrow-down-up sort-icon"></i>
                                 </button>
                             </th>
-                            <th style="width: 15%" data-column="1">
-                                <button type="button" class="sort-button" data-column="1">
+                            <th style="width: 15%" data-column="1" data-sort-field="name_normalisiert">
+                                <button type="button" class="sort-button" data-column="1" data-sort-field="name_normalisiert">
                                     <span>Normalisiert</span>
                                     <i class="bi bi-arrow-down-up sort-icon"></i>
                                 </button>
                             </th>
-                            <th style="width: 15%" data-column="2">
-                                <button type="button" class="sort-button" data-column="2">
+                            <th style="width: 15%" data-column="2" data-sort-field="name_korrigiert">
+                                <button type="button" class="sort-button" data-column="2" data-sort-field="name_korrigiert">
                                     <span>Korrigiert</span>
                                     <i class="bi bi-arrow-down-up sort-icon"></i>
                                 </button>
                             </th>
-                            <th style="width: 15%" data-column="3">
-                                <button type="button" class="sort-button" data-column="3">
+                            <th style="width: 15%" data-column="3" data-sort-field="marke">
+                                <button type="button" class="sort-button" data-column="3" data-sort-field="marke">
                                     <span>Marke</span>
                                     <i class="bi bi-arrow-down-up sort-icon"></i>
                                 </button>
                             </th>
-                            <th style="width: 20%" data-column="4">
+                            <th style="width: 20%" data-column="4" data-sort-field="ueberkategorie">
                                 <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="sort-button flex-grow-1" data-column="4">
+                                    <button type="button" class="sort-button flex-grow-1" data-column="4" data-sort-field="ueberkategorie">
                                         <span>Überkategorie</span>
                                         <i class="bi bi-arrow-down-up sort-icon"></i>
                                     </button>
@@ -190,9 +204,9 @@
                                     </button>
                                 </div>
                             </th>
-                            <th style="width: 20%" data-column="5">
+                            <th style="width: 20%" data-column="5" data-sort-field="produktgruppe">
                                 <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="sort-button flex-grow-1" data-column="5">
+                                    <button type="button" class="sort-button flex-grow-1" data-column="5" data-sort-field="produktgruppe">
                                         <span>Produktgruppe</span>
                                         <i class="bi bi-arrow-down-up sort-icon"></i>
                                     </button>
@@ -430,42 +444,28 @@ const mapperTable = document.querySelector('.mapper-table');
 
 if (mapperTable) {
     const sortButtons = mapperTable.querySelectorAll('.sort-button');
-    const headerCells = mapperTable.querySelectorAll('thead th[data-column]');
-    const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+    const headerCells = mapperTable.querySelectorAll('thead th[data-sort-field]');
+    const filterForm = document.getElementById('filterForm');
+    const sortFieldSelect = filterForm ? filterForm.querySelector('select[name="sort"]') : null;
+    const sortDirectionSelect = filterForm ? filterForm.querySelector('select[name="direction"]') : null;
+
     const sortState = {
-        column: null,
-        direction: 'asc'
+        field: sortFieldSelect ? sortFieldSelect.value : null,
+        direction: sortDirectionSelect ? sortDirectionSelect.value : 'asc'
     };
 
-    const getCellValue = (row, columnIndex) => {
-        const cells = row.children;
-        if (!cells || columnIndex >= cells.length) {
-            return '';
-        }
-
-        const cell = cells[columnIndex];
-        const input = cell.querySelector('input');
-        if (input) {
-            return input.value.trim();
-        }
-
-        const select = cell.querySelector('select');
-        if (select) {
-            const selectedOption = select.selectedOptions[0];
-            return selectedOption ? selectedOption.textContent.trim() : '';
-        }
-
-        return cell.textContent.trim();
-    };
-
-    const updateSortIcons = (activeColumn, direction) => {
+    const updateSortIcons = () => {
         sortButtons.forEach(button => {
             const icon = button.querySelector('.sort-icon');
-            button.classList.toggle('active', parseInt(button.dataset.column, 10) === activeColumn);
+            const field = button.dataset.sortField;
+            const isActive = field && sortState.field === field;
+
+            button.classList.toggle('active', isActive);
+
             if (icon) {
                 icon.classList.remove('bi-arrow-up', 'bi-arrow-down', 'bi-arrow-down-up');
-                if (parseInt(button.dataset.column, 10) === activeColumn) {
-                    icon.classList.add(direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down');
+                if (isActive) {
+                    icon.classList.add(sortState.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down');
                 } else {
                     icon.classList.add('bi-arrow-down-up');
                 }
@@ -473,61 +473,59 @@ if (mapperTable) {
         });
 
         headerCells.forEach(th => {
-            if (parseInt(th.dataset.column, 10) === activeColumn) {
-                th.setAttribute('aria-sort', direction === 'asc' ? 'ascending' : 'descending');
+            const field = th.dataset.sortField;
+            if (field && sortState.field === field) {
+                th.setAttribute('aria-sort', sortState.direction === 'asc' ? 'ascending' : 'descending');
             } else {
                 th.removeAttribute('aria-sort');
             }
         });
     };
 
-    const applySort = (columnIndex, direction) => {
-        const tbody = mapperTable.querySelector('tbody');
-        const dataRows = Array.from(tbody.querySelectorAll('tr.produkt-row'));
-        const otherRows = Array.from(tbody.querySelectorAll('tr:not(.produkt-row)'));
+    updateSortIcons();
 
-        if (dataRows.length <= 1) {
-            return;
+    const submitWithSort = () => {
+        if (filterForm) {
+            if (typeof filterForm.requestSubmit === 'function') {
+                filterForm.requestSubmit();
+            } else {
+                filterForm.submit();
+            }
         }
-
-        dataRows.forEach((row, index) => {
-            if (!row.dataset.originalIndex) {
-                row.dataset.originalIndex = index;
-            }
-        });
-
-        dataRows.sort((a, b) => {
-            const aValue = getCellValue(a, columnIndex);
-            const bValue = getCellValue(b, columnIndex);
-            let comparison = collator.compare(aValue, bValue);
-
-            if (comparison === 0) {
-                const aIndex = parseInt(a.dataset.originalIndex, 10) || 0;
-                const bIndex = parseInt(b.dataset.originalIndex, 10) || 0;
-                comparison = aIndex - bIndex;
-            }
-
-            return direction === 'asc' ? comparison : -comparison;
-        });
-
-        [...dataRows, ...otherRows].forEach(row => tbody.appendChild(row));
     };
 
     sortButtons.forEach(button => {
         button.addEventListener('click', () => {
-            const columnIndex = parseInt(button.dataset.column, 10);
+            const field = button.dataset.sortField;
+            if (!field || !sortFieldSelect || !sortDirectionSelect) {
+                return;
+            }
 
-            if (sortState.column === columnIndex) {
+            if (sortState.field === field) {
                 sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
             } else {
-                sortState.column = columnIndex;
+                sortState.field = field;
                 sortState.direction = 'asc';
             }
 
-            applySort(columnIndex, sortState.direction);
-            updateSortIcons(columnIndex, sortState.direction);
+            sortFieldSelect.value = sortState.field;
+            sortDirectionSelect.value = sortState.direction;
+
+            updateSortIcons();
+            submitWithSort();
         });
     });
+
+    if (sortFieldSelect && sortDirectionSelect) {
+        const handleSortChange = () => {
+            sortState.field = sortFieldSelect.value;
+            sortState.direction = sortDirectionSelect.value;
+            updateSortIcons();
+        };
+
+        sortFieldSelect.addEventListener('change', handleSortChange);
+        sortDirectionSelect.addEventListener('change', handleSortChange);
+    }
 }
 
 // CSRF Token für AJAX
@@ -716,8 +714,9 @@ document.getElementById('saveProduktgruppeBtn').addEventListener('click', async 
 const ueberkategorieFilter = document.querySelector('select[name="ueberkategorie_filter"]');
 const produktgruppeFilter = document.getElementById('produktgruppeFilter');
 const currentProduktgruppe = "{{ produktgruppe_filter }}";
+const produktgruppenCollator = new Intl.Collator('de', { sensitivity: 'base' });
 
-if (ueberkategorieFilter) {
+if (ueberkategorieFilter && produktgruppeFilter) {
     ueberkategorieFilter.addEventListener('change', function() {
         const ueberkategorieId = this.value;
 
@@ -742,7 +741,7 @@ if (ueberkategorieFilter) {
             });
             // Sortiere nach Name
             const sortedGruppen = Array.from(alleGruppen.entries()).sort((a, b) =>
-                a[1].localeCompare(b[1])
+                produktgruppenCollator.compare(a[1], b[1])
             );
             sortedGruppen.forEach(([id, name]) => {
                 const option = document.createElement('option');
@@ -750,18 +749,16 @@ if (ueberkategorieFilter) {
                 option.textContent = name;
                 produktgruppeFilter.appendChild(option);
             });
+            produktgruppeFilter.disabled = false;
         }
     });
 
     // Initial befüllen beim Laden der Seite
-    const currentUeberkat = ueberkategorieFilter.value;
-    if (currentUeberkat) {
-        ueberkategorieFilter.dispatchEvent(new Event('change'));
-        if (currentProduktgruppe) {
-            setTimeout(() => {
-                produktgruppeFilter.value = currentProduktgruppe;
-            }, 0);
-        }
+    ueberkategorieFilter.dispatchEvent(new Event('change'));
+    if (currentProduktgruppe) {
+        setTimeout(() => {
+            produktgruppeFilter.value = currentProduktgruppe;
+        }, 0);
     }
 }
 

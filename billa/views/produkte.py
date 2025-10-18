@@ -285,6 +285,32 @@ def billa_produktgruppen_mapper(request):
                 artikel__einkauf__datum=einkaufsdatum
             ).distinct()
 
+        # Sortierung
+        sort_options = {
+            'name_original': 'name_original',
+            'name_normalisiert': 'name_normalisiert',
+            'name_korrigiert': 'name_korrigiert',
+            'marke': 'marke',
+            'ueberkategorie': 'ueberkategorie__name',
+            'produktgruppe': 'produktgruppe__name',
+        }
+        sort_field = request.GET.get('sort', 'name_normalisiert')
+        if sort_field not in sort_options:
+            sort_field = 'name_normalisiert'
+
+        sort_direction = request.GET.get('direction', 'asc')
+        if sort_direction not in {'asc', 'desc'}:
+            sort_direction = 'asc'
+
+        order_by_fields = [
+            f"{'-' if sort_direction == 'desc' else ''}{sort_options[sort_field]}"
+        ]
+
+        if sort_options[sort_field] != 'id':
+            order_by_fields.append('id')
+
+        produkte = produkte.order_by(*order_by_fields)
+
         # Pagination (100 Produkte pro Seite)
         from django.core.paginator import Paginator
         paginator = Paginator(produkte, 100)
@@ -320,6 +346,12 @@ def billa_produktgruppen_mapper(request):
             .order_by('marke')
         )
 
+        produktgruppe_filter_name = ''
+        if produktgruppe_filter:
+            produktgruppe_obj = BillaProduktgruppe.objects.filter(id=produktgruppe_filter).first()
+            if produktgruppe_obj:
+                produktgruppe_filter_name = produktgruppe_obj.name
+
         # Produktgruppen gruppiert nach Überkategorie (für JavaScript)
         produktgruppen_map = {}
         for ueberkat in ueberkategorien:
@@ -341,6 +373,17 @@ def billa_produktgruppen_mapper(request):
             'ueberkategorien': ueberkategorien,
             'marken': marken,
             'produktgruppen_json': json.dumps(produktgruppen_map),
+            'sort_field': sort_field,
+            'sort_direction': sort_direction,
+            'produktgruppe_filter_name': produktgruppe_filter_name,
+            'sort_options': [
+                ('name_original', 'Originalname'),
+                ('name_normalisiert', 'Normalisiert'),
+                ('name_korrigiert', 'Korrigiert'),
+                ('marke', 'Marke'),
+                ('ueberkategorie', 'Überkategorie'),
+                ('produktgruppe', 'Produktgruppe'),
+            ],
         }
 
         return render(request, 'billa/billa_produktgruppen_mapper.html', context)
