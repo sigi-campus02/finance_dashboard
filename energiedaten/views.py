@@ -103,12 +103,11 @@ def energiedaten_dashboard(request):
             'data': werte,
             'borderColor': farbe,
             'backgroundColor': farbe,
+            'borderWidth': 2,
             'tension': 0.35,
             'fill': False,
-            'pointRadius': 3,
-            'pointBackgroundColor': '#ffffff',
-            'pointBorderColor': farbe,
-            'pointHoverRadius': 5,
+            'pointRadius': 0,
+            'pointHoverRadius': 0,
         })
 
     context = {
