@@ -10,6 +10,19 @@ from datetime import datetime, timedelta
 from .models import Stromverbrauch
 
 
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """Convert a hex color like ``#0d6efd`` to an rgba string with custom alpha."""
+
+    hex_value = hex_color.lstrip('#')
+    if len(hex_value) != 6:
+        return hex_color
+
+    r = int(hex_value[0:2], 16)
+    g = int(hex_value[2:4], 16)
+    b = int(hex_value[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
 def energiedaten_dashboard(request):
     """Dashboard mit Übersicht und Statistiken zum Stromverbrauch"""
 
@@ -91,6 +104,8 @@ def energiedaten_dashboard(request):
         jahreswerte.setdefault(jahr, {})[kw] = float(eintrag['verbrauch'])
 
     chart_datasets = []
+    aktuelles_jahr = max(jahre) if jahre else None
+    transparente_alpha = 0.35
     for index, jahr in enumerate(jahre):
         farbe = farben[index % len(farben)]
         werte = []
@@ -98,17 +113,24 @@ def energiedaten_dashboard(request):
             wert = jahreswerte[jahr].get(kw)
             werte.append(round(wert, 2) if wert is not None else None)
 
-        chart_datasets.append({
+        ist_aktuelles_jahr = jahr == aktuelles_jahr
+        border_color = farbe if ist_aktuelles_jahr else _hex_to_rgba(farbe, transparente_alpha)
+        background_color = farbe if ist_aktuelles_jahr else _hex_to_rgba(farbe, transparente_alpha)
+
+        dataset = {
             'label': str(jahr),
             'data': werte,
-            'borderColor': farbe,
-            'backgroundColor': farbe,
-            'borderWidth': 2,
+            'borderColor': border_color,
+            'backgroundColor': background_color,
+            'borderWidth': 3 if ist_aktuelles_jahr else 2,
             'tension': 0.35,
             'fill': False,
             'pointRadius': 0,
             'pointHoverRadius': 0,
-        })
+            'order': 1 if ist_aktuelles_jahr else 0,
+        }
+
+        chart_datasets.append(dataset)
 
     context = {
         'titel': titel,
