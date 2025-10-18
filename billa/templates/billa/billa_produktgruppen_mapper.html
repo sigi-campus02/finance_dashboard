@@ -151,29 +151,59 @@
                 <table class="table table-hover mb-0 align-middle mapper-table">
                     <thead class="table-light sticky-top">
                         <tr>
-                            <th style="width: 15%">Original</th>
-                            <th style="width: 15%">Normalisiert</th>
-                            <th style="width: 15%">Korrigiert</th>
-                            <th style="width: 15%">Marke</th>
-                            <th style="width: 20%">
-                                Überkategorie
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary ms-2"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#neuUeberkategorieModal"
-                                        title="Neue Überkategorie anlegen">
-                                    <i class="bi bi-plus-circle"></i>
+                            <th style="width: 15%" data-column="0">
+                                <button type="button" class="sort-button" data-column="0">
+                                    <span>Original</span>
+                                    <i class="bi bi-arrow-down-up sort-icon"></i>
                                 </button>
                             </th>
-                            <th style="width: 20%">
-                                Produktgruppe
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary ms-2"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#neuProduktgruppeModal"
-                                        title="Neue Produktgruppe anlegen">
-                                    <i class="bi bi-plus-circle"></i>
+                            <th style="width: 15%" data-column="1">
+                                <button type="button" class="sort-button" data-column="1">
+                                    <span>Normalisiert</span>
+                                    <i class="bi bi-arrow-down-up sort-icon"></i>
                                 </button>
+                            </th>
+                            <th style="width: 15%" data-column="2">
+                                <button type="button" class="sort-button" data-column="2">
+                                    <span>Korrigiert</span>
+                                    <i class="bi bi-arrow-down-up sort-icon"></i>
+                                </button>
+                            </th>
+                            <th style="width: 15%" data-column="3">
+                                <button type="button" class="sort-button" data-column="3">
+                                    <span>Marke</span>
+                                    <i class="bi bi-arrow-down-up sort-icon"></i>
+                                </button>
+                            </th>
+                            <th style="width: 20%" data-column="4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="sort-button flex-grow-1" data-column="4">
+                                        <span>Überkategorie</span>
+                                        <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#neuUeberkategorieModal"
+                                            title="Neue Überkategorie anlegen">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </button>
+                                </div>
+                            </th>
+                            <th style="width: 20%" data-column="5">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="sort-button flex-grow-1" data-column="5">
+                                        <span>Produktgruppe</span>
+                                        <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#neuProduktgruppeModal"
+                                            title="Neue Produktgruppe anlegen">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </button>
+                                </div>
                             </th>
                         </tr>
                     </thead>
@@ -394,6 +424,111 @@ const produktgruppenMap = {{ produktgruppen_json|safe }};
 
 // Debug: Map anzeigen
 console.log('Produktgruppen-Map:', produktgruppenMap);
+
+// Tabellen-Sortierung ------------------------------------------------------
+const mapperTable = document.querySelector('.mapper-table');
+
+if (mapperTable) {
+    const sortButtons = mapperTable.querySelectorAll('.sort-button');
+    const headerCells = mapperTable.querySelectorAll('thead th[data-column]');
+    const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+    const sortState = {
+        column: null,
+        direction: 'asc'
+    };
+
+    const getCellValue = (row, columnIndex) => {
+        const cells = row.children;
+        if (!cells || columnIndex >= cells.length) {
+            return '';
+        }
+
+        const cell = cells[columnIndex];
+        const input = cell.querySelector('input');
+        if (input) {
+            return input.value.trim();
+        }
+
+        const select = cell.querySelector('select');
+        if (select) {
+            const selectedOption = select.selectedOptions[0];
+            return selectedOption ? selectedOption.textContent.trim() : '';
+        }
+
+        return cell.textContent.trim();
+    };
+
+    const updateSortIcons = (activeColumn, direction) => {
+        sortButtons.forEach(button => {
+            const icon = button.querySelector('.sort-icon');
+            button.classList.toggle('active', parseInt(button.dataset.column, 10) === activeColumn);
+            if (icon) {
+                icon.classList.remove('bi-arrow-up', 'bi-arrow-down', 'bi-arrow-down-up');
+                if (parseInt(button.dataset.column, 10) === activeColumn) {
+                    icon.classList.add(direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down');
+                } else {
+                    icon.classList.add('bi-arrow-down-up');
+                }
+            }
+        });
+
+        headerCells.forEach(th => {
+            if (parseInt(th.dataset.column, 10) === activeColumn) {
+                th.setAttribute('aria-sort', direction === 'asc' ? 'ascending' : 'descending');
+            } else {
+                th.removeAttribute('aria-sort');
+            }
+        });
+    };
+
+    const applySort = (columnIndex, direction) => {
+        const tbody = mapperTable.querySelector('tbody');
+        const dataRows = Array.from(tbody.querySelectorAll('tr.produkt-row'));
+        const otherRows = Array.from(tbody.querySelectorAll('tr:not(.produkt-row)'));
+
+        if (dataRows.length <= 1) {
+            return;
+        }
+
+        dataRows.forEach((row, index) => {
+            if (!row.dataset.originalIndex) {
+                row.dataset.originalIndex = index;
+            }
+        });
+
+        dataRows.sort((a, b) => {
+            const aValue = getCellValue(a, columnIndex);
+            const bValue = getCellValue(b, columnIndex);
+            let comparison = collator.compare(aValue, bValue);
+
+            if (comparison === 0) {
+                const aIndex = parseInt(a.dataset.originalIndex, 10) || 0;
+                const bIndex = parseInt(b.dataset.originalIndex, 10) || 0;
+                comparison = aIndex - bIndex;
+            }
+
+            return direction === 'asc' ? comparison : -comparison;
+        });
+
+        [...dataRows, ...otherRows].forEach(row => tbody.appendChild(row));
+    };
+
+    sortButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const columnIndex = parseInt(button.dataset.column, 10);
+
+            if (sortState.column === columnIndex) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = columnIndex;
+                sortState.direction = 'asc';
+            }
+
+            applySort(columnIndex, sortState.direction);
+            updateSortIcons(columnIndex, sortState.direction);
+        });
+    });
+}
 
 // CSRF Token für AJAX
 function getCookie(name) {
@@ -706,6 +841,34 @@ if (filterCollapse) {
 
 .table th {
     vertical-align: middle;
+}
+
+.sort-button {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    padding: 0;
+    width: 100%;
+    text-align: left;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+}
+
+.sort-button:focus {
+    outline: none;
+}
+
+.sort-button:hover,
+.sort-button:focus,
+.sort-button.active {
+    color: var(--bs-primary);
+}
+
+.sort-icon {
+    font-size: 0.9rem;
 }
 
 @media (max-width: 767.98px) {
