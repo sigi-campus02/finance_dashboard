@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 import logging
+from django.utils.dateparse import parse_date
 from billa.models import (
     BillaArtikel, BillaProdukt, BillaPreisHistorie, BillaUeberkategorie, BillaProduktgruppe
 )
@@ -243,6 +244,8 @@ def billa_produktgruppen_mapper(request):
         filter_typ = request.GET.get('filter', 'alle')
         ueberkategorie_filter = request.GET.get('ueberkategorie_filter', '')
         produktgruppe_filter = request.GET.get('produktgruppe_filter', '')
+        einkaufsdatum_str = request.GET.get('einkaufsdatum', '')
+        einkaufsdatum = parse_date(einkaufsdatum_str) if einkaufsdatum_str else None
 
         # Basis-Queryset mit select_related für Performance
         produkte = BillaProdukt.objects.select_related(
@@ -270,6 +273,12 @@ def billa_produktgruppen_mapper(request):
         # Produktgruppe-Filter (jetzt mit ID!)
         if produktgruppe_filter:
             produkte = produkte.filter(produktgruppe__id=produktgruppe_filter)
+
+        # Einkaufsdatum-Filter
+        if einkaufsdatum:
+            produkte = produkte.filter(
+                artikel__einkauf__datum=einkaufsdatum
+            ).distinct()
 
         # Pagination (100 Produkte pro Seite)
         from django.core.paginator import Paginator
@@ -315,6 +324,7 @@ def billa_produktgruppen_mapper(request):
             'filter': filter_typ,
             'ueberkategorie_filter': ueberkategorie_filter,
             'produktgruppe_filter': produktgruppe_filter,
+            'einkaufsdatum': einkaufsdatum_str,
             'ueberkategorien': ueberkategorien,
             'produktgruppen_json': json.dumps(produktgruppen_map),
         }

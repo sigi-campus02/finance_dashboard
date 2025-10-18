@@ -83,6 +83,13 @@
                         <option value="ohne" {% if filter == 'ohne' %}selected{% endif %}>Ohne Gruppe</option>
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label">Einkaufsdatum</label>
+                    <input type="date"
+                           name="einkaufsdatum"
+                           class="form-control"
+                           value="{{ einkaufsdatum }}">
+                </div>
                 <div class="col-md-3">
                     <label class="form-label">Überkategorie</label>
                     <select name="ueberkategorie_filter" class="form-select">
@@ -221,12 +228,12 @@
         <!-- Erste Seite -->
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+            <a class="page-link" href="?page=1{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-double-left"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-left"></i>
             </a>
         </li>
@@ -247,7 +254,7 @@
             </li>
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                     {{ num }}
                 </a>
             </li>
@@ -257,12 +264,12 @@
         <!-- Letzte Seite -->
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-right"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-double-right"></i>
             </a>
         </li>
