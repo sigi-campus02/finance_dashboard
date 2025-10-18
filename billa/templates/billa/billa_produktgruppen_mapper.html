@@ -110,6 +110,15 @@
                         {% endif %}
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label">Marke</label>
+                    <select name="marke_filter" class="form-select">
+                        <option value="">Alle Marken</option>
+                        {% for marke in marken %}
+                        <option value="{{ marke }}" {% if marke_filter == marke %}selected{% endif %}>{{ marke }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="col-md-2 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary flex-fill">
                         <i class="bi bi-search"></i> Filtern
@@ -139,13 +148,14 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 align-middle mapper-table">
                     <thead class="table-light sticky-top">
                         <tr>
-                            <th style="width: 18%">Original</th>
-                            <th style="width: 18%">Normalisiert</th>
-                            <th style="width: 18%">Korrigiert</th>
-                            <th style="width: 23%">
+                            <th style="width: 15%">Original</th>
+                            <th style="width: 15%">Normalisiert</th>
+                            <th style="width: 15%">Korrigiert</th>
+                            <th style="width: 15%">Marke</th>
+                            <th style="width: 20%">
                                 Überkategorie
                                 <button type="button"
                                         class="btn btn-sm btn-outline-primary ms-2"
@@ -155,7 +165,7 @@
                                     <i class="bi bi-plus-circle"></i>
                                 </button>
                             </th>
-                            <th style="width: 23%">
+                            <th style="width: 20%">
                                 Produktgruppe
                                 <button type="button"
                                         class="btn btn-sm btn-outline-primary ms-2"
@@ -170,46 +180,53 @@
                     <tbody>
                         {% for produkt in produkte %}
                         <tr class="produkt-row">
-                            <td class="text-muted small">{{ produkt.name_original }}</td>
-                            <td class="small">{{ produkt.name_normalisiert }}</td>
-                            <td>
+                            <td class="text-muted small" data-label="Original">{{ produkt.name_original }}</td>
+                            <td class="small" data-label="Normalisiert">{{ produkt.name_normalisiert }}</td>
+                            <td data-label="Korrigiert">
                                 <input type="text"
                                        name="name_korrigiert_{{ produkt.id }}"
                                        class="form-control form-control-sm"
                                        placeholder="Korrigierter Name..."
                                        value="{{ produkt.name_korrigiert|default:'' }}">
                             </td>
-                            <td>
-                            <select name="ueberkategorie_{{ produkt.id }}"
-                                    class="form-select form-select-sm ueberkategorie-select"
-                                    data-produkt-id="{{ produkt.id }}">
-                                <option value="">-- Wählen --</option>
-                                {% for kat in ueberkategorien %}
-                                <option value="{{ kat.id }}"
-                                        {% if produkt.ueberkategorie.id == kat.id %}selected{% endif %}>
-                                    {{ kat.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <td data-label="Marke">
+                                <input type="text"
+                                       name="marke_{{ produkt.id }}"
+                                       class="form-control form-control-sm"
+                                       placeholder="Marke eingeben..."
+                                       value="{{ produkt.marke|default:'' }}">
                             </td>
-                            <td>
-                            <select name="produktgruppe_{{ produkt.id }}"
-                                    class="form-select form-select-sm produktgruppe-select"
-                                    data-produkt-id="{{ produkt.id }}"
-                                    {% if not produkt.ueberkategorie %}disabled{% endif %}>
-                                <option value="">-- Wählen --</option>
-                                {% for gruppe in produkt.verfuegbare_gruppen %}
-                                <option value="{{ gruppe.id }}"
-                                        {% if produkt.produktgruppe.id == gruppe.id %}selected{% endif %}>
-                                    {{ gruppe.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <td data-label="Überkategorie">
+                                <select name="ueberkategorie_{{ produkt.id }}"
+                                        class="form-select form-select-sm ueberkategorie-select"
+                                        data-produkt-id="{{ produkt.id }}">
+                                    <option value="">-- Wählen --</option>
+                                    {% for kat in ueberkategorien %}
+                                    <option value="{{ kat.id }}"
+                                            {% if produkt.ueberkategorie.id == kat.id %}selected{% endif %}>
+                                        {{ kat.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td data-label="Produktgruppe">
+                                <select name="produktgruppe_{{ produkt.id }}"
+                                        class="form-select form-select-sm produktgruppe-select"
+                                        data-produkt-id="{{ produkt.id }}"
+                                        {% if not produkt.ueberkategorie %}disabled{% endif %}>
+                                    <option value="">-- Wählen --</option>
+                                    {% for gruppe in produkt.verfuegbare_gruppen %}
+                                    <option value="{{ gruppe.id }}"
+                                            {% if produkt.produktgruppe.id == gruppe.id %}selected{% endif %}>
+                                        {{ gruppe.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 Keine Produkte gefunden
                             </td>
                         </tr>
@@ -228,12 +245,12 @@
         <!-- Erste Seite -->
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
+            <a class="page-link" href="?page=1{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if marke_filter %}&marke_filter={{ marke_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-double-left"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if marke_filter %}&marke_filter={{ marke_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-left"></i>
             </a>
         </li>
@@ -254,7 +271,7 @@
             </li>
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if marke_filter %}&marke_filter={{ marke_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                     {{ num }}
                 </a>
             </li>
@@ -264,12 +281,12 @@
         <!-- Letzte Seite -->
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if marke_filter %}&marke_filter={{ marke_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-right"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if suche %}&suche={{ suche }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if ueberkategorie_filter %}&ueberkategorie_filter={{ ueberkategorie_filter }}{% endif %}{% if produktgruppe_filter %}&produktgruppe_filter={{ produktgruppe_filter }}{% endif %}{% if marke_filter %}&marke_filter={{ marke_filter }}{% endif %}{% if einkaufsdatum %}&einkaufsdatum={{ einkaufsdatum }}{% endif %}">
                 <i class="bi bi-chevron-double-right"></i>
             </a>
         </li>
@@ -689,6 +706,56 @@ if (filterCollapse) {
 
 .table th {
     vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+    .mapper-table thead {
+        display: none;
+    }
+
+    .mapper-table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--bs-border-color-translucent);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        box-shadow: var(--bs-box-shadow-sm);
+        background: var(--bs-body-bg);
+    }
+
+    .mapper-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .mapper-table tbody tr td {
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem 0;
+        border-top: none;
+    }
+
+    .mapper-table tbody tr td:first-child {
+        padding-top: 0;
+    }
+
+    .mapper-table tbody tr td:last-child {
+        padding-bottom: 0;
+    }
+
+    .mapper-table tbody tr td::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0.25rem;
+    }
+
+    .mapper-table tbody tr td.text-center {
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
 }
 </style>
 
