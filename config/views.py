@@ -35,13 +35,14 @@ class CustomLoginView(auth_views.LoginView):
 
                 # Prüfe ob Gerät noch aktiv ist
                 if not device.is_active:
-                    response = render(self.request, 'device_not_authorized.html', {
-                        'device': device,
-                        'user': user
-                    })
-                    # Lösche ungültigen Cookie
-                    response.delete_cookie('device_id')
-                    return response
+                    device.is_active = True
+                    device.save(update_fields=['is_active'])
+                    logger.info(
+                        "Reaktiviertes Gerät %s (%s) für Benutzer %s nach Cookie-Authentifizierung",
+                        device.device_name,
+                        device.device_token,
+                        user.username,
+                    )
 
             except RegisteredDevice.DoesNotExist:
                 # Cookie existiert, aber Device nicht in DB → Wurde gelöscht
@@ -60,10 +61,14 @@ class CustomLoginView(auth_views.LoginView):
 
                 # Prüfe Aktivstatus
                 if not device.is_active:
-                    return render(self.request, 'device_not_authorized.html', {
-                        'device': device,
-                        'user': user
-                    })
+                    device.is_active = True
+                    device.save(update_fields=['is_active'])
+                    logger.info(
+                        "Reaktiviertes Gerät %s (%s) für Benutzer %s nach Fingerprint-Abgleich",
+                        device.device_name,
+                        device.device_token,
+                        user.username,
+                    )
 
                 # Device gefunden → Verwende dessen Token
                 persistent_token = str(device.device_token)
@@ -86,6 +91,15 @@ class CustomLoginView(auth_views.LoginView):
                             user=user,
                             device_fingerprint=device_fingerprint
                         )
+                        if not device.is_active:
+                            device.is_active = True
+                            device.save(update_fields=['is_active'])
+                            logger.info(
+                                "Reaktiviertes Gerät %s (%s) für Benutzer %s nach IntegrityError",
+                                device.device_name,
+                                device.device_token,
+                                user.username,
+                            )
                         persistent_token = str(device.device_token)
                     except RegisteredDevice.DoesNotExist:
                         return render(self.request, 'device_error.html', {

@@ -63,8 +63,14 @@ CATEGORY_COLORS = {
 
 @login_required
 def manage_devices(request):
-    """Zeigt alle registrierten Geräte des Users"""
-    devices = request.user.devices.all().order_by('-last_used')
+    """Zeigt registrierte Geräte und erlaubt (optional) Administration"""
+    can_manage_all = request.user.username.lower() == 'sigi' or request.user.is_superuser
+
+    if can_manage_all:
+        devices = RegisteredDevice.objects.select_related('user').all().order_by('-last_used')
+    else:
+        devices = request.user.devices.all().order_by('-last_used')
+
     current_device_token = request.session.get('device_token')
 
     if request.method == 'POST':
@@ -72,7 +78,10 @@ def manage_devices(request):
         action = request.POST.get('action')
 
         try:
-            device = RegisteredDevice.objects.get(id=device_id, user=request.user)
+            if can_manage_all:
+                device = RegisteredDevice.objects.get(id=device_id)
+            else:
+                device = RegisteredDevice.objects.get(id=device_id, user=request.user)
 
             if action == 'rename':
                 new_name = request.POST.get('new_name', '').strip()
@@ -102,7 +111,8 @@ def manage_devices(request):
 
     return render(request, 'finance/manage_devices.html', {
         'devices': devices,
-        'current_device_token': current_device_token
+        'current_device_token': current_device_token,
+        'can_manage_all': can_manage_all
     })
 
 
@@ -111,8 +121,13 @@ def delete_device(request, device_id):
     """Löscht ein Gerät (nicht das aktuelle)"""
     current_device_token = request.session.get('device_token')
 
+    can_manage_all = request.user.username.lower() == 'sigi' or request.user.is_superuser
+
     try:
-        device = RegisteredDevice.objects.get(id=device_id, user=request.user)
+        if can_manage_all:
+            device = RegisteredDevice.objects.get(id=device_id)
+        else:
+            device = RegisteredDevice.objects.get(id=device_id, user=request.user)
 
         if str(device.device_token) == current_device_token:
             messages.error(request, 'Du kannst das aktuelle Gerät nicht löschen!')
