@@ -16,6 +16,7 @@ urlpatterns = [
     path('transactions/', views.transactions_list, name='transactions'),
     path('transactions/household/', views.household_transactions, name='household_transactions'),
     path('transactions/add/', views.add_transaction, name='add_transaction'),
+    path('transactions/edit/<int:pk>/', views.edit_transaction, name='edit_transaction'),
     path('transactions/delete/<int:pk>/', views.delete_transaction, name='delete_transaction'),
     path('transactions/undo/', views.undo_delete, name='undo_delete'),
     path('transactions/update-date/<int:pk>/', views.update_transaction_date, name='update_transaction_date'),

@@ -528,15 +528,22 @@
                             {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
                         </td>
                         <td class="text-center">
-                            <i class="bi bi-trash text-danger action-icon" 
-                               data-bs-toggle="modal" 
-                               data-bs-target="#deleteModal"
-                               data-transaction-id="{{ trans.id }}"
-                               data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
-                               data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
-                               data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
-                               data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
-                               title="Löschen"></i>
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                                   class="text-secondary action-icon"
+                                   title="Bearbeiten">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <i class="bi bi-trash text-danger action-icon"
+                                   data-bs-toggle="modal"
+                                   data-bs-target="#deleteModal"
+                                   data-transaction-id="{{ trans.id }}"
+                                   data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                                   data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                                   data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                                   data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                                   title="Löschen"></i>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
@@ -604,7 +611,12 @@
                             <i class="bi bi-card-text me-1"></i>{{ trans.memo }}
                         </div>
                         {% endif %}
-                        <div class="d-flex justify-content-end">
+                        <div class="d-flex justify-content-end align-items-center gap-3">
+                            <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                               class="text-secondary action-icon"
+                               title="Bearbeiten">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
                             <i class="bi bi-trash text-danger action-icon"
                                data-bs-toggle="modal"
                                data-bs-target="#deleteModal"
@@ -1027,15 +1039,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${transaction.inflow ? '€ ' + parseFloat(transaction.inflow).toFixed(2) : '-'}
             </td>
             <td class="text-center">
-                <i class="bi bi-trash text-danger action-icon"
-                   data-bs-toggle="modal"
-                   data-bs-target="#deleteModal"
-                   data-transaction-id="${transaction.id}"
-                   data-transaction-date="${transaction.date}"
-                   data-transaction-payee="${transaction.payee}"
-                   data-transaction-amount="€ ${transaction.outflow || transaction.inflow}"
-                   data-transaction-category="${transaction.category}"
-                   title="Löschen"></i>
+                <div class="d-inline-flex align-items-center gap-2">
+                    <a href="/transactions/edit/${transaction.id}/?next={{ request.get_full_path|urlencode }}"
+                       class="text-secondary action-icon"
+                       title="Bearbeiten">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <i class="bi bi-trash text-danger action-icon"
+                       data-bs-toggle="modal"
+                       data-bs-target="#deleteModal"
+                       data-transaction-id="${transaction.id}"
+                       data-transaction-date="${transaction.date}"
+                       data-transaction-payee="${transaction.payee}"
+                       data-transaction-amount="€ ${transaction.outflow || transaction.inflow}"
+                       data-transaction-category="${transaction.category}"
+                       title="Löschen"></i>
+                </div>
             </td>
         `;
 
