@@ -1991,7 +1991,7 @@ def adjust_investments(request):
                 field_prefix = acc_data['field_prefix']
 
                 # Berechne neuen Saldo basierend auf Input-Type
-                new_balance = Decimal('0')
+                new_balance = None
 
                 if acc_data['input_type'] == 'single':
                     value = request.POST.get(f'{field_prefix}_value', '').strip()
@@ -2000,12 +2000,22 @@ def adjust_investments(request):
 
                 elif acc_data['input_type'] in ['multi', 'gold']:
                     # Summiere alle Felder MIT Multiplikatoren ← NEU
+                    accumulated_balance = Decimal('0')
+                    has_input = False
                     for field in acc_data['fields']:
                         field_name = f'{field_prefix}_{field["name"]}'
                         value = request.POST.get(field_name, '').strip()
                         if value:
                             # Multipliziere Wert mit Multiplikator
-                            new_balance += Decimal(value) * Decimal(field['multiplier'])
+                            accumulated_balance += Decimal(value) * Decimal(field['multiplier'])
+                            has_input = True
+
+                    if has_input:
+                        new_balance = accumulated_balance
+
+                # Überspringe Konten ohne Eingaben, damit kein Stand auf 0 korrigiert wird
+                if new_balance is None:
+                    continue
 
                 # Berechne Differenz
                 difference = new_balance - acc_data['current_balance']
