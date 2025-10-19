@@ -87,6 +87,29 @@
     </div>
 </div>
 
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="row gy-2 gx-3 align-items-center">
+            {% csrf_token %}
+            <div class="col-12 col-md-6 col-lg-4">
+                <label for="id_file" class="form-label mb-1">{{ import_form.file.label }}</label>
+                {{ import_form.file }}
+                {% if import_form.file.help_text %}
+                <div class="form-text">{{ import_form.file.help_text }}</div>
+                {% endif %}
+                {% for error in import_form.file.errors %}
+                <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-12 col-md-auto align-self-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Daten importieren
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% if stats.anzahl_tage %}
 <!-- KPI Cards -->
 <div class="row g-3 mb-4">
