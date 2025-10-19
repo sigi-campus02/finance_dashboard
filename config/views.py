@@ -50,34 +50,50 @@ class CustomLoginView(auth_views.LoginView):
 
         # Strategie 2: Kein Cookie ODER Device wurde gelöscht → Suche per Fingerprint
         if device is None:
-            device_fingerprint = self.generate_device_fingerprint()
+            base_fingerprint = self.generate_device_fingerprint()
+            user_scoped_fingerprint = self.scope_fingerprint_to_user(base_fingerprint, user)
 
-            try:
-                # Versuche vorhandenes Device mit diesem Fingerprint zu finden
-                device = RegisteredDevice.objects.get(
-                    user=user,
-                    device_fingerprint=device_fingerprint
-                )
+            # Kandidatenliste enthält immer den neuen (user-spezifischen) Fingerprint und
+            # als Fallback auch den alten Wert, damit bestehende Geräte weiter funktionieren.
+            fingerprint_candidates = [user_scoped_fingerprint]
+            if base_fingerprint != user_scoped_fingerprint:
+                fingerprint_candidates.append(base_fingerprint)
 
-                # Prüfe Aktivstatus
-                if not device.is_active:
-                    device.is_active = True
-                    device.save(update_fields=['is_active'])
-                    logger.info(
-                        "Reaktiviertes Gerät %s (%s) für Benutzer %s nach Fingerprint-Abgleich",
-                        device.device_name,
-                        device.device_token,
-                        user.username,
+            # Versuche vorhandenes Device anhand der Fingerprints zu finden
+            for fingerprint in fingerprint_candidates:
+                try:
+                    device = RegisteredDevice.objects.get(
+                        user=user,
+                        device_fingerprint=fingerprint
                     )
 
-                # Device gefunden → Verwende dessen Token
-                persistent_token = str(device.device_token)
-                logger.info(f"Bestehendes Device wiederverwendet für {user.username}")
+                    # Wenn wir ein Gerät mit dem alten Fingerprint finden, migrieren wir es
+                    # direkt auf den neuen Wert, damit zukünftige Logins stabil bleiben.
+                    if fingerprint != user_scoped_fingerprint:
+                        device.device_fingerprint = user_scoped_fingerprint
+                        device.save(update_fields=['device_fingerprint'])
 
-            except RegisteredDevice.DoesNotExist:
-                # Wirklich neues Device → Erstelle es
+                    if not device.is_active:
+                        device.is_active = True
+                        device.save(update_fields=['is_active'])
+                        logger.info(
+                            "Reaktiviertes Gerät %s (%s) für Benutzer %s nach Fingerprint-Abgleich",
+                            device.device_name,
+                            device.device_token,
+                            user.username,
+                        )
+
+                    persistent_token = str(device.device_token)
+                    logger.info(f"Bestehendes Device wiederverwendet für {user.username}")
+                    break
+
+                except RegisteredDevice.DoesNotExist:
+                    device = None
+
+            # Wenn kein Gerät gefunden wurde, erstellen wir ein neues mit dem user-spezifischen Fingerprint
+            if device is None:
                 try:
-                    device = self.create_new_device(user, device_fingerprint)
+                    device = self.create_new_device(user, user_scoped_fingerprint)
                     persistent_token = str(device.device_token)
                     created = True
                     logger.info(f"Neues Gerät registriert für {user.username}: {device.device_name}")
@@ -85,23 +101,30 @@ class CustomLoginView(auth_views.LoginView):
                 except IntegrityError as e:
                     # Race Condition oder anderer Fehler
                     logger.error(f"IntegrityError beim Device-Erstellen für {user.username}: {e}")
-                    # Versuche nochmal zu finden
-                    try:
-                        device = RegisteredDevice.objects.get(
-                            user=user,
-                            device_fingerprint=device_fingerprint
-                        )
-                        if not device.is_active:
-                            device.is_active = True
-                            device.save(update_fields=['is_active'])
-                            logger.info(
-                                "Reaktiviertes Gerät %s (%s) für Benutzer %s nach IntegrityError",
-                                device.device_name,
-                                device.device_token,
-                                user.username,
+                    # Versuche nochmal zu finden (sowohl neuen als auch alten Fingerprint)
+                    for fingerprint in fingerprint_candidates:
+                        try:
+                            device = RegisteredDevice.objects.get(
+                                user=user,
+                                device_fingerprint=fingerprint
                             )
-                        persistent_token = str(device.device_token)
-                    except RegisteredDevice.DoesNotExist:
+                            if fingerprint != user_scoped_fingerprint:
+                                device.device_fingerprint = user_scoped_fingerprint
+                                device.save(update_fields=['device_fingerprint'])
+                            if not device.is_active:
+                                device.is_active = True
+                                device.save(update_fields=['is_active'])
+                                logger.info(
+                                    "Reaktiviertes Gerät %s (%s) für Benutzer %s nach IntegrityError",
+                                    device.device_name,
+                                    device.device_token,
+                                    user.username,
+                                )
+                            persistent_token = str(device.device_token)
+                            break
+                        except RegisteredDevice.DoesNotExist:
+                            continue
+                    else:
                         return render(self.request, 'device_error.html', {
                             'error': 'Fehler bei der Geräteregistrierung. Bitte kontaktiere den Administrator.'
                         })
@@ -141,13 +164,23 @@ class CustomLoginView(auth_views.LoginView):
 
     def generate_device_fingerprint(self):
         """
-        Erstellt einen Fingerprint (als Backup für Cookie-Verlust)
+        Erstellt einen gerätebezogenen Fingerprint (als Backup für Cookie-Verlust).
+
+        Dieser Basis-Fingerprint ist nutzerunabhängig, damit wir bestehende Geräte
+        weiterhin erkennen können. In der Datenbank speichern wir künftig jedoch
+        eine nutzerspezifische Variante, um Kollisionen zwischen verschiedenen
+        Benutzerkonten zu vermeiden.
         """
         user_agent = self.request.META.get('HTTP_USER_AGENT', '')
         accept_language = self.request.META.get('HTTP_ACCEPT_LANGUAGE', '')
 
         fingerprint_string = f"{user_agent}:{accept_language}"
         return hashlib.sha256(fingerprint_string.encode()).hexdigest()
+
+    def scope_fingerprint_to_user(self, base_fingerprint, user):
+        """Erzeugt aus dem Basis-Fingerprint eine nutzerspezifische Variante."""
+        scoped_value = f"{base_fingerprint}:{user.pk}:{user.username}"
+        return hashlib.sha256(scoped_value.encode()).hexdigest()
 
     def get_default_device_name(self):
         """Versucht automatisch einen Namen für das Gerät zu generieren"""
