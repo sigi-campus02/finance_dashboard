@@ -24,6 +24,8 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 import logging
 from .receipt_analyzer import ReceiptAnalyzer
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 logger = logging.getLogger(__name__)
 
@@ -984,6 +986,88 @@ def add_transaction(request):
         'category_groups': category_groups,
         'categories': categories,
         'is_robert': request.user.username == 'robert',
+        'is_edit': False,
+        'next_url': request.GET.get('next') or request.path,
+    }
+
+    return render(request, 'finance/transaction_form.html', context)
+
+
+@login_required
+def edit_transaction(request, pk):
+    """Bearbeitet eine bestehende Transaktion"""
+    transaction = None
+    is_robert_transaction = False
+
+    try:
+        transaction = FactTransactionsRobert.objects.select_related(
+            'account', 'flag', 'payee', 'category__categorygroup'
+        ).get(pk=pk)
+        is_robert_transaction = True
+    except FactTransactionsRobert.DoesNotExist:
+        try:
+            transaction = FactTransactionsSigi.objects.select_related(
+                'account', 'flag', 'payee', 'category__categorygroup'
+            ).get(pk=pk)
+        except FactTransactionsSigi.DoesNotExist:
+            messages.error(request, 'Transaktion nicht gefunden.')
+            return redirect('finance:transactions')
+
+    # Berechtigungsprüfung
+    if request.user.username == 'robert' and not is_robert_transaction:
+        messages.error(request, 'Du darfst nur deine eigenen Transaktionen bearbeiten.')
+        return redirect('finance:household_transactions')
+
+    if request.user.username != 'robert' and is_robert_transaction:
+        messages.error(request, 'Du darfst Roberts Transaktionen nicht bearbeiten.')
+        return redirect('finance:transactions')
+
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if not next_url or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = reverse('finance:transactions')
+
+    if request.method == 'POST':
+        form = TransactionForm(request.POST, user=request.user, instance=transaction)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, 'Transaktion erfolgreich aktualisiert!')
+                return redirect(next_url)
+            except Exception as e:
+                messages.error(request, f'Fehler beim Speichern: {str(e)}')
+    else:
+        amount = transaction.outflow or transaction.inflow or Decimal('0.00')
+        transaction_type = 'outflow'
+        if transaction.inflow and (not transaction.outflow or transaction.inflow >= transaction.outflow):
+            transaction_type = 'inflow'
+
+        initial = {
+            'account': transaction.account,
+            'flag': transaction.flag,
+            'date': transaction.date,
+            'payee': transaction.payee.payee if transaction.payee else '',
+            'category_group': transaction.category.categorygroup if transaction.category else None,
+            'category': transaction.category,
+            'memo': transaction.memo,
+            'amount': amount,
+            'transaction_type': transaction_type,
+        }
+
+        form = TransactionForm(user=request.user, instance=transaction, initial=initial)
+
+    payees = DimPayee.objects.all().order_by('payee')
+    category_groups = DimCategoryGroup.objects.all().order_by('category_group')
+    categories = DimCategory.objects.select_related('categorygroup').all().order_by('category')
+
+    context = {
+        'form': form,
+        'payees': payees,
+        'category_groups': category_groups,
+        'categories': categories,
+        'is_robert': request.user.username == 'robert',
+        'is_edit': True,
+        'transaction_obj': transaction,
+        'next_url': next_url,
     }
 
     return render(request, 'finance/transaction_form.html', context)

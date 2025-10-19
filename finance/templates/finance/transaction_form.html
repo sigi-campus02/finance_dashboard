@@ -1,11 +1,15 @@
 {% extends 'finance/base.html' %}
 
-{% block title %}Transaktion hinzufügen - Finance{% endblock %}
+{% block title %}{% if is_edit %}Transaktion bearbeiten - Finance{% else %}Transaktion hinzufügen - Finance{% endif %}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
+        {% if is_edit %}
+            <i class="bi bi-pencil-square"></i> Transaktion bearbeiten
+        {% else %}
+            <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
+        {% endif %}
     </h1>
 </div>
 
@@ -29,10 +33,14 @@
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">
-                    {% if is_robert %}
-                        Neue Ausgabe erfassen
+                    {% if is_edit %}
+                        Bestehende Transaktion anpassen
                     {% else %}
-                        Neue Transaktion erfassen
+                        {% if is_robert %}
+                            Neue Ausgabe erfassen
+                        {% else %}
+                            Neue Transaktion erfassen
+                        {% endif %}
                     {% endif %}
                 </h5>
             </div>
@@ -45,6 +53,7 @@
                 
                 <form method="post" id="transactionForm">
                     {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
                     
                     <!-- Account (nur für Nicht-Robert) -->
                     {% if not is_robert %}
@@ -183,7 +192,11 @@
                     <!-- Submit Button -->
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="bi bi-check-circle"></i> Speichern
+                            {% if is_edit %}
+                                <i class="bi bi-save"></i> Aktualisieren
+                            {% else %}
+                                <i class="bi bi-check-circle"></i> Speichern
+                            {% endif %}
                         </button>
                     </div>
                 </form>
