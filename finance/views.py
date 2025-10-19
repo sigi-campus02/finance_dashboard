@@ -35,6 +35,11 @@ def user_is_not_robert(user):
     return user.username != 'robert'
 
 
+def user_has_full_access(user):
+    """Gibt an, ob der User volle Admin-Rechte besitzt."""
+    return user.username == 'sigi' or getattr(user, 'is_superuser', False)
+
+
 # Zentrale Farbdefinitionen für Kategorien
 CATEGORY_COLORS = {
     'Cash': {
@@ -1018,7 +1023,8 @@ def edit_transaction(request, pk):
         messages.error(request, 'Du darfst nur deine eigenen Transaktionen bearbeiten.')
         return redirect('finance:household_transactions')
 
-    if request.user.username != 'robert' and is_robert_transaction:
+    if (request.user.username != 'robert' and not user_has_full_access(request.user)
+            and is_robert_transaction):
         messages.error(request, 'Du darfst Roberts Transaktionen nicht bearbeiten.')
         return redirect('finance:transactions')
 
@@ -1106,7 +1112,8 @@ def delete_transaction(request, pk):
         return redirect(request.META.get('HTTP_REFERER', 'finance:household_transactions'))
 
     # Fall 2: Nicht-Robert User versucht Robert-Transaktion zu löschen
-    if request.user.username != 'robert' and is_robert_transaction:
+    if (request.user.username != 'robert' and not user_has_full_access(request.user)
+            and is_robert_transaction):
         messages.error(request, 'Du darfst Roberts Transaktionen nicht löschen.')
         return redirect(request.META.get('HTTP_REFERER', 'finance:transactions'))
 
@@ -1715,7 +1722,8 @@ def update_transaction_date(request, pk):
                 'error': 'Keine Berechtigung'
             }, status=403)
 
-        if request.user.username != 'robert' and is_robert_transaction:
+        if (request.user.username != 'robert' and not user_has_full_access(request.user)
+                and is_robert_transaction):
             return JsonResponse({
                 'success': False,
                 'error': 'Keine Berechtigung'
