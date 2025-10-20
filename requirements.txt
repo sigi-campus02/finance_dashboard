@@ -13,3 +13,6 @@ plotly>=5.18.0
 django-storages>=1.14.0
 boto3>=1.28.0
 requests>=2.31.0
+certifi>=2023.7.22
+yfinance
+chardet

@@ -1,0 +1,151 @@
+<!-- bitpanda/templates/bitpanda/update_prices.html -->
+{% extends 'finance/base.html' %}
+
+{% block title %}Preise aktualisieren - Bitpanda{% endblock %}
+
+{% block extra_css %}
+<style>
+    .updated-today {
+        background-color: #d1ecf1;
+    }
+    .price-input {
+        font-family: monospace;
+        font-size: 1.1em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-currency-exchange"></i> Preise aktualisieren</h2>
+        <a href="{% url 'bitpanda:bitpanda_dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zum Dashboard
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-date"></i>
+                Aktualisierungsdatum: <strong>{{ today|date:"d.m.Y" }}</strong>
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Asset</th>
+                                <th>Klasse</th>
+                                <th>Letzter Preis</th>
+                                <th style="width: 250px;">Neuer Preis (€)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in holdings_with_prices %}
+                            <tr {% if item.has_today_entry %}class="updated-today"{% endif %}>
+                                <td>
+                                    <strong>{{ item.holding.asset }}</strong>
+                                </td>
+                                <td>
+                                    {% if item.holding.asset_class == 'Cryptocurrency' %}
+                                        <span class="badge bg-info">Crypto</span>
+                                    {% elif item.holding.asset_class == 'Stock (derivative)' %}
+                                        <span class="badge bg-primary">Aktie</span>
+                                    {% elif 'ETF' in item.holding.asset_class %}
+                                        <span class="badge bg-success">ETF</span>
+                                    {% elif item.holding.asset_class == 'Commodity' %}
+                                        <span class="badge bg-warning">Rohstoff</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ item.holding.asset_class }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.last_price %}
+                                        <strong>€{{ item.last_price|floatformat:4 }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock"></i> {{ item.last_date|date:"d.m.Y" }}
+                                        </small>
+                                    {% else %}
+                                        <span class="text-muted">Kein Preis</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        name="price_{{ item.holding.id }}"
+                                        class="form-control price-input"
+                                        placeholder="z.B. 50000.00"
+                                        step="0.00000001"
+                                        min="0"
+                                        value="{% if item.today_price %}{{ item.today_price }}{% elif item.last_price %}{{ item.last_price }}{% endif %}"
+                                    >
+                                </td>
+                                <td>
+                                    {% if item.has_today_entry %}
+                                        <span class="badge bg-info">
+                                            <i class="bi bi-check-circle"></i> Heute aktualisiert
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">
+                                            <i class="bi bi-dash-circle"></i> Noch nicht heute
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> Alle Preise in BitpandaAssetValue speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="alert alert-info">
+                <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Wie funktioniert's?</h5>
+                <ul class="mb-0">
+                    <li>Die Felder sind mit den letzten bekannten Preisen vorausgefüllt</li>
+                    <li>Ändere die Preise nach Bedarf</li>
+                    <li>Beim Speichern wird ein neuer Eintrag in <code>BitpandaAssetValue</code> erstellt</li>
+                    <li>Wenn heute schon ein Eintrag existiert, wird dieser aktualisiert</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="alert alert-success">
+                <h5 class="alert-heading"><i class="bi bi-database"></i> Datenbank-Info</h5>
+                <p class="mb-2"><strong>Tabelle:</strong> <code>bitpanda_bitpandaassetvalue</code></p>
+                <p class="mb-2"><strong>Felder gesetzt:</strong></p>
+                <ul class="mb-0">
+                    <li><code>holding_id</code> → Verknüpfung zum Asset</li>
+                    <li><code>date</code> → {{ today|date:"Y-m-d" }}</li>
+                    <li><code>price_per_unit</code> → Deine Eingabe</li>
+                    <li><code>payed</code> → NULL (keine Transaktion)</li>
+                    <li><code>units</code> → NULL (keine Transaktion)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Hinweis:</strong>
+        Zeilen mit <span class="badge bg-info">blauem Hintergrund</span> wurden heute bereits aktualisiert
+        und werden beim Speichern überschrieben.
+    </div>
+</div>
+{% endblock %}

@@ -1,8 +1,17 @@
 # finance/management/commands/test_bitpanda.py
 from django.core.management.base import BaseCommand
+from django.conf import settings
 import os
 import requests
 from decimal import Decimal
+
+# Fix für Windows SSL Certificate Problem
+try:
+    import certifi
+
+    SSL_VERIFY = certifi.where()
+except ImportError:
+    SSL_VERIFY = True  # Fallback auf System-Zertifikate
 
 
 class Command(BaseCommand):
@@ -82,7 +91,8 @@ class Command(BaseCommand):
                 response = requests.get(
                     f'{base_url}{test["endpoint"]}',
                     headers=headers,
-                    timeout=10
+                    timeout=10,
+                    verify=SSL_VERIFY  # Fix für Windows SSL
                 )
 
                 if response.status_code == 200:

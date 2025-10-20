@@ -1,16 +1,13 @@
+# bitpanda/urls.py
 from django.urls import path
-from .views import (
-    bitpanda_dashboard,
-    bitpanda_sync,
-    api_bitpanda_portfolio_chart,
-)
+from . import views
+
 app_name = 'bitpanda'
 
 urlpatterns = [
-    # Bitpanda Integration
-    path('', bitpanda_dashboard, name='bitpanda_dashboard'),
-    path('bitpanda/sync/', bitpanda_sync, name='bitpanda_sync'),
-
-    # API Endpoints für Bitpanda
-    path('api/bitpanda/portfolio-chart/', api_bitpanda_portfolio_chart, name='api_bitpanda_portfolio_chart'),
+    # Dashboard
+    path('', views.bitpanda_dashboard, name='bitpanda_dashboard'),
+    path('update-prices/', views.update_prices, name='update_prices'),
+    path('api/portfolio-chart/', views.api_bitpanda_portfolio_chart, name='api_bitpanda_portfolio_chart'),
+    path('api/asset-allocation/', views.api_bitpanda_asset_allocation, name='api_bitpanda_asset_allocation'),
 ]

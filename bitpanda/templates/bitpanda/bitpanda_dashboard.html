@@ -1,39 +1,44 @@
 {% extends 'finance/base.html' %}
 
-{% block title %}Bitpanda Dashboard - Finance{% endblock %}
+{% block title %}Bitpanda Portfolio - Finance{% endblock %}
 
 {% block extra_css %}
 <style>
-    .wallet-card {
+    .asset-card {
         border-left: 4px solid #0d6efd;
         transition: transform 0.2s;
     }
-    .wallet-card:hover {
+    .asset-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    .crypto-icon {
-        width: 40px;
-        height: 40px;
+    .asset-icon {
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-weight: bold;
-        font-size: 1.2rem;
+        font-size: 1.3rem;
     }
-    .fiat-icon {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    .crypto-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stock-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+
+    .value-positive { color: #28a745; font-weight: bold; }
+    .value-negative { color: #dc3545; font-weight: bold; }
+
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
     }
-    .balance-positive {
-        color: #28a745;
-    }
-    .sync-info {
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 1rem;
+
+    .profit-badge {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
     }
 </style>
 {% endblock %}
@@ -41,197 +46,446 @@
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="bi bi-currency-bitcoin"></i> Bitpanda Dashboard
+        <i class="bi bi-wallet2"></i> Bitpanda Portfolio
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        {% if has_api_key %}
-        <form method="post" action="{% url 'bitpanda:bitpanda_sync' %}" class="me-2">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-arrow-repeat"></i> Jetzt synchronisieren
-            </button>
-        </form>
+        {% if has_data %}
+        <a href="{% url 'bitpanda:update_prices' %}" class="btn btn-success me-2">
+            <i class="bi bi-currency-exchange"></i> Preise aktualisieren
+        </a>
+        <button onclick="location.reload()" class="btn btn-primary">
+            <i class="bi bi-arrow-repeat"></i> Neu laden
+        </button>
         {% endif %}
     </div>
 </div>
 
-{% if not has_api_key %}
-<!-- Kein API Key konfiguriert -->
-<div class="alert alert-warning" role="alert">
-    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Kein API Key konfiguriert</h4>
-    <p>Um dein Bitpanda Portfolio zu verfolgen, muss der API Key in den Environment Variables gesetzt sein.</p>
+{% if not has_data %}
+<!-- Keine Daten -->
+<div class="alert alert-info" role="alert">
+    <h4 class="alert-heading"><i class="bi bi-info-circle"></i> Keine Daten vorhanden</h4>
+    <p>Importiere deine Bitpanda Transaktionen um dein Portfolio zu verfolgen.</p>
     <hr>
+    <div class="mb-3">
+        <h5>So importierst du deine Daten:</h5>
+        <ol>
+            <li>Gehe zu <a href="https://web.bitpanda.com" target="_blank">Bitpanda Web App</a></li>
+            <li>Klicke auf <strong>History</strong> → <strong>Export</strong> → <strong>CSV</strong></li>
+            <li>Lade die CSV-Datei herunter</li>
+            <li>Führe aus: <code>python manage.py import_bitpanda_csv transactions.csv --user {{ user.username }}</code></li>
+        </ol>
+    </div>
     <p class="mb-0">
-        <a href="https://developers.bitpanda.com" target="_blank" class="btn btn-outline-secondary">
-            <i class="bi bi-info-circle"></i> API Dokumentation
+        <a href="/admin/bitpanda/" class="btn btn-outline-primary">
+            <i class="bi bi-database"></i> Admin öffnen
         </a>
     </p>
 </div>
 
-<div class="card mt-4">
-    <div class="card-body">
-        <h5 class="card-title">So richtest du den API Key auf Render ein:</h5>
-        <ol>
-            <li>Melde dich bei <a href="https://www.bitpanda.com" target="_blank">Bitpanda</a> an</li>
-            <li>Gehe zu: <strong>Einstellungen → API → Neue API erstellen</strong></li>
-            <li>Wähle nur <strong>Lese-Rechte</strong> (Wallets & Transaktionen anzeigen)</li>
-            <li>Kopiere den generierten API Key</li>
-            <li>Gehe zu deinem <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a></li>
-            <li>Wähle deinen Service → <strong>Environment</strong></li>
-            <li>Klicke <strong>Add Environment Variable</strong></li>
-            <li>Key: <code>BITPANDA_API_KEY</code></li>
-            <li>Value: <em>[Dein API Key]</em></li>
-            <li>Speichern und Service neu starten</li>
-        </ol>
-    </div>
-</div>
-
 {% else %}
-
-<!-- Portfolio vorhanden -->
-{% if portfolio %}
-
-<!-- Synchronisations-Info -->
-<div class="sync-info mb-4">
-    <div class="row align-items-center">
-        <div class="col-md-6">
-            <small class="text-muted">
-                <i class="bi bi-clock"></i> 
-                Letzte Synchronisation: 
-                {% if last_sync %}
-                    {{ last_sync|date:"d.m.Y H:i" }} Uhr
-                {% else %}
-                    Noch nie synchronisiert
-                {% endif %}
-            </small>
-        </div>
-        <div class="col-md-6 text-md-end">
-            <span class="badge bg-success">
-                <i class="bi bi-check-circle"></i> Verbunden
-            </span>
-        </div>
-    </div>
-</div>
 
 <!-- Portfolio Übersicht -->
 <div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Gesamtwert (Fiat)</h6>
-                <h3 class="card-title balance-positive">€{{ portfolio.total_fiat_eur|floatformat:2 }}</h3>
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2">Gesamtwert</h6>
+                <h2 class="card-title mb-0">€{{ portfolio.total_value|floatformat:2 }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Anzahl Crypto Wallets</h6>
-                <h3 class="card-title">{{ portfolio.crypto_count }}</h3>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Investiert</h6>
+                <h3 class="card-title">€{{ portfolio.total_invested|floatformat:2 }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Anzahl Fiat Wallets</h6>
-                <h3 class="card-title">{{ portfolio.fiat_count }}</h3>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Gewinn/Verlust</h6>
+                <h3 class="card-title {% if portfolio.total_profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                    €{{ portfolio.total_profit_loss|floatformat:2 }}
+                </h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Performance</h6>
+                <h3 class="card-title {% if portfolio.total_profit_loss_pct >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                    {{ portfolio.total_profit_loss_pct|floatformat:1 }}%
+                </h3>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Fiat Wallets -->
-{% if portfolio.fiat_wallets %}
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Portfolio-Entwicklung</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="performanceChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Asset Allocation</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="allocationChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kryptowährungen -->
+{% if portfolio.crypto %}
 <div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Fiat Wallets</h5>
+    <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <h5 class="mb-0">
+            <i class="bi bi-currency-bitcoin"></i> Kryptowährungen
+            <span class="badge bg-light text-dark ms-2">€{{ portfolio.crypto_value|floatformat:2 }}</span>
+        </h5>
     </div>
     <div class="card-body">
-        <div class="row">
-            {% for wallet in portfolio.fiat_wallets %}
-            <div class="col-md-6 mb-3">
-                <div class="wallet-card card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="crypto-icon fiat-icon me-3">
-                                {{ wallet.attributes.fiat_symbol }}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th class="text-end">Bestand</th>
+                        <th class="text-end">Preis</th>
+                        <th class="text-end">Wert</th>
+                        <th class="text-end">Investiert</th>
+                        <th class="text-end">Gewinn/Verlust</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in portfolio.crypto %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="asset-icon crypto-icon me-2" style="width: 35px; height: 35px; font-size: 0.9rem;">
+                                    {{ asset.asset|slice:":3" }}
+                                </div>
+                                <strong>{{ asset.asset }}</strong>
                             </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-0">{{ wallet.attributes.name }}</h6>
-                                <small class="text-muted">{{ wallet.attributes.fiat_symbol }}</small>
-                            </div>
-                            <div class="text-end">
-                                <h5 class="mb-0">{{ wallet.attributes.balance|floatformat:2 }}</h5>
-                                {% if wallet.attributes.pending_transactions_count > 0 %}
-                                <small class="text-warning">
-                                    <i class="bi bi-hourglass-split"></i> {{ wallet.attributes.pending_transactions_count }} ausstehend
-                                </small>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+                        </td>
+                        <td class="text-end">{{ asset.balance|floatformat:4 }}</td>
+                        <td class="text-end">€{{ asset.current_price|floatformat:2 }}</td>
+                        <td class="text-end"><strong>€{{ asset.current_value|floatformat:2 }}</strong></td>
+                        <td class="text-end text-muted">€{{ asset.invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <span class="{% if asset.profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ asset.profit_loss|floatformat:2 }}
+                            </span>
+                            <br>
+                            <span class="profit-badge badge {% if asset.profit_loss_pct >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ asset.profit_loss_pct|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="3"><strong>Gesamt Krypto</strong></td>
+                        <td class="text-end"><strong>€{{ portfolio.crypto_value|floatformat:2 }}</strong></td>
+                        <td class="text-end">€{{ portfolio.crypto_invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <strong class="{% if portfolio.crypto_profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ portfolio.crypto_profit_loss|floatformat:2 }}
+                            </strong>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 </div>
 {% endif %}
 
-<!-- Crypto Wallets -->
-{% if portfolio.crypto_wallets %}
+<!-- Aktien -->
+{% if portfolio.stocks %}
 <div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-currency-bitcoin"></i> Crypto Wallets</h5>
+    <div class="card-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+        <h5 class="mb-0">
+            <i class="bi bi-graph-up-arrow"></i> Aktien
+            <span class="badge bg-light text-dark ms-2">€{{ portfolio.stock_value|floatformat:2 }}</span>
+        </h5>
     </div>
     <div class="card-body">
-        <div class="row">
-            {% for wallet in portfolio.crypto_wallets %}
-            {% if not wallet.attributes.deleted %}
-            <div class="col-md-6 mb-3">
-                <div class="wallet-card card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="crypto-icon me-3">
-                                {{ wallet.attributes.cryptocoin_symbol|slice:":3" }}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th class="text-end">Bestand</th>
+                        <th class="text-end">Preis</th>
+                        <th class="text-end">Wert</th>
+                        <th class="text-end">Investiert</th>
+                        <th class="text-end">Gewinn/Verlust</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in portfolio.stocks %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="asset-icon stock-icon me-2" style="width: 35px; height: 35px; font-size: 0.9rem;">
+                                    {{ asset.asset|slice:":3" }}
+                                </div>
+                                <strong>{{ asset.asset }}</strong>
                             </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-0">{{ wallet.attributes.name }}</h6>
-                                <small class="text-muted">{{ wallet.attributes.cryptocoin_symbol }}</small>
-                            </div>
-                            <div class="text-end">
-                                <h5 class="mb-0">{{ wallet.attributes.balance|floatformat:8 }}</h5>
-                                {% if wallet.attributes.is_default %}
-                                <span class="badge bg-primary">Standard</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            {% endfor %}
+                        </td>
+                        <td class="text-end">{{ asset.balance|floatformat:4 }}</td>
+                        <td class="text-end">
+                            {% if asset.current_price > 0 %}
+                                €{{ asset.current_price|floatformat:2 }}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><strong>€{{ asset.current_value|floatformat:2 }}</strong></td>
+                        <td class="text-end text-muted">€{{ asset.invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <span class="{% if asset.profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ asset.profit_loss|floatformat:2 }}
+                            </span>
+                            <br>
+                            <span class="profit-badge badge {% if asset.profit_loss_pct >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ asset.profit_loss_pct|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="3"><strong>Gesamt Aktien</strong></td>
+                        <td class="text-end"><strong>€{{ portfolio.stock_value|floatformat:2 }}</strong></td>
+                        <td class="text-end">€{{ portfolio.stock_invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <strong class="{% if portfolio.stock_profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ portfolio.stock_profit_loss|floatformat:2 }}
+                            </strong>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 </div>
 {% endif %}
 
-<!-- Portfolio Chart -->
+<!-- ETFs -->
+{% if portfolio.etfs %}
 <div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Portfolio-Entwicklung</h5>
+    <div class="card-header" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+        <h5 class="mb-0">
+            <i class="bi bi-bar-chart-line"></i> ETFs
+            <span class="badge bg-light text-dark ms-2">€{{ portfolio.etf_value|floatformat:2 }}</span>
+        </h5>
     </div>
     <div class="card-body">
-        <canvas id="portfolioChart" style="max-height: 400px;"></canvas>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th class="text-end">Bestand</th>
+                        <th class="text-end">Preis</th>
+                        <th class="text-end">Wert</th>
+                        <th class="text-end">Investiert</th>
+                        <th class="text-end">Gewinn/Verlust</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in portfolio.etfs %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="asset-icon me-2" style="width: 35px; height: 35px; font-size: 0.9rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                                    {{ asset.asset|slice:":3" }}
+                                </div>
+                                <strong>{{ asset.asset }}</strong>
+                            </div>
+                        </td>
+                        <td class="text-end">{{ asset.balance|floatformat:4 }}</td>
+                        <td class="text-end">
+                            {% if asset.current_price > 0 %}
+                                €{{ asset.current_price|floatformat:2 }}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><strong>€{{ asset.current_value|floatformat:2 }}</strong></td>
+                        <td class="text-end text-muted">€{{ asset.invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <span class="{% if asset.profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ asset.profit_loss|floatformat:2 }}
+                            </span>
+                            <br>
+                            <span class="profit-badge badge {% if asset.profit_loss_pct >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ asset.profit_loss_pct|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="3"><strong>Gesamt ETFs</strong></td>
+                        <td class="text-end"><strong>€{{ portfolio.etf_value|floatformat:2 }}</strong></td>
+                        <td class="text-end">€{{ portfolio.etf_invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <strong class="{% if portfolio.etf_profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ portfolio.etf_profit_loss|floatformat:2 }}
+                            </strong>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 </div>
+{% endif %}
 
-{% else %}
-<!-- Fehler beim Laden -->
-<div class="alert alert-danger" role="alert">
-    <h4 class="alert-heading"><i class="bi bi-exclamation-octagon"></i> Fehler</h4>
-    <p>Die Portfolio-Daten konnten nicht geladen werden. Bitte synchronisiere erneut.</p>
+<!-- Commodities -->
+{% if portfolio.commodities %}
+<div class="card mb-4">
+    <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+        <h5 class="mb-0">
+            <i class="bi bi-basket"></i> Rohstoffe
+            <span class="badge bg-light text-dark ms-2">€{{ portfolio.commodity_value|floatformat:2 }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th class="text-end">Bestand</th>
+                        <th class="text-end">Wert</th>
+                        <th class="text-end">Investiert</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in portfolio.commodities %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="asset-icon me-2" style="width: 35px; height: 35px; font-size: 0.9rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                    {{ asset.asset|slice:":3" }}
+                                </div>
+                                <strong>{{ asset.asset }}</strong>
+                            </div>
+                        </td>
+                        <td class="text-end">{{ asset.balance|floatformat:4 }}</td>
+                        <td class="text-end"><strong>€{{ asset.current_value|floatformat:2 }}</strong></td>
+                        <td class="text-end text-muted">€{{ asset.invested|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="2"><strong>Gesamt Rohstoffe</strong></td>
+                        <td class="text-end"><strong>€{{ portfolio.commodity_value|floatformat:2 }}</strong></td>
+                        <td class="text-end">€{{ portfolio.commodity_invested|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if not portfolio.crypto and not portfolio.stocks and not portfolio.etfs and not portfolio.commodities %}
+<div class="card mb-4">
+    <div class="card-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+        <h5 class="mb-0">
+            <i class="bi bi-graph-up-arrow"></i> Aktien
+            <span class="badge bg-light text-dark ms-2">€{{ portfolio.stock_value|floatformat:2 }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th class="text-end">Bestand</th>
+                        <th class="text-end">Preis</th>
+                        <th class="text-end">Wert</th>
+                        <th class="text-end">Investiert</th>
+                        <th class="text-end">Gewinn/Verlust</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in portfolio.stocks %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="asset-icon stock-icon me-2" style="width: 35px; height: 35px; font-size: 0.9rem;">
+                                    {{ asset.asset|slice:":3" }}
+                                </div>
+                                <strong>{{ asset.asset }}</strong>
+                            </div>
+                        </td>
+                        <td class="text-end">{{ asset.balance|floatformat:4 }}</td>
+                        <td class="text-end">
+                            {% if asset.current_price > 0 %}
+                                €{{ asset.current_price|floatformat:2 }}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><strong>€{{ asset.current_value|floatformat:2 }}</strong></td>
+                        <td class="text-end text-muted">€{{ asset.invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <span class="{% if asset.profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ asset.profit_loss|floatformat:2 }}
+                            </span>
+                            <br>
+                            <span class="profit-badge badge {% if asset.profit_loss_pct >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ asset.profit_loss_pct|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="3"><strong>Gesamt Aktien</strong></td>
+                        <td class="text-end"><strong>€{{ portfolio.stock_value|floatformat:2 }}</strong></td>
+                        <td class="text-end">€{{ portfolio.stock_invested|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <strong class="{% if portfolio.stock_profit_loss >= 0 %}value-positive{% else %}value-negative{% endif %}">
+                                €{{ portfolio.stock_profit_loss|floatformat:2 }}
+                            </strong>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if not portfolio.crypto and not portfolio.stocks %}
+<div class="alert alert-warning" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> Keine Assets mit Bestand > 0 gefunden. Importiere mehr Transaktionen.
 </div>
 {% endif %}
 
@@ -241,13 +495,15 @@
 
 {% block extra_js %}
 <script>
-// Portfolio Chart
-{% if portfolio and recent_snapshots %}
+{% if has_data and portfolio %}
+// Performance Chart
 fetch('{% url "bitpanda:api_bitpanda_portfolio_chart" %}')
     .then(response => response.json())
     .then(data => {
-        const ctx = document.getElementById('portfolioChart').getContext('2d');
-        new Chart(ctx, {
+        const ctx = document.getElementById('performanceChart');
+        if (!ctx) return;
+
+        new Chart(ctx.getContext('2d'), {
             type: 'line',
             data: data,
             options: {
@@ -256,18 +512,79 @@ fetch('{% url "bitpanda:api_bitpanda_portfolio_chart" %}')
                 plugins: {
                     legend: {
                         position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 11
+                            }
+                        }
                     },
-                    title: {
-                        display: true,
-                        text: 'Portfolio-Wert über Zeit'
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += '€' + context.parsed.y.toFixed(2);
+                                return label;
+                            }
+                        }
                     }
                 },
                 scales: {
                     y: {
-                        beginAtZero: true,
+                        beginAtZero: false,
                         ticks: {
                             callback: function(value) {
-                                return '€' + value.toFixed(2);
+                                return '€' + value.toFixed(0);
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        });
+    })
+    .catch(error => console.error('Chart Error:', error));
+
+// Asset Allocation Pie Chart
+fetch('{% url "bitpanda:api_bitpanda_asset_allocation" %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('allocationChart');
+        if (!ctx) return;
+
+        new Chart(ctx.getContext('2d'), {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += '€' + context.parsed.toFixed(2);
+
+                                // Prozent berechnen
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percent = ((context.parsed / total) * 100).toFixed(1);
+                                label += ' (' + percent + '%)';
+
+                                return label;
                             }
                         }
                     }
@@ -275,7 +592,7 @@ fetch('{% url "bitpanda:api_bitpanda_portfolio_chart" %}')
             }
         });
     })
-    .catch(error => console.error('Fehler beim Laden der Chart-Daten:', error));
+    .catch(error => console.error('Pie Chart Error:', error));
 {% endif %}
 </script>
 {% endblock %}
