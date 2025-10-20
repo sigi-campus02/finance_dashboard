@@ -530,6 +530,45 @@ const layoutConfig = {
     }
 };
 
+// Helper: Einfache lineare Trendlinie berechnen
+const calculateTrendline = (values) => {
+    if (!Array.isArray(values) || values.length < 2) {
+        return null;
+    }
+
+    const n = values.length;
+    const indices = values.map((_, index) => index);
+    const sumX = indices.reduce((acc, value) => acc + value, 0);
+    const sumY = values.reduce((acc, value) => acc + value, 0);
+    const sumXY = values.reduce((acc, value, index) => acc + value * indices[index], 0);
+    const sumXX = indices.reduce((acc, value) => acc + value * value, 0);
+    const denominator = n * sumXX - sumX * sumX;
+
+    if (denominator === 0) {
+        return null;
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
+    const intercept = (sumY - slope * sumX) / n;
+
+    return indices.map(index => slope * index + intercept);
+};
+
+// Helper: Trendlinien-Trace erstellen
+const createTrendTrace = (xValues, trendValues, name = 'Trendlinie', color = '#34495E') => ({
+    x: xValues,
+    y: trendValues,
+    type: 'scatter',
+    mode: 'lines',
+    name,
+    line: {
+        color,
+        width: isMobile ? 2 : 3,
+        dash: 'dash'
+    },
+    hoverinfo: 'skip'
+});
+
 // Helper: Produktnamen kürzen für bessere Lesbarkeit
 const shortenName = (name) => {
     const maxLength = isMobile ? 25 : 35;
@@ -587,7 +626,15 @@ if (dailyData && dailyData.length > 0) {
         hovermode: 'closest'
     };
 
-    Plotly.newPlot('chart-daily', [dailyTrace], dailyLayout);
+    const dailyTrendValues = calculateTrendline(dailyTrace.y);
+    const dailyTraces = [dailyTrace];
+
+    if (dailyTrendValues) {
+        dailyTraces.push(createTrendTrace(dailyTrace.x, dailyTrendValues, 'Trendlinie', '#2C3E50'));
+        dailyLayout.showlegend = true;
+    }
+
+    Plotly.newPlot('chart-daily', dailyTraces, dailyLayout);
 } else {
     document.getElementById('chart-daily').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
@@ -649,7 +696,15 @@ if (avgCostData && avgCostData.length > 0) {
         hovermode: 'closest'
     };
 
-    Plotly.newPlot('chart-average-cost', [avgCostTrace], avgCostLayout);
+    const avgCostTrendValues = calculateTrendline(avgCostTrace.y);
+    const avgCostTraces = [avgCostTrace];
+
+    if (avgCostTrendValues) {
+        avgCostTraces.push(createTrendTrace(avgCostTrace.x, avgCostTrendValues, 'Trendlinie', '#2C3E50'));
+        avgCostLayout.showlegend = true;
+    }
+
+    Plotly.newPlot('chart-average-cost', avgCostTraces, avgCostLayout);
 } else {
     document.getElementById('chart-average-cost').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
 }
@@ -722,6 +777,18 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
         height: isMobile ? 500 : 400,
         autosize: true
     };
+
+    const monthlyTotals = monthlyStackedData.monate.map((_, index) =>
+        monthlyStackedData.kategorien.reduce((sum, kategorie) =>
+            sum + parseFloat(monthlyStackedData.daten[kategorie][index] || 0), 0)
+    );
+
+    const monthlyTrendValues = calculateTrendline(monthlyTotals);
+
+    if (monthlyTrendValues) {
+        traces.push(createTrendTrace(monthlyStackedData.monate, monthlyTrendValues, 'Trendlinie gesamt', '#2C3E50'));
+        monthlyLayout.showlegend = true;
+    }
 
     Plotly.newPlot('chart-monthly', traces, monthlyLayout, {
         displayModeBar: false,
