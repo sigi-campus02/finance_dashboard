@@ -443,14 +443,20 @@
         </div>
         <div class="col-12 col-lg-6">
             <div class="chart-container">
-                <h5>📊 Monatliche Ausgaben</h5>
-                <div id="chart-monthly"></div>
-                <div id="custom-legend-monthly" class="custom-legend"></div>
+                <h5>📈 Ø Kosten je Produkt</h5>
+                <div id="chart-average-cost"></div>
             </div>
         </div>
     </div>
 
     <div class="row mt-4">
+        <div class="col-12 col-lg-6">
+            <div class="chart-container">
+                <h5>📊 Monatliche Ausgaben</h5>
+                <div id="chart-monthly"></div>
+                <div id="custom-legend-monthly" class="custom-legend"></div>
+            </div>
+        </div>
         <div class="col-12 col-lg-6">
             <div class="chart-container">
                 <h5>🎯 Ausgaben nach Kategorie</h5>
@@ -461,22 +467,25 @@
                 <div id="chart-kategorie"></div>
             </div>
         </div>
+    </div>
+
+    <div class="row mt-4">
         <div class="col-12 col-lg-6">
             <div class="chart-container">
                 <h5>💸 Ersparnisse nach Rabatt-Typ</h5>
                 <div id="chart-rabatte"></div>
             </div>
         </div>
-    </div>
-
-    <div class="row mt-4">
         <div class="col-12 col-lg-6">
             <div class="chart-container">
                 <h5>🏷️ Top 10 Produkte (Häufigkeit)</h5>
                 <div id="chart-top-products"></div>
             </div>
         </div>
-        <div class="col-12 col-lg-6">
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
             <div class="chart-container">
                 <h5>💰 Top 10 Produkte (Ausgaben)</h5>
                 <div id="chart-top-spending"></div>
@@ -496,6 +505,7 @@
 // DATEN & GLOBALE VARIABLEN
 // ========================================
 const dailyData = {{ daily_spending|safe }};
+const avgCostData = {{ avg_cost_per_purchase|safe }};
 const monthlyData = {{ monthly_spending|safe }};
 const topProdukte = {{ top_produkte_anzahl|safe }};
 const topAusgaben = {{ top_produkte_ausgaben|safe }};
@@ -583,7 +593,69 @@ if (dailyData && dailyData.length > 0) {
 }
 
 // ========================================
-// 2. MONATLICHE AUSGABEN
+// 2. Ø KOSTEN JE PRODUKT
+// ========================================
+if (avgCostData && avgCostData.length > 0) {
+    const avgCostTrace = {
+        x: avgCostData.map(item => item.datum),
+        y: avgCostData.map(item => parseFloat(item.durchschnitt)),
+        customdata: avgCostData.map(item => [
+            item.anzahl_produkte,
+            parseFloat(item.gesamt_preis),
+            item.filiale || ''
+        ]),
+        text: avgCostData.map(item => item.filiale || ''),
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: {
+            color: '#4ECDC4',
+            width: isMobile ? 2 : 3,
+            shape: 'spline'
+        },
+        marker: {
+            size: isMobile ? 4 : 5,
+            color: '#4ECDC4'
+        },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(78, 205, 196, 0.2)',
+        hovertemplate: '<b>%{x|%d.%m}</b><br>Ø €%{y:.2f}<br>%{customdata[0]} Produkte<br>Gesamt: €%{customdata[1]:.2f}<br>%{text}<extra></extra>'
+    };
+
+    const avgCostLayout = {
+        ...layoutConfig,
+        margin: {
+            t: 10,
+            b: isMobile ? 40 : 60,
+            l: isMobile ? 45 : 60,
+            r: 10
+        },
+        xaxis: {
+            title: isMobile ? '' : 'Datum',
+            tickangle: isMobile ? -90 : -45,
+            tickformat: '%d.%m',
+            automargin: true,
+            showgrid: false,
+            nticks: isMobile ? 8 : 15
+        },
+        yaxis: {
+            title: isMobile ? '€' : 'Ø Preis (€)',
+            tickprefix: '€',
+            showgrid: true,
+            gridcolor: '#f0f0f0'
+        },
+        height: isMobile ? 300 : 400,
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+        hovermode: 'closest'
+    };
+
+    Plotly.newPlot('chart-average-cost', [avgCostTrace], avgCostLayout);
+} else {
+    document.getElementById('chart-average-cost').innerHTML = '<p class="text-center text-muted">Keine Daten verfügbar</p>';
+}
+
+// ========================================
+// 3. MONATLICHE AUSGABEN
 // ========================================
 const monthlyStackedData = JSON.parse('{{ monthly_spending_stacked|safe }}');
 
@@ -660,7 +732,7 @@ if (monthlyStackedData && monthlyStackedData.monate && monthlyStackedData.monate
 }
 
 // ========================================
-// 3. TOP 10 PRODUKTE (HÄUFIGKEIT)
+// 4. TOP 10 PRODUKTE (HÄUFIGKEIT)
 // ========================================
 if (topProdukte && topProdukte.length > 0) {
     const top10 = topProdukte.slice(0, 10);
@@ -708,7 +780,7 @@ if (topProdukte && topProdukte.length > 0) {
 }
 
 // ========================================
-// 4. TOP 10 PRODUKTE (AUSGABEN)
+// 5. TOP 10 PRODUKTE (AUSGABEN)
 // ========================================
 if (topAusgaben && topAusgaben.length > 0) {
     const top10 = topAusgaben.slice(0, 10);
@@ -757,7 +829,7 @@ if (topAusgaben && topAusgaben.length > 0) {
 }
 
 // ========================================
-// 5. AUSGABEN NACH KATEGORIE (3-EBENEN DRILL-DOWN)
+// 6. AUSGABEN NACH KATEGORIE (3-EBENEN DRILL-DOWN)
 // ========================================
 
 // State Management für 3-Ebenen Drill-Down
@@ -1030,7 +1102,7 @@ if (kategorieData && kategorieData.length > 0) {
 }
 
 // ========================================
-// 6. ERSPARNISSE NACH RABATT-TYP
+// 7. ERSPARNISSE NACH RABATT-TYP
 // ========================================
 if (rabatteData && rabatteData.length > 0) {
     const sortedRabatteData = [...rabatteData].sort((a, b) => b.ersparnis - a.ersparnis);
@@ -1081,6 +1153,7 @@ window.addEventListener('resize', function() {
     }
 
     Plotly.Plots.resize('chart-daily');
+    Plotly.Plots.resize('chart-average-cost');
     Plotly.Plots.resize('chart-monthly');
     Plotly.Plots.resize('chart-top-products');
     Plotly.Plots.resize('chart-top-spending');
