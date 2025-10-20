@@ -61,6 +61,18 @@ CATEGORY_COLORS = {
 }
 
 
+def _parse_person_filter(request):
+    """Return normalized person filter and inclusion flags for Robert/Sigi."""
+    person = (request.GET.get('person') or 'all').lower()
+    if person not in {'all', 'robert', 'sigi'}:
+        person = 'all'
+
+    include_robert = person in {'all', 'robert'}
+    include_sigi = person in {'all', 'sigi'}
+
+    return person, include_robert, include_sigi
+
+
 @login_required
 def manage_devices(request):
     """Zeigt registrierte Geräte und erlaubt (optional) Administration"""
@@ -605,6 +617,7 @@ def api_monthly_spending_drilldown(request):
 
     year = request.GET.get('year', datetime.now().year)
     categorygroup_id = request.GET.get('categorygroup_id')
+    _, include_robert, include_sigi = _parse_person_filter(request)
     month = request.GET.get('month')  # z.B. "June" (englisch)
 
     if not categorygroup_id or categorygroup_id == 'undefined':
@@ -2548,6 +2561,12 @@ def household_dashboard(request):
     context = {
         'available_years': available_years,
         'current_year': datetime.now().year,
+        'person_options': [
+            {'value': 'all', 'label': 'Alle'},
+            {'value': 'robert', 'label': 'Robert'},
+            {'value': 'sigi', 'label': 'Sigi'},
+        ],
+        'current_person': 'all',
     }
 
     return render(request, 'finance/household_dashboard.html', context)
@@ -2559,24 +2578,30 @@ def api_household_monthly_spending(request):
     year = request.GET.get('year', datetime.now().year)
     year = int(year)
 
+    _, include_robert, include_sigi = _parse_person_filter(request)
+
     # Sigi: Nur mit Flag "Relevant für Haushaltsbudget" (flag_id=5)
-    sigi_transactions = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        date__year=year
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1  # "Ready to Assign" ausschließen
-    )
+    sigi_transactions = FactTransactionsSigi.objects.none()
+    if include_sigi:
+        sigi_transactions = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            date__year=year
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1  # "Ready to Assign" ausschließen
+        )
 
     # Robert: Alle Transaktionen
-    robert_transactions = FactTransactionsRobert.objects.filter(
-        date__year=year
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    )
+    robert_transactions = FactTransactionsRobert.objects.none()
+    if include_robert:
+        robert_transactions = FactTransactionsRobert.objects.filter(
+            date__year=year
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        )
 
     # Monatliche Aggregation für Sigi
     sigi_monthly = sigi_transactions.annotate(
@@ -2616,24 +2641,27 @@ def api_household_monthly_spending(request):
         netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
         robert_data[month_index] = netto
 
+    datasets = []
+    if include_robert:
+        datasets.append({
+            'label': 'Robert',
+            'data': robert_data,
+            'backgroundColor': 'rgba(0, 176, 240, 0.8)',  # #00B0F0
+            'borderColor': 'rgba(0, 176, 240, 1)',
+            'borderWidth': 1
+        })
+    if include_sigi:
+        datasets.append({
+            'label': 'Sigi',
+            'data': sigi_data,
+            'backgroundColor': 'rgba(0, 242, 196, 0.8)',  # #00F2C4
+            'borderColor': 'rgba(0, 242, 196, 1)',
+            'borderWidth': 1
+        })
+
     return JsonResponse({
         'labels': months_labels,
-        'datasets': [
-            {
-                'label': 'Robert',
-                'data': robert_data,
-                'backgroundColor': 'rgba(0, 176, 240, 0.8)',  # #00B0F0
-                'borderColor': 'rgba(0, 176, 240, 1)',
-                'borderWidth': 1
-            },
-            {
-                'label': 'Sigi',
-                'data': sigi_data,
-                'backgroundColor': 'rgba(0, 242, 196, 0.8)',  # #00F2C4
-                'borderColor': 'rgba(0, 242, 196, 1)',
-                'borderWidth': 1
-            }
-        ]
+        'datasets': datasets
     })
 
 
@@ -2662,36 +2690,38 @@ def api_household_category_breakdown(request):
         except (ValueError, TypeError):
             return JsonResponse({'error': 'Invalid categorygroup_id'}, status=400)
 
-        # Sigi
-        sigi_by_category = FactTransactionsSigi.objects.filter(
-            flag_id=5,
-            date__year=year,
-            category__categorygroup_id=categorygroup_id  # ⚠️ KORRIGIERT
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        ).values(
-            'category__category'
-        ).annotate(
-            inflow=Sum('inflow'),
-            outflow=Sum('outflow')
-        )
+        sigi_by_category = []
+        if include_sigi:
+            sigi_by_category = FactTransactionsSigi.objects.filter(
+                flag_id=5,
+                date__year=year,
+                category__categorygroup_id=categorygroup_id  # ⚠️ KORRIGIERT
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            ).values(
+                'category__category'
+            ).annotate(
+                inflow=Sum('inflow'),
+                outflow=Sum('outflow')
+            )
 
-        # Robert
-        robert_by_category = FactTransactionsRobert.objects.filter(
-            date__year=year,
-            category__categorygroup_id=categorygroup_id  # ⚠️ KORRIGIERT
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        ).values(
-            'category__category'
-        ).annotate(
-            inflow=Sum('inflow'),
-            outflow=Sum('outflow')
-        )
+        robert_by_category = []
+        if include_robert:
+            robert_by_category = FactTransactionsRobert.objects.filter(
+                date__year=year,
+                category__categorygroup_id=categorygroup_id  # ⚠️ KORRIGIERT
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            ).values(
+                'category__category'
+            ).annotate(
+                inflow=Sum('inflow'),
+                outflow=Sum('outflow')
+            )
 
         # Kombiniere Daten
         category_totals = {}
@@ -2739,25 +2769,29 @@ def api_household_category_breakdown(request):
     else:
         # ===== OVERVIEW: Zeige CategoryGroups (wie bisher) =====
         # Sigi
-        sigi_transactions = FactTransactionsSigi.objects.filter(
-            flag_id=5,
-            date__year=year,
-            outflow__gt=0
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        )
+        sigi_transactions = FactTransactionsSigi.objects.none()
+        if include_sigi:
+            sigi_transactions = FactTransactionsSigi.objects.filter(
+                flag_id=5,
+                date__year=year,
+                outflow__gt=0
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            )
 
         # Robert
-        robert_transactions = FactTransactionsRobert.objects.filter(
-            date__year=year,
-            outflow__gt=0
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        )
+        robert_transactions = FactTransactionsRobert.objects.none()
+        if include_robert:
+            robert_transactions = FactTransactionsRobert.objects.filter(
+                date__year=year,
+                outflow__gt=0
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            )
 
         # Aggregiere nach CategoryGroup
         sigi_by_group = sigi_transactions.values(
@@ -2821,6 +2855,10 @@ def api_categorygroup_monthly_trend(request):
         return JsonResponse({'error': 'group_id required'}, status=400)
 
     group_id = int(group_id)
+    _, include_robert, include_sigi = _parse_person_filter(request)
+    _, include_robert, include_sigi = _parse_person_filter(request)
+    _, include_robert, include_sigi = _parse_person_filter(request)
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Hole Daten für 2024 und 2025
     start_date = datetime(2024, 1, 1)
@@ -2828,37 +2866,41 @@ def api_categorygroup_monthly_trend(request):
     current_month = datetime.now().replace(day=1)
 
     # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
-    sigi_data = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        date__gte=start_date,
-        date__lte=end_date,
-        category__categorygroup_id=group_id
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    ).annotate(
-        month=TruncMonth('date')
-    ).values('month').annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    ).order_by('month')
+    sigi_data = []
+    if include_sigi:
+        sigi_data = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            date__gte=start_date,
+            date__lte=end_date,
+            category__categorygroup_id=group_id
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        ).order_by('month')
 
     # Robert: Alle Transaktionen
-    robert_data = FactTransactionsRobert.objects.filter(
-        date__gte=start_date,
-        date__lte=end_date,
-        category__categorygroup_id=group_id
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    ).annotate(
-        month=TruncMonth('date')
-    ).values('month').annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    ).order_by('month')
+    robert_data = []
+    if include_robert:
+        robert_data = FactTransactionsRobert.objects.filter(
+            date__gte=start_date,
+            date__lte=end_date,
+            category__categorygroup_id=group_id
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        ).order_by('month')
 
     # Aggregiere Daten nach Monat (verwende Tuple aus Jahr und Monat als Key!)
     monthly_totals = {}
@@ -2974,37 +3016,41 @@ def api_categorygroup_year_comparison(request):
     # Daten für beide Jahre sammeln
     for year, data_array in [(2024, data_2024), (2025, data_2025)]:
         # Sigi
-        sigi_monthly = FactTransactionsSigi.objects.filter(
-            flag_id=5,
-            date__year=year,
-            category__categorygroup_id=group_id,
-            outflow__gt=0
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        ).annotate(
-            month=TruncMonth('date')
-        ).values('month').annotate(
-            inflow=Sum('inflow'),
-            outflow=Sum('outflow')
-        )
+        sigi_monthly = []
+        if include_sigi:
+            sigi_monthly = FactTransactionsSigi.objects.filter(
+                flag_id=5,
+                date__year=year,
+                category__categorygroup_id=group_id,
+                outflow__gt=0
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            ).annotate(
+                month=TruncMonth('date')
+            ).values('month').annotate(
+                inflow=Sum('inflow'),
+                outflow=Sum('outflow')
+            )
 
         # Robert
-        robert_monthly = FactTransactionsRobert.objects.filter(
-            date__year=year,
-            category__categorygroup_id=group_id,
-            outflow__gt=0
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        ).annotate(
-            month=TruncMonth('date')
-        ).values('month').annotate(
-            inflow=Sum('inflow'),
-            outflow=Sum('outflow')
-        )
+        robert_monthly = []
+        if include_robert:
+            robert_monthly = FactTransactionsRobert.objects.filter(
+                date__year=year,
+                category__categorygroup_id=group_id,
+                outflow__gt=0
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            ).annotate(
+                month=TruncMonth('date')
+            ).values('month').annotate(
+                inflow=Sum('inflow'),
+                outflow=Sum('outflow')
+            )
 
         # Fülle Daten
         for item in sigi_monthly:
@@ -3085,35 +3131,36 @@ def api_categorygroup_quarterly_breakdown(request):
         has_data = False  # GEÄNDERT: Flag um zu prüfen ob Kategorie Daten hat
 
         for quarter_label, start_date, end_date in quarters:
-            # Sigi
-            sigi_total = FactTransactionsSigi.objects.filter(
-                flag_id=5,
-                date__gte=start_date,
-                date__lte=end_date,
-                category_id=category.id,
-                outflow__gt=0
-            ).exclude(
-                payee__payee_type__in=['transfer', 'kursschwankung']
-            ).aggregate(
-                total_inflow=Sum('inflow'),
-                total_outflow=Sum('outflow')
-            )
+            sigi_netto = 0.0
+            if include_sigi:
+                sigi_total = FactTransactionsSigi.objects.filter(
+                    flag_id=5,
+                    date__gte=start_date,
+                    date__lte=end_date,
+                    category_id=category.id,
+                    outflow__gt=0
+                ).exclude(
+                    payee__payee_type__in=['transfer', 'kursschwankung']
+                ).aggregate(
+                    total_inflow=Sum('inflow'),
+                    total_outflow=Sum('outflow')
+                )
+                sigi_netto = float((sigi_total['total_outflow'] or 0) - (sigi_total['total_inflow'] or 0))
 
-            # Robert
-            robert_total = FactTransactionsRobert.objects.filter(
-                date__gte=start_date,
-                date__lte=end_date,
-                category_id=category.id,
-                outflow__gt=0
-            ).exclude(
-                payee__payee_type__in=['transfer', 'kursschwankung']
-            ).aggregate(
-                total_inflow=Sum('inflow'),
-                total_outflow=Sum('outflow')
-            )
-
-            sigi_netto = float((sigi_total['total_outflow'] or 0) - (sigi_total['total_inflow'] or 0))
-            robert_netto = float((robert_total['total_outflow'] or 0) - (robert_total['total_inflow'] or 0))
+            robert_netto = 0.0
+            if include_robert:
+                robert_total = FactTransactionsRobert.objects.filter(
+                    date__gte=start_date,
+                    date__lte=end_date,
+                    category_id=category.id,
+                    outflow__gt=0
+                ).exclude(
+                    payee__payee_type__in=['transfer', 'kursschwankung']
+                ).aggregate(
+                    total_inflow=Sum('inflow'),
+                    total_outflow=Sum('outflow')
+                )
+                robert_netto = float((robert_total['total_outflow'] or 0) - (robert_total['total_inflow'] or 0))
 
             total = sigi_netto + robert_netto
             category_data.append(total)
@@ -3156,39 +3203,43 @@ def api_categorygroup_stats(request):
     start_date = datetime(2024, 1, 1)
 
     # Sigi
-    sigi_data = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        date__gte=start_date,
-        date__lt=current_month_start,  # Exkl. aktueller Monat
-        category__categorygroup_id=group_id,
-        outflow__gt=0
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    ).annotate(
-        month=TruncMonth('date')
-    ).values('month').annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    )
+    sigi_data = []
+    if include_sigi:
+        sigi_data = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            date__gte=start_date,
+            date__lt=current_month_start,  # Exkl. aktueller Monat
+            category__categorygroup_id=group_id,
+            outflow__gt=0
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
 
     # Robert
-    robert_data = FactTransactionsRobert.objects.filter(
-        date__gte=start_date,
-        date__lt=current_month_start,
-        category__categorygroup_id=group_id,
-        outflow__gt=0
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    ).annotate(
-        month=TruncMonth('date')
-    ).values('month').annotate(
-        inflow=Sum('inflow'),
-        outflow=Sum('outflow')
-    )
+    robert_data = []
+    if include_robert:
+        robert_data = FactTransactionsRobert.objects.filter(
+            date__gte=start_date,
+            date__lt=current_month_start,
+            category__categorygroup_id=group_id,
+            outflow__gt=0
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
 
     # Aggregiere nach Monat
     monthly_totals = {}
@@ -3229,39 +3280,44 @@ def api_supermarket_monthly_trend(request):
     start_date = datetime(2024, 1, 1)
     end_date = datetime(2025, 12, 31)
     current_month = datetime.now().replace(day=1)
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
-    sigi_transactions = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        category_id=category_id,
-        date__gte=start_date,
-        date__lte=end_date
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1  # "Ready to Assign" ausschließen
-    ).values(
-        'date__year', 'date__month'
-    ).annotate(
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow')
-    ).order_by('date__year', 'date__month')
+    sigi_transactions = []
+    if include_sigi:
+        sigi_transactions = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            category_id=category_id,
+            date__gte=start_date,
+            date__lte=end_date
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1  # "Ready to Assign" ausschließen
+        ).values(
+            'date__year', 'date__month'
+        ).annotate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        ).order_by('date__year', 'date__month')
 
     # Robert: Alle Transaktionen
-    robert_transactions = FactTransactionsRobert.objects.filter(
-        category_id=category_id,
-        date__gte=start_date,
-        date__lte=end_date
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1  # "Ready to Assign" ausschließen
-    ).values(
-        'date__year', 'date__month'
-    ).annotate(
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow')
-    ).order_by('date__year', 'date__month')
+    robert_transactions = []
+    if include_robert:
+        robert_transactions = FactTransactionsRobert.objects.filter(
+            category_id=category_id,
+            date__gte=start_date,
+            date__lte=end_date
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1  # "Ready to Assign" ausschließen
+        ).values(
+            'date__year', 'date__month'
+        ).annotate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        ).order_by('date__year', 'date__month')
 
     # Kombiniere beide Datensätze - verwende (Jahr, Monat) als Key
     monthly_data = {}
@@ -3378,40 +3434,45 @@ def api_supermarket_year_comparison(request):
     """API: Jahresvergleich 2024 vs 2025 für Supermarkt-Kategorie"""
     category_id = 5  # 1.4. Supermarkt
     years = [2024, 2025]
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     comparison_data = {}
 
     for year in years:
         # Sigi - KORRIGIERT: Keine outflow__gt=0 Filterung
-        sigi_data = FactTransactionsSigi.objects.filter(
-            flag_id=5,
-            category_id=category_id,
-            date__year=year
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        ).values(
-            'date__month'
-        ).annotate(
-            total_outflow=Sum('outflow'),
-            total_inflow=Sum('inflow')
-        )
+        sigi_data = []
+        if include_sigi:
+            sigi_data = FactTransactionsSigi.objects.filter(
+                flag_id=5,
+                category_id=category_id,
+                date__year=year
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            ).values(
+                'date__month'
+            ).annotate(
+                total_outflow=Sum('outflow'),
+                total_inflow=Sum('inflow')
+            )
 
         # Robert - KORRIGIERT: Keine outflow__gt=0 Filterung
-        robert_data = FactTransactionsRobert.objects.filter(
-            category_id=category_id,
-            date__year=year
-        ).exclude(
-            payee__payee_type__in=['transfer', 'kursschwankung']
-        ).exclude(
-            category_id=1
-        ).values(
-            'date__month'
-        ).annotate(
-            total_outflow=Sum('outflow'),
-            total_inflow=Sum('inflow')
-        )
+        robert_data = []
+        if include_robert:
+            robert_data = FactTransactionsRobert.objects.filter(
+                category_id=category_id,
+                date__year=year
+            ).exclude(
+                payee__payee_type__in=['transfer', 'kursschwankung']
+            ).exclude(
+                category_id=1
+            ).values(
+                'date__month'
+            ).annotate(
+                total_outflow=Sum('outflow'),
+                total_inflow=Sum('inflow')
+            )
 
         # Kombiniere
         monthly_totals = {i: 0 for i in range(1, 13)}
@@ -3456,45 +3517,52 @@ def api_supermarket_year_comparison(request):
 def api_supermarket_stats(request):
     """API: Statistiken für Supermarkt-Kategorie"""
     category_id = 5  # 1.4. Supermarkt
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Sigi - KORRIGIERT: Keine outflow__gt=0 Filterung
-    sigi_data = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        category_id=category_id
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    ).aggregate(
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow'),
-        earliest=Min('date')
-    )
+    sigi_data = {'total_outflow': 0, 'total_inflow': 0, 'earliest': None}
+    if include_sigi:
+        sigi_data = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            category_id=category_id
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).aggregate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow'),
+            earliest=Min('date')
+        )
 
     # Robert - KORRIGIERT: Keine outflow__gt=0 Filterung
-    robert_data = FactTransactionsRobert.objects.filter(
-        category_id=category_id
-    ).exclude(
-        payee__payee_type__in=['transfer', 'kursschwankung']
-    ).exclude(
-        category_id=1
-    ).aggregate(
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow'),
-        earliest=Min('date')
-    )
+    robert_data = {'total_outflow': 0, 'total_inflow': 0, 'earliest': None}
+    if include_robert:
+        robert_data = FactTransactionsRobert.objects.filter(
+            category_id=category_id
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        ).exclude(
+            category_id=1
+        ).aggregate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow'),
+            earliest=Min('date')
+        )
 
     # Kombiniere
-    total_outflow = float((sigi_data['total_outflow'] or 0) + (robert_data['total_outflow'] or 0))
-    total_inflow = float((sigi_data['total_inflow'] or 0) + (robert_data['total_inflow'] or 0))
+    total_outflow = float((sigi_data.get('total_outflow') or 0) + (robert_data.get('total_outflow') or 0))
+    total_inflow = float((sigi_data.get('total_inflow') or 0) + (robert_data.get('total_inflow') or 0))
     # KORRIGIERT: Netto-Ausgaben = Outflow - Inflow
     total_spending = total_outflow - total_inflow
 
     # Berechne Anzahl Monate
-    earliest_date = min(
-        sigi_data['earliest'] or datetime.now().date(),
-        robert_data['earliest'] or datetime.now().date()
-    )
+    earliest_candidates = [
+        sigi_data.get('earliest') if include_sigi else None,
+        robert_data.get('earliest') if include_robert else None,
+    ]
+    earliest_candidates = [d for d in earliest_candidates if d]
+    earliest_date = min(earliest_candidates) if earliest_candidates else datetime.now().date()
 
     today = datetime.now().date()
     num_months = ((today.year - earliest_date.year) * 12 +
@@ -3513,6 +3581,7 @@ def api_supermarket_stats(request):
 def api_billa_combined_chart(request):
     """API: Kombiniertes Diagramm - Anzahl Billa-Einkäufe + Durchschnittliche Einkaufshöhe"""
     category_id = 5  # 1.4. Supermarkt
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Finde alle Payees die "Billa" enthalten
     billa_payees = DimPayee.objects.filter(
@@ -3524,33 +3593,37 @@ def api_billa_combined_chart(request):
     # Sigi: Nur mit Flag "Relevant für Haushaltsbudget"
     # KORRIGIERT: Wir wollen alle Transaktionen (auch Inflows wie Pfandgeld)
     # Aber für die Anzahl zählen wir nur "echte Einkäufe" (mit Outflow > 0)
-    sigi_transactions = FactTransactionsSigi.objects.filter(
-        flag_id=5,
-        category_id=category_id,
-        payee_id__in=billa_payees
-    ).exclude(
-        Q(outflow__isnull=True) | Q(outflow=0)  # Nur echte Einkäufe zählen
-    ).values(
-        'date__year', 'date__month'
-    ).annotate(
-        count=Count('id'),
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow')
-    ).order_by('date__year', 'date__month')
+    sigi_transactions = []
+    if include_sigi:
+        sigi_transactions = FactTransactionsSigi.objects.filter(
+            flag_id=5,
+            category_id=category_id,
+            payee_id__in=billa_payees
+        ).exclude(
+            Q(outflow__isnull=True) | Q(outflow=0)  # Nur echte Einkäufe zählen
+        ).values(
+            'date__year', 'date__month'
+        ).annotate(
+            count=Count('id'),
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        ).order_by('date__year', 'date__month')
 
     # Robert
-    robert_transactions = FactTransactionsRobert.objects.filter(
-        category_id=category_id,
-        payee_id__in=billa_payees
-    ).exclude(
-        Q(outflow__isnull=True) | Q(outflow=0)  # Nur echte Einkäufe zählen
-    ).values(
-        'date__year', 'date__month'
-    ).annotate(
-        count=Count('id'),
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow')
-    ).order_by('date__year', 'date__month')
+    robert_transactions = []
+    if include_robert:
+        robert_transactions = FactTransactionsRobert.objects.filter(
+            category_id=category_id,
+            payee_id__in=billa_payees
+        ).exclude(
+            Q(outflow__isnull=True) | Q(outflow=0)  # Nur echte Einkäufe zählen
+        ).values(
+            'date__year', 'date__month'
+        ).annotate(
+            count=Count('id'),
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        ).order_by('date__year', 'date__month')
 
     # Kombiniere beide Datensätze
     monthly_data = {}
@@ -3860,38 +3933,84 @@ def api_urlaube_chart(request):
     API für Urlaubs-Balkendiagramm (gestapelt nach Person)
     """
 
+    person, include_robert, include_sigi = _parse_person_filter(request)
+
     urlaube = FactUrlaube.objects.all().order_by('-datum')
 
     labels = []
-    robert_data = []
-    sigi_data = []
+    robert_data = [] if include_robert else None
+    sigi_data = [] if include_sigi else None
+
+    total_amount = 0.0
+    trip_count = 0
+    year_summary = defaultdict(lambda: {'amount': 0.0, 'trip_count': 0})
 
     for urlaub in urlaube:
-        labels.append(f"{urlaub.datum.strftime('%d.%m.%Y')}\n{urlaub.beschreibung}")
-        robert_data.append(float(urlaub.anteil_robert))
-        sigi_data.append(float(urlaub.anteil_sigi))
+        label = f"{urlaub.datum.strftime('%d.%m.%Y')}\n{urlaub.beschreibung}"
+        labels.append(label)
 
-    data = {
-        'labels': labels,
-        'datasets': [
-            {
-                'label': 'Anteil Robert',
-                'data': robert_data,
-                'backgroundColor': 'rgba(54, 162, 235, 0.8)',
-                'borderColor': 'rgb(54, 162, 235)',
-                'borderWidth': 1
-            },
-            {
-                'label': 'Anteil Sigi',
-                'data': sigi_data,
-                'backgroundColor': 'rgba(75, 192, 192, 0.8)',
-                'borderColor': 'rgb(75, 192, 192)',
-                'borderWidth': 1
+        year = urlaub.datum.year
+        person_has_value = False
+
+        if include_robert:
+            robert_value = float(urlaub.anteil_robert or 0)
+            robert_data.append(robert_value)
+            total_amount += robert_value
+            if robert_value > 0:
+                person_has_value = True
+                year_summary[year]['amount'] += robert_value
+
+        if include_sigi:
+            sigi_value = float(urlaub.anteil_sigi or 0)
+            sigi_data.append(sigi_value)
+            total_amount += sigi_value
+            if sigi_value > 0:
+                person_has_value = True
+                year_summary[year]['amount'] += sigi_value
+
+        if person_has_value:
+            trip_count += 1
+            year_summary[year]['trip_count'] += 1
+
+    datasets = []
+    if include_robert:
+        datasets.append({
+            'label': 'Anteil Robert',
+            'data': robert_data,
+            'backgroundColor': 'rgba(54, 162, 235, 0.8)',
+            'borderColor': 'rgb(54, 162, 235)',
+            'borderWidth': 1
+        })
+    if include_sigi:
+        datasets.append({
+            'label': 'Anteil Sigi',
+            'data': sigi_data,
+            'backgroundColor': 'rgba(75, 192, 192, 0.8)',
+            'borderColor': 'rgb(75, 192, 192)',
+            'borderWidth': 1
+        })
+
+    average_amount = total_amount / trip_count if trip_count > 0 else 0
+
+    stats = {
+        'person': person,
+        'total_amount': round(total_amount, 2),
+        'trip_count': trip_count,
+        'average_amount': round(average_amount, 2),
+        'year_summary': {
+            str(year): {
+                'amount': round(values['amount'], 2),
+                'trip_count': values['trip_count'],
             }
-        ]
+            for year, values in sorted(year_summary.items())
+        }
     }
 
-    return JsonResponse(data)
+    return JsonResponse({
+        'labels': labels,
+        'datasets': datasets,
+        'stats': stats
+    })
 
 
 @login_required
@@ -3900,6 +4019,8 @@ def betriebskosten_chart(request):
     API für Betriebskosten-Entwicklung
     Gruppiert nach Jahr/Monat und vs_posten
     """
+    person, include_robert, include_sigi = _parse_person_filter(request)
+
     try:
         # Hole alle Datenpunkte, gruppiert nach Jahr, Monat und vs_posten
         data = FactBetriebskosten.objects.values(
@@ -3960,9 +4081,11 @@ def betriebskosten_chart(request):
 
         # Baue Datasets
         datasets = []
+        scale_factor = 1.0 if person == 'all' else 0.5
+
         for kategorie, werte_dict in datasets_dict.items():
             # Fülle fehlende Monate mit 0
-            data_array = [werte_dict.get(label, 0) for label in labels]
+            data_array = [werte_dict.get(label, 0) * scale_factor for label in labels]
 
             colors = color_map.get(kategorie, {
                 'bg': 'rgba(128, 128, 128, 0.7)',
@@ -3979,7 +4102,9 @@ def betriebskosten_chart(request):
 
         response_data = {
             'labels': labels,
-            'datasets': datasets
+            'datasets': datasets,
+            'scale': scale_factor,
+            'person': person
         }
 
         print(f"Sende {len(labels)} Labels und {len(datasets)} Datasets")

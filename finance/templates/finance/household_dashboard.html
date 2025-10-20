@@ -283,6 +283,14 @@
             </h1>
             <p class="text-muted mb-0">Visualisierung der Haushaltsausgaben</p>
         </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <label for="personFilter" class="form-label mb-0 text-muted small">Person</label>
+            <select id="personFilter" class="form-select form-select-sm">
+                {% for option in person_options %}
+                    <option value="{{ option.value }}" {% if option.value == current_person %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
 
     <!-- Info Alert -->
@@ -1092,12 +1100,35 @@ let sharedDrilldownState = {
     categorygroupId: null
 };
 
+let currentPerson = '{{ current_person }}';
+const defaultYear = {{ current_year }};
+const categoryTrendCharts = {};
+const categoryComparisonCharts = {};
+const categoryQuarterlyCharts = {};
+let supermarketTrendChartInstance = null;
+let supermarketComparisonChartInstance = null;
+let billaCombinedChartInstance = null;
+let urlaubeChartInstance = null;
+let betriebskostenChartInstance = null;
+
+function addPersonToUrl(url) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}person=${encodeURIComponent(currentPerson)}`;
+}
+
+function resetPieDrilldownState() {
+    sharedDrilldownState.level = 'overview';
+    sharedDrilldownState.categorygroupName = null;
+    sharedDrilldownState.categorygroupId = null;
+}
+
 // ============================================================
 // Ersetze die loadMonthlyChart Funktion mit dieser optimierten Version:
 // ============================================================
 
 function loadMonthlyChart(year) {
-    fetch(`/api/household-monthly-spending/?year=${year}`)
+    const url = addPersonToUrl(`/api/household-monthly-spending/?year=${year}`);
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('monthlyStackedChart').getContext('2d');
@@ -1264,6 +1295,8 @@ function loadPieChart(year, canvasId, chartVariable) {
     if (sharedDrilldownState.level === 'drilldown' && sharedDrilldownState.categorygroupId) {
         url += `&categorygroup_id=${sharedDrilldownState.categorygroupId}`;
     }
+
+    url = addPersonToUrl(url);
 
     fetch(url)
         .then(response => response.json())
@@ -1531,7 +1564,7 @@ function formatEuro(value) {
 
 function loadCategoryGroupStats() {
     categoryGroups.forEach(groupId => {
-        fetch(`/api/categorygroup-stats/?group_id=${groupId}`)
+        fetch(addPersonToUrl(`/api/categorygroup-stats/?group_id=${groupId}`))
             .then(response => response.json())
             .then(data => {
                 document.getElementById(`avg-spending-${groupId}`).innerHTML = formatEuro(data.monthly_average);
@@ -1545,13 +1578,17 @@ function loadCategoryGroupStats() {
 
 function createTrendCharts() {
     categoryGroups.forEach(groupId => {
-        fetch(`/api/categorygroup-monthly-trend/?group_id=${groupId}`)
+        fetch(addPersonToUrl(`/api/categorygroup-monthly-trend/?group_id=${groupId}`))
             .then(response => response.json())
             .then(data => {
                 const ctx = document.getElementById(`trendChart${groupId}`).getContext('2d');
                 const colors = groupColors[groupId];
 
-                new Chart(ctx, {
+                if (categoryTrendCharts[groupId]) {
+                    categoryTrendCharts[groupId].destroy();
+                }
+
+                categoryTrendCharts[groupId] = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: data.labels,
@@ -1627,13 +1664,17 @@ function createTrendCharts() {
 
 function createComparisonCharts() {
     categoryGroups.forEach(groupId => {
-        fetch(`/api/categorygroup-year-comparison/?group_id=${groupId}`)
+        fetch(addPersonToUrl(`/api/categorygroup-year-comparison/?group_id=${groupId}`))
             .then(response => response.json())
             .then(data => {
                 const ctx = document.getElementById(`comparisonChart${groupId}`).getContext('2d');
                 const colors = groupColors[groupId];
 
-                new Chart(ctx, {
+                if (categoryComparisonCharts[groupId]) {
+                    categoryComparisonCharts[groupId].destroy();
+                }
+
+                categoryComparisonCharts[groupId] = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: data.labels,
@@ -1698,12 +1739,16 @@ function createComparisonCharts() {
 
 function createQuarterlyCharts() {
     categoryGroups.forEach(groupId => {
-        fetch(`/api/categorygroup-quarterly-breakdown/?group_id=${groupId}`)
+        fetch(addPersonToUrl(`/api/categorygroup-quarterly-breakdown/?group_id=${groupId}`))
             .then(response => response.json())
             .then(data => {
                 const ctx = document.getElementById(`quarterlyChart${groupId}`).getContext('2d');
 
-                new Chart(ctx, {
+                if (categoryQuarterlyCharts[groupId]) {
+                    categoryQuarterlyCharts[groupId].destroy();
+                }
+
+                categoryQuarterlyCharts[groupId] = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: data.labels,
@@ -1764,7 +1809,7 @@ function createQuarterlyCharts() {
 // ===== SUPERMARKT-BEREICH FUNCTIONS =====
 
 function loadSupermarketStats() {
-    fetch('/api/supermarket-stats/')
+    fetch(addPersonToUrl('/api/supermarket-stats/'))
         .then(response => response.json())
         .then(data => {
             document.getElementById('avg-spending-supermarket').innerHTML = formatEuro(data.monthly_average);
@@ -1776,12 +1821,16 @@ function loadSupermarketStats() {
 }
 
 function createSupermarketTrendChart() {
-    fetch('/api/supermarket-monthly-trend/')
+    fetch(addPersonToUrl('/api/supermarket-monthly-trend/'))
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('supermarketTrendChart').getContext('2d');
 
-            new Chart(ctx, {
+            if (supermarketTrendChartInstance) {
+                supermarketTrendChartInstance.destroy();
+            }
+
+            supermarketTrendChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: data.labels,
@@ -1849,12 +1898,16 @@ function createSupermarketTrendChart() {
 }
 
 function createSupermarketComparisonChart() {
-    fetch('/api/supermarket-year-comparison/')
+    fetch(addPersonToUrl('/api/supermarket-year-comparison/'))
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('supermarketComparisonChart').getContext('2d');
 
-            new Chart(ctx, {
+            if (supermarketComparisonChartInstance) {
+                supermarketComparisonChartInstance.destroy();
+            }
+
+            supermarketComparisonChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: data.labels,
@@ -1893,15 +1946,19 @@ function createSupermarketComparisonChart() {
 }
 
 function createBillaCombinedChart() {
-    fetch('/api/billa-combined-chart/')
+    fetch(addPersonToUrl('/api/billa-combined-chart/'))
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('billaCombinedChart').getContext('2d');
-            
+
             // Mobile Detection
             const isMobile = window.innerWidth < 768;
 
-            new Chart(ctx, {
+            if (billaCombinedChartInstance) {
+                billaCombinedChartInstance.destroy();
+            }
+
+            billaCombinedChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: data.labels,
@@ -2045,48 +2102,27 @@ function createBillaCombinedChart() {
 // ===== URLAUBE SECTION =====
 
 function loadUrlaubeStats() {
-    fetch('/api/urlaube-chart/')
+    fetch(addPersonToUrl('/api/urlaube-chart/'))
         .then(response => response.json())
         .then(data => {
-            // Berechne Statistiken
-            let gesamt = 0;
-            let anzahl = data.labels.length;
-            let gesamt2024 = 0;
-            let anzahl2024 = 0;
-            let gesamt2025 = 0;
-            let anzahl2025 = 0;
+            const stats = data.stats || {};
+            const totalAmount = stats.total_amount || 0;
+            const tripCount = stats.trip_count || 0;
+            const averageAmount = stats.average_amount || 0;
+            const summary = stats.year_summary || {};
 
-            data.datasets.forEach(dataset => {
-                dataset.data.forEach((value, index) => {
-                    gesamt += value;
-                    
-                    // Extrahiere Jahr aus Label (Format: "DD.MM.YYYY\nBeschreibung")
-                    const labelParts = data.labels[index].split('\n');
-                    const datum = labelParts[0];
-                    const jahr = parseInt(datum.split('.')[2]);
-                    
-                    if (jahr === 2024) {
-                        gesamt2024 += value;
-                        if (dataset.label === 'Anteil Robert') anzahl2024++;
-                    } else if (jahr === 2025) {
-                        gesamt2025 += value;
-                        if (dataset.label === 'Anteil Robert') anzahl2025++;
-                    }
-                });
-            });
+            const year2024 = summary['2024'] || { amount: 0, trip_count: 0 };
+            const year2025 = summary['2025'] || { amount: 0, trip_count: 0 };
 
-            const durchschnitt = anzahl > 0 ? gesamt / anzahl : 0;
+            document.getElementById('urlaube-gesamt').innerHTML = formatEuro(totalAmount);
+            document.getElementById('urlaube-anzahl').innerHTML = tripCount;
+            document.getElementById('urlaube-durchschnitt').innerHTML = formatEuro(averageAmount);
 
-            // Update UI
-            document.getElementById('urlaube-gesamt').innerHTML = formatEuro(gesamt);
-            document.getElementById('urlaube-anzahl').innerHTML = anzahl;
-            document.getElementById('urlaube-durchschnitt').innerHTML = formatEuro(durchschnitt);
-            
-            document.getElementById('urlaube-2024-gesamt').innerHTML = formatEuro(gesamt2024);
-            document.getElementById('urlaube-2024-anzahl').innerHTML = `${anzahl2024} Urlaube`;
-            
-            document.getElementById('urlaube-2025-gesamt').innerHTML = formatEuro(gesamt2025);
-            document.getElementById('urlaube-2025-anzahl').innerHTML = `${anzahl2025} Urlaube`;
+            document.getElementById('urlaube-2024-gesamt').innerHTML = formatEuro(year2024.amount || 0);
+            document.getElementById('urlaube-2024-anzahl').innerHTML = `${year2024.trip_count || 0} Urlaube`;
+
+            document.getElementById('urlaube-2025-gesamt').innerHTML = formatEuro(year2025.amount || 0);
+            document.getElementById('urlaube-2025-anzahl').innerHTML = `${year2025.trip_count || 0} Urlaube`;
         })
         .catch(error => {
             console.error('Error loading urlaube stats:', error);
@@ -2097,18 +2133,27 @@ function loadUrlaubeStats() {
 }
 
 function createUrlaubeChart() {
-    fetch('/api/urlaube-chart/')
+    fetch(addPersonToUrl('/api/urlaube-chart/'))
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('urlaubeChart').getContext('2d');
-            
+
             // Mobile Detection
             const isMobile = window.innerWidth < 768;
             const isSmallMobile = window.innerWidth < 576;
 
-            new Chart(ctx, {
+            if (urlaubeChartInstance) {
+                urlaubeChartInstance.destroy();
+            }
+
+            const chartData = {
+                labels: data.labels,
+                datasets: data.datasets
+            };
+
+            urlaubeChartInstance = new Chart(ctx, {
                 type: 'bar',
-                data: data,
+                data: chartData,
                 options: {
                     indexAxis: 'y',
                     responsive: true,
@@ -2217,7 +2262,7 @@ function createUrlaubeChart() {
 // ===== BETRIEBSKOSTEN SECTION =====
 
 function loadBetriebskostenStats() {
-    fetch('/api/betriebskosten-chart/')
+    fetch(addPersonToUrl('/api/betriebskosten-chart/'))
         .then(response => response.json())
         .then(data => {
             // Berechne Statistiken
@@ -2291,16 +2336,20 @@ function fillBetriebskostenTable(data) {
 }
 
 function createBetriebskostenChart() {
-    fetch('/api/betriebskosten-chart/')
+    fetch(addPersonToUrl('/api/betriebskosten-chart/'))
         .then(response => response.json())
         .then(data => {
             const ctx = document.getElementById('betriebskostenChart').getContext('2d');
-            
+
             // Mobile Detection
             const isMobile = window.innerWidth < 768;
             const isSmallMobile = window.innerWidth < 576;
 
-            new Chart(ctx, {
+            if (betriebskostenChartInstance) {
+                betriebskostenChartInstance.destroy();
+            }
+
+            betriebskostenChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: data,
                 options: {
@@ -2394,39 +2443,53 @@ function createBetriebskostenChart() {
 }
 
 
+function reloadAllCharts() {
+    const yearSelect = document.getElementById('barChartYearSelect');
+    const selectedYear = yearSelect ? yearSelect.value : defaultYear;
 
-// Initialisierung beim Laden der Seite
-document.addEventListener('DOMContentLoaded', function() {
-    // Lade bestehende Charts (Balken und Tortendiagramme)
-
-    loadMonthlyChart({{ current_year }});
+    loadMonthlyChart(selectedYear);
     loadPieChart(2025, 'categoryPieChart2025', '2025');
     loadPieChart(2024, 'categoryPieChart2024', '2024');
 
-    // Event Listener für Jahr-Wechsel beim Balkendiagramm
-    document.getElementById('barChartYearSelect').addEventListener('change', function() {
-        loadMonthlyChart(this.value);
-    });
-
-    // Lade alle CategoryGroup Daten
     loadCategoryGroupStats();
     createTrendCharts();
     createComparisonCharts();
     createQuarterlyCharts();
 
-    // Supermarkt-Bereich laden
     loadSupermarketStats();
     createSupermarketTrendChart();
     createSupermarketComparisonChart();
     createBillaCombinedChart();
-    
-    // Urlaube-Bereich laden
+
     loadUrlaubeStats();
     createUrlaubeChart();
-    
-    // Betriebskosten-Bereich laden
+
     loadBetriebskostenStats();
     createBetriebskostenChart();
+}
+
+
+// Initialisierung beim Laden der Seite
+document.addEventListener('DOMContentLoaded', function() {
+    const yearSelect = document.getElementById('barChartYearSelect');
+    const personSelect = document.getElementById('personFilter');
+
+    if (personSelect) {
+        currentPerson = personSelect.value;
+        personSelect.addEventListener('change', function() {
+            currentPerson = this.value;
+            resetPieDrilldownState();
+            reloadAllCharts();
+        });
+    }
+
+    if (yearSelect) {
+        yearSelect.addEventListener('change', function() {
+            loadMonthlyChart(this.value);
+        });
+    }
+
+    reloadAllCharts();
 
     // === Floating Navigation ===
     const floatingBtn = document.getElementById('floatingNavBtn');
