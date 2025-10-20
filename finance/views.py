@@ -24,6 +24,8 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 import logging
 from .receipt_analyzer import ReceiptAnalyzer
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,11 @@ logger = logging.getLogger(__name__)
 def user_is_not_robert(user):
     """Prüft ob User NICHT robert ist"""
     return user.username != 'robert'
+
+
+def user_has_full_access(user):
+    """Gibt an, ob der User volle Admin-Rechte besitzt."""
+    return user.username == 'sigi' or getattr(user, 'is_superuser', False)
 
 
 # Zentrale Farbdefinitionen für Kategorien
@@ -56,8 +63,14 @@ CATEGORY_COLORS = {
 
 @login_required
 def manage_devices(request):
-    """Zeigt alle registrierten Geräte des Users"""
-    devices = request.user.devices.all().order_by('-last_used')
+    """Zeigt registrierte Geräte und erlaubt (optional) Administration"""
+    can_manage_all = request.user.username.lower() == 'sigi' or request.user.is_superuser
+
+    if can_manage_all:
+        devices = RegisteredDevice.objects.select_related('user').all().order_by('-last_used')
+    else:
+        devices = request.user.devices.all().order_by('-last_used')
+
     current_device_token = request.session.get('device_token')
 
     if request.method == 'POST':
@@ -65,7 +78,10 @@ def manage_devices(request):
         action = request.POST.get('action')
 
         try:
-            device = RegisteredDevice.objects.get(id=device_id, user=request.user)
+            if can_manage_all:
+                device = RegisteredDevice.objects.get(id=device_id)
+            else:
+                device = RegisteredDevice.objects.get(id=device_id, user=request.user)
 
             if action == 'rename':
                 new_name = request.POST.get('new_name', '').strip()
@@ -95,7 +111,8 @@ def manage_devices(request):
 
     return render(request, 'finance/manage_devices.html', {
         'devices': devices,
-        'current_device_token': current_device_token
+        'current_device_token': current_device_token,
+        'can_manage_all': can_manage_all
     })
 
 
@@ -104,8 +121,13 @@ def delete_device(request, device_id):
     """Löscht ein Gerät (nicht das aktuelle)"""
     current_device_token = request.session.get('device_token')
 
+    can_manage_all = request.user.username.lower() == 'sigi' or request.user.is_superuser
+
     try:
-        device = RegisteredDevice.objects.get(id=device_id, user=request.user)
+        if can_manage_all:
+            device = RegisteredDevice.objects.get(id=device_id)
+        else:
+            device = RegisteredDevice.objects.get(id=device_id, user=request.user)
 
         if str(device.device_token) == current_device_token:
             messages.error(request, 'Du kannst das aktuelle Gerät nicht löschen!')
@@ -984,6 +1006,89 @@ def add_transaction(request):
         'category_groups': category_groups,
         'categories': categories,
         'is_robert': request.user.username == 'robert',
+        'is_edit': False,
+        'next_url': request.GET.get('next') or request.path,
+    }
+
+    return render(request, 'finance/transaction_form.html', context)
+
+
+@login_required
+def edit_transaction(request, pk):
+    """Bearbeitet eine bestehende Transaktion"""
+    transaction = None
+    is_robert_transaction = False
+
+    try:
+        transaction = FactTransactionsRobert.objects.select_related(
+            'account', 'flag', 'payee', 'category__categorygroup'
+        ).get(pk=pk)
+        is_robert_transaction = True
+    except FactTransactionsRobert.DoesNotExist:
+        try:
+            transaction = FactTransactionsSigi.objects.select_related(
+                'account', 'flag', 'payee', 'category__categorygroup'
+            ).get(pk=pk)
+        except FactTransactionsSigi.DoesNotExist:
+            messages.error(request, 'Transaktion nicht gefunden.')
+            return redirect('finance:transactions')
+
+    # Berechtigungsprüfung
+    if request.user.username == 'robert' and not is_robert_transaction:
+        messages.error(request, 'Du darfst nur deine eigenen Transaktionen bearbeiten.')
+        return redirect('finance:household_transactions')
+
+    if (request.user.username != 'robert' and not user_has_full_access(request.user)
+            and is_robert_transaction):
+        messages.error(request, 'Du darfst Roberts Transaktionen nicht bearbeiten.')
+        return redirect('finance:transactions')
+
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if not next_url or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = reverse('finance:transactions')
+
+    if request.method == 'POST':
+        form = TransactionForm(request.POST, user=request.user, instance=transaction)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, 'Transaktion erfolgreich aktualisiert!')
+                return redirect(next_url)
+            except Exception as e:
+                messages.error(request, f'Fehler beim Speichern: {str(e)}')
+    else:
+        amount = transaction.outflow or transaction.inflow or Decimal('0.00')
+        transaction_type = 'outflow'
+        if transaction.inflow and (not transaction.outflow or transaction.inflow >= transaction.outflow):
+            transaction_type = 'inflow'
+
+        initial = {
+            'account': transaction.account,
+            'flag': transaction.flag,
+            'date': transaction.date,
+            'payee': transaction.payee.payee if transaction.payee else '',
+            'category_group': transaction.category.categorygroup if transaction.category else None,
+            'category': transaction.category,
+            'memo': transaction.memo,
+            'amount': amount,
+            'transaction_type': transaction_type,
+        }
+
+        form = TransactionForm(user=request.user, instance=transaction, initial=initial)
+
+    payees = DimPayee.objects.all().order_by('payee')
+    category_groups = DimCategoryGroup.objects.all().order_by('category_group')
+    categories = DimCategory.objects.select_related('categorygroup').all().order_by('category')
+
+    context = {
+        'form': form,
+        'payees': payees,
+        'category_groups': category_groups,
+        'categories': categories,
+        'is_robert': request.user.username == 'robert',
+        'is_edit': True,
+        'transaction_obj': transaction,
+        'next_url': next_url,
     }
 
     return render(request, 'finance/transaction_form.html', context)
@@ -1022,7 +1127,8 @@ def delete_transaction(request, pk):
         return redirect(request.META.get('HTTP_REFERER', 'finance:household_transactions'))
 
     # Fall 2: Nicht-Robert User versucht Robert-Transaktion zu löschen
-    if request.user.username != 'robert' and is_robert_transaction:
+    if (request.user.username != 'robert' and not user_has_full_access(request.user)
+            and is_robert_transaction):
         messages.error(request, 'Du darfst Roberts Transaktionen nicht löschen.')
         return redirect(request.META.get('HTTP_REFERER', 'finance:transactions'))
 
@@ -1631,7 +1737,8 @@ def update_transaction_date(request, pk):
                 'error': 'Keine Berechtigung'
             }, status=403)
 
-        if request.user.username != 'robert' and is_robert_transaction:
+        if (request.user.username != 'robert' and not user_has_full_access(request.user)
+                and is_robert_transaction):
             return JsonResponse({
                 'success': False,
                 'error': 'Keine Berechtigung'
@@ -1899,7 +2006,7 @@ def adjust_investments(request):
                 field_prefix = acc_data['field_prefix']
 
                 # Berechne neuen Saldo basierend auf Input-Type
-                new_balance = Decimal('0')
+                new_balance = None
 
                 if acc_data['input_type'] == 'single':
                     value = request.POST.get(f'{field_prefix}_value', '').strip()
@@ -1908,12 +2015,22 @@ def adjust_investments(request):
 
                 elif acc_data['input_type'] in ['multi', 'gold']:
                     # Summiere alle Felder MIT Multiplikatoren ← NEU
+                    accumulated_balance = Decimal('0')
+                    has_input = False
                     for field in acc_data['fields']:
                         field_name = f'{field_prefix}_{field["name"]}'
                         value = request.POST.get(field_name, '').strip()
                         if value:
                             # Multipliziere Wert mit Multiplikator
-                            new_balance += Decimal(value) * Decimal(field['multiplier'])
+                            accumulated_balance += Decimal(value) * Decimal(field['multiplier'])
+                            has_input = True
+
+                    if has_input:
+                        new_balance = accumulated_balance
+
+                # Überspringe Konten ohne Eingaben, damit kein Stand auf 0 korrigiert wird
+                if new_balance is None:
+                    continue
 
                 # Berechne Differenz
                 difference = new_balance - acc_data['current_balance']

@@ -76,6 +76,67 @@
             visibility: visible;
         }
     }
+
+    .mobile-cards {
+        display: none;
+    }
+
+    /* Responsive Darstellung */
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none !important;
+        }
+        .mobile-cards {
+            display: block !important;
+        }
+    }
+
+    @media (min-width: 769px) {
+        .desktop-table {
+            display: block !important;
+        }
+        .mobile-cards {
+            display: none !important;
+        }
+    }
+
+    .transaction-card {
+        margin-bottom: 0.75rem;
+        border-left: 4px solid #0d6efd;
+        background-color: rgba(13, 110, 253, 0.03);
+    }
+
+    .transaction-card.transfer-card {
+        border-left-color: #6c757d;
+        background-color: rgba(108, 117, 125, 0.08);
+        opacity: 0.8;
+    }
+
+    .transaction-card .card-body {
+        padding: 0.85rem;
+    }
+
+    .transaction-amounts {
+        text-align: right;
+    }
+
+    .transaction-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .transaction-meta i {
+        margin-right: 0.25rem;
+    }
+
+    .transaction-card .badge {
+        font-size: 0.7rem;
+    }
+
+    .transaction-card .memo-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
 </style>
 
 
@@ -408,10 +469,10 @@
 
 </div>
 
-<!-- Tabelle -->
+<!-- Tabelle & Mobile Cards -->
 <div class="card">
     <div class="card-body">
-        <div class="table-responsive">
+        <div class="table-responsive desktop-table">
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -467,15 +528,22 @@
                             {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
                         </td>
                         <td class="text-center">
-                            <i class="bi bi-trash text-danger action-icon" 
-                               data-bs-toggle="modal" 
-                               data-bs-target="#deleteModal"
-                               data-transaction-id="{{ trans.id }}"
-                               data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
-                               data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
-                               data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
-                               data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
-                               title="Löschen"></i>
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                                   class="text-secondary action-icon"
+                                   title="Bearbeiten">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <i class="bi bi-trash text-danger action-icon"
+                                   data-bs-toggle="modal"
+                                   data-bs-target="#deleteModal"
+                                   data-transaction-id="{{ trans.id }}"
+                                   data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                                   data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                                   data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                                   data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                                   title="Löschen"></i>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
@@ -500,6 +568,71 @@
                     </tr>
                 </tfoot>
             </table>
+        </div>
+        <div class="mobile-cards">
+            {% if transactions %}
+                {% for trans in transactions %}
+                <div class="card transaction-card {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}transfer-card{% endif %}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <strong>{{ trans.payee|default:"-" }}</strong>
+                                {% if trans.payee.payee_type == 'transfer' %}
+                                    <span class="badge bg-secondary ms-1">Transfer</span>
+                                {% elif trans.payee.payee_type == 'kursschwankung' %}
+                                    <span class="badge bg-info ms-1">Kursschwankung</span>
+                                {% endif %}
+                                <div class="transaction-meta mt-1">
+                                    <i class="bi bi-calendar-event"></i>{{ trans.date|date:"d.m.Y" }}
+                                    {% if trans.account %}
+                                        <span class="mx-1">•</span>
+                                        <i class="bi bi-{{ trans.account.account|account_icon }}"></i> {{ trans.account }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="transaction-amounts">
+                                {% if trans.outflow %}
+                                    <div class="text-danger fw-semibold">€ {{ trans.outflow|floatformat:2 }}</div>
+                                {% endif %}
+                                {% if trans.inflow %}
+                                    <div class="text-success fw-semibold">€ {{ trans.inflow|floatformat:2 }}</div>
+                                {% endif %}
+                                {% if not trans.outflow and not trans.inflow %}
+                                    <div class="text-muted">-</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted d-block">{{ trans.category.categorygroup|default:"-" }}</small>
+                            <span>{{ trans.category|default:"-" }}</span>
+                        </div>
+                        {% if trans.memo %}
+                        <div class="memo-text mb-2">
+                            <i class="bi bi-card-text me-1"></i>{{ trans.memo }}
+                        </div>
+                        {% endif %}
+                        <div class="d-flex justify-content-end align-items-center gap-3">
+                            <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                               class="text-secondary action-icon"
+                               title="Bearbeiten">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <i class="bi bi-trash text-danger action-icon"
+                               data-bs-toggle="modal"
+                               data-bs-target="#deleteModal"
+                               data-transaction-id="{{ trans.id }}"
+                               data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                               data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                               data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                               data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                               title="Löschen"></i>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-light text-center mb-0">Keine Transaktionen gefunden</div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -906,15 +1039,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${transaction.inflow ? '€ ' + parseFloat(transaction.inflow).toFixed(2) : '-'}
             </td>
             <td class="text-center">
-                <i class="bi bi-trash text-danger action-icon"
-                   data-bs-toggle="modal"
-                   data-bs-target="#deleteModal"
-                   data-transaction-id="${transaction.id}"
-                   data-transaction-date="${transaction.date}"
-                   data-transaction-payee="${transaction.payee}"
-                   data-transaction-amount="€ ${transaction.outflow || transaction.inflow}"
-                   data-transaction-category="${transaction.category}"
-                   title="Löschen"></i>
+                <div class="d-inline-flex align-items-center gap-2">
+                    <a href="/transactions/edit/${transaction.id}/?next={{ request.get_full_path|urlencode }}"
+                       class="text-secondary action-icon"
+                       title="Bearbeiten">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <i class="bi bi-trash text-danger action-icon"
+                       data-bs-toggle="modal"
+                       data-bs-target="#deleteModal"
+                       data-transaction-id="${transaction.id}"
+                       data-transaction-date="${transaction.date}"
+                       data-transaction-payee="${transaction.payee}"
+                       data-transaction-amount="€ ${transaction.outflow || transaction.inflow}"
+                       data-transaction-category="${transaction.category}"
+                       title="Löschen"></i>
+                </div>
             </td>
         `;
 

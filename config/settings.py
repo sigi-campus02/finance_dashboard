@@ -105,10 +105,12 @@ if 'DATABASE_URL' in os.environ:
             ssl_require=True
         )
     }
-    # Füge dein PostgreSQL Schema hinzu
-    DATABASES['default']['OPTIONS'] = {
-        'options': '-c search_path=finance,public'
-    }
+    engine = DATABASES['default']['ENGINE']
+    if engine.endswith('postgresql'):
+        # Füge dein PostgreSQL Schema hinzu
+        DATABASES['default']['OPTIONS'] = {
+            'options': '-c search_path=finance,public'
+        }
 else:
     # DEVELOPMENT (lokal) - nutzt .env Variablen für PostgreSQL
     DATABASES = {
@@ -119,11 +121,13 @@ else:
             'PASSWORD': env.get_value('DB_PASSWORD', default=''),
             'HOST': env('DB_HOST', default='localhost'),
             'PORT': env('DB_PORT', default='5432'),
-            'OPTIONS': {
-                'options': '-c search_path=finance,public'
-            }
         }
     }
+    engine = DATABASES['default']['ENGINE']
+    if engine.endswith('postgresql'):
+        DATABASES['default']['OPTIONS'] = {
+            'options': '-c search_path=finance,public'
+        }
 
 
 # Password validation

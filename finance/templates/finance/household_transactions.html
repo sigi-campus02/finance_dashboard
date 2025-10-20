@@ -280,16 +280,23 @@
                             {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
                         </td>
                         <td class="text-center">
-                            <i class="bi bi-trash text-danger action-icon"
-                               data-bs-toggle="modal"
-                               data-bs-target="#deleteModal"
-                               data-transaction-id="{{ trans.id }}"
-                               data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
-                               data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
-                               data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
-                               data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
-                               data-transaction-person="{{ trans.person }}"
-                               title="Löschen"></i>
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                                   class="text-secondary action-icon"
+                                   title="Bearbeiten">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <i class="bi bi-trash text-danger action-icon"
+                                   data-bs-toggle="modal"
+                                   data-bs-target="#deleteModal"
+                                   data-transaction-id="{{ trans.id }}"
+                                   data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                                   data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                                   data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                                   data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                                   data-transaction-person="{{ trans.person }}"
+                                   title="Löschen"></i>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
@@ -347,16 +354,23 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <i class="bi bi-trash text-danger action-icon"
-                           data-bs-toggle="modal"
-                           data-bs-target="#deleteModal"
-                           data-transaction-id="{{ trans.id }}"
-                           data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
-                           data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
-                           data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
-                           data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
-                           data-transaction-person="{{ trans.person }}"
-                           title="Löschen"></i>
+                        <div class="d-flex justify-content-end align-items-center gap-3">
+                            <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                               class="text-secondary action-icon"
+                               title="Bearbeiten">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <i class="bi bi-trash text-danger action-icon"
+                               data-bs-toggle="modal"
+                               data-bs-target="#deleteModal"
+                               data-transaction-id="{{ trans.id }}"
+                               data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                               data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                               data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                               data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                               data-transaction-person="{{ trans.person }}"
+                               title="Löschen"></i>
+                        </div>
                     </div>
                     <div class="mb-1">
                         <small class="text-muted">{{ trans.category.categorygroup|default:"-" }} › {{ trans.category|default:"-" }}</small>

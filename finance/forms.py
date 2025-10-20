@@ -119,7 +119,8 @@ class TransactionForm(forms.Form):
         })
     )
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, instance=None, **kwargs):
+        self.instance = instance
         super().__init__(*args, **kwargs)
         self.user = user
 
@@ -196,29 +197,42 @@ class TransactionForm(forms.Form):
         account = data.get('account')
         account_id = account.id if account else 18
 
-        # Robert's Account (ID 18) → fact_transactions_robert
-        # Alle anderen → fact_transactions_sigi
-        if account_id == 18 or (self.user and self.user.username == 'robert'):
-            transaction = FactTransactionsRobert.objects.create(
-                account_id=account_id,
-                flag_id=data['flag'].id if data.get('flag') else None,
-                date=data['date'],
-                payee=payee,
-                category=data['category'],
-                memo=data.get('memo', ''),
-                outflow=outflow,
-                inflow=inflow,
-            )
+        # Update bestehende Transaktion
+        if self.instance:
+            transaction = self.instance
+            transaction.account_id = account_id
+            transaction.flag_id = data['flag'].id if data.get('flag') else None
+            transaction.date = data['date']
+            transaction.payee = payee
+            transaction.category = data['category']
+            transaction.memo = data.get('memo', '')
+            transaction.outflow = outflow
+            transaction.inflow = inflow
+            transaction.save()
         else:
-            transaction = FactTransactionsSigi.objects.create(
-                account_id=account_id,
-                flag_id=data['flag'].id if data.get('flag') else None,
-                date=data['date'],
-                payee=payee,
-                category=data['category'],
-                memo=data.get('memo', ''),
-                outflow=outflow,
-                inflow=inflow,
-            )
+            # Robert's Account (ID 18) → fact_transactions_robert
+            # Alle anderen → fact_transactions_sigi
+            if account_id == 18 or (self.user and self.user.username == 'robert'):
+                transaction = FactTransactionsRobert.objects.create(
+                    account_id=account_id,
+                    flag_id=data['flag'].id if data.get('flag') else None,
+                    date=data['date'],
+                    payee=payee,
+                    category=data['category'],
+                    memo=data.get('memo', ''),
+                    outflow=outflow,
+                    inflow=inflow,
+                )
+            else:
+                transaction = FactTransactionsSigi.objects.create(
+                    account_id=account_id,
+                    flag_id=data['flag'].id if data.get('flag') else None,
+                    date=data['date'],
+                    payee=payee,
+                    category=data['category'],
+                    memo=data.get('memo', ''),
+                    outflow=outflow,
+                    inflow=inflow,
+                )
 
         return transaction

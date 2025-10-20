@@ -146,6 +146,7 @@
     .card-scheduled { --card-color: #9b59b6; }
     .card-assets { --card-color: #27ae60; }
     .card-billa { --card-color: #34a853; }
+    .card-energy { --card-color: #0d6efd; }
 
     /* Quick Actions */
     .quick-actions {
@@ -272,6 +273,7 @@
     .nav-card:nth-child(4) { animation-delay: 0.4s; }
     .nav-card:nth-child(5) { animation-delay: 0.5s; }
     .nav-card:nth-child(6) { animation-delay: 0.6s; }
+    .nav-card:nth-child(7) { animation-delay: 0.7s; }
 </style>
 {% endblock %}
 
@@ -350,7 +352,7 @@
                 </div>
             </div>
         </a>
-        
+
         <a href="{% url 'bitpanda:bitpanda_dashboard' %}" class="nav-card card-bitpanda">
             <div class="card-icon">₿</div>
             <div class="card-content">
@@ -360,7 +362,18 @@
                 </div>
             </div>
         </a>
-    
+
+
+        <!-- Energieverbrauch -->
+        <a href="{% url 'energiedaten:dashboard' %}" class="nav-card card-energy">
+            <div class="card-icon">⚡</div>
+            <div class="card-content">
+                <div class="card-title">Energieverbrauch</div>
+                <div class="card-description">
+                    Visualisiere Stromverbrauch, erkenne Spitzenzeiten und optimiere deine Haushaltsenergie
+                </div>
+            </div>
+        </a>
     </div>
     {% else %}
     <!-- Hauptbereiche für Robert -->
@@ -390,6 +403,17 @@
                 <div class="card-title">Haushalt Transaktionen</div>
                 <div class="card-description">
                     Alle Haushaltsbuchungen im Überblick - filtern, suchen und analysieren
+                </div>
+            </div>
+        </a>
+
+        <!-- Energieverbrauch -->
+        <a href="{% url 'energiedaten:dashboard' %}" class="nav-card card-energy">
+            <div class="card-icon">⚡</div>
+            <div class="card-content">
+                <div class="card-title">Energieverbrauch</div>
+                <div class="card-description">
+                    Behalte deinen täglichen Stromverbrauch im Blick und entdecke Einsparpotenziale
                 </div>
             </div>
         </a>

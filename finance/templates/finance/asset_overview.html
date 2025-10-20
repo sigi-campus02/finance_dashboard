@@ -2,6 +2,32 @@
 
 {% block title %}Vermögensübersicht - Finance{% endblock %}
 
+{% block extra_css %}
+<style>
+    .asset-history-chart-wrapper {
+        position: relative;
+        height: 360px;
+    }
+
+    .asset-history-chart-wrapper canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    @media (max-width: 992px) {
+        .asset-history-chart-wrapper {
+            height: 320px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .asset-history-chart-wrapper {
+            height: 260px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
     <h1 class="h2">Vermögensübersicht</h1>
@@ -173,8 +199,8 @@
                 </h6>
                 <small class="text-muted">Gestackte Ansicht nach Kategorien</small>
             </div>
-            <div class="card-body">
-                <canvas id="assetHistoryChart" height="80"></canvas>
+            <div class="card-body asset-history-chart-wrapper">
+                <canvas id="assetHistoryChart"></canvas>
             </div>
         </div>
     </div>
@@ -331,7 +357,7 @@ fetch("{% url 'finance:api_asset_history' %}")
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
                     intersect: false,

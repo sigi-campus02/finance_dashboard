@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 import logging
+from django.utils.dateparse import parse_date
 from billa.models import (
     BillaArtikel, BillaProdukt, BillaPreisHistorie, BillaUeberkategorie, BillaProduktgruppe
 )
@@ -243,6 +244,9 @@ def billa_produktgruppen_mapper(request):
         filter_typ = request.GET.get('filter', 'alle')
         ueberkategorie_filter = request.GET.get('ueberkategorie_filter', '')
         produktgruppe_filter = request.GET.get('produktgruppe_filter', '')
+        marke_filter = request.GET.get('marke_filter', '')
+        einkaufsdatum_str = request.GET.get('einkaufsdatum', '')
+        einkaufsdatum = parse_date(einkaufsdatum_str) if einkaufsdatum_str else None
 
         # Basis-Queryset mit select_related für Performance
         produkte = BillaProdukt.objects.select_related(
@@ -271,6 +275,42 @@ def billa_produktgruppen_mapper(request):
         if produktgruppe_filter:
             produkte = produkte.filter(produktgruppe__id=produktgruppe_filter)
 
+        # Marke-Filter
+        if marke_filter:
+            produkte = produkte.filter(marke=marke_filter)
+
+        # Einkaufsdatum-Filter
+        if einkaufsdatum:
+            produkte = produkte.filter(
+                artikel__einkauf__datum=einkaufsdatum
+            ).distinct()
+
+        # Sortierung
+        sort_options = {
+            'name_original': 'name_original',
+            'name_normalisiert': 'name_normalisiert',
+            'name_korrigiert': 'name_korrigiert',
+            'marke': 'marke',
+            'ueberkategorie': 'ueberkategorie__name',
+            'produktgruppe': 'produktgruppe__name',
+        }
+        sort_field = request.GET.get('sort', 'name_normalisiert')
+        if sort_field not in sort_options:
+            sort_field = 'name_normalisiert'
+
+        sort_direction = request.GET.get('direction', 'asc')
+        if sort_direction not in {'asc', 'desc'}:
+            sort_direction = 'asc'
+
+        order_by_fields = [
+            f"{'-' if sort_direction == 'desc' else ''}{sort_options[sort_field]}"
+        ]
+
+        if sort_options[sort_field] != 'id':
+            order_by_fields.append('id')
+
+        produkte = produkte.order_by(*order_by_fields)
+
         # Pagination (100 Produkte pro Seite)
         from django.core.paginator import Paginator
         paginator = Paginator(produkte, 100)
@@ -298,6 +338,19 @@ def billa_produktgruppen_mapper(request):
 
         # Lade alle Überkategorien und Produktgruppen
         ueberkategorien = BillaUeberkategorie.objects.all().order_by('name')
+        marken = (
+            BillaProdukt.objects.exclude(marke__isnull=True)
+            .exclude(marke__exact='')
+            .values_list('marke', flat=True)
+            .distinct()
+            .order_by('marke')
+        )
+
+        produktgruppe_filter_name = ''
+        if produktgruppe_filter:
+            produktgruppe_obj = BillaProduktgruppe.objects.filter(id=produktgruppe_filter).first()
+            if produktgruppe_obj:
+                produktgruppe_filter_name = produktgruppe_obj.name
 
         # Produktgruppen gruppiert nach Überkategorie (für JavaScript)
         produktgruppen_map = {}
@@ -315,8 +368,22 @@ def billa_produktgruppen_mapper(request):
             'filter': filter_typ,
             'ueberkategorie_filter': ueberkategorie_filter,
             'produktgruppe_filter': produktgruppe_filter,
+            'marke_filter': marke_filter,
+            'einkaufsdatum': einkaufsdatum_str,
             'ueberkategorien': ueberkategorien,
+            'marken': marken,
             'produktgruppen_json': json.dumps(produktgruppen_map),
+            'sort_field': sort_field,
+            'sort_direction': sort_direction,
+            'produktgruppe_filter_name': produktgruppe_filter_name,
+            'sort_options': [
+                ('name_original', 'Originalname'),
+                ('name_normalisiert', 'Normalisiert'),
+                ('name_korrigiert', 'Korrigiert'),
+                ('marke', 'Marke'),
+                ('ueberkategorie', 'Überkategorie'),
+                ('produktgruppe', 'Produktgruppe'),
+            ],
         }
 
         return render(request, 'billa/billa_produktgruppen_mapper.html', context)
@@ -340,6 +407,7 @@ def billa_produktgruppen_mapper(request):
                 ueberkategorie_id = request.POST.get(f'ueberkategorie_{produkt_id}', '').strip()
                 produktgruppe_id = request.POST.get(f'produktgruppe_{produkt_id}', '').strip()
                 name_korrigiert = request.POST.get(f'name_korrigiert_{produkt_id}', '').strip()
+                marke = request.POST.get(f'marke_{produkt_id}', '').strip()
 
                 # Prüfe ob sich was geändert hat
                 changed = False
@@ -376,6 +444,12 @@ def billa_produktgruppen_mapper(request):
                 name_korrigiert = name_korrigiert if name_korrigiert else None
                 if produkt.name_korrigiert != name_korrigiert:
                     produkt.name_korrigiert = name_korrigiert
+                    changed = True
+
+                # Marke
+                marke = marke if marke else None
+                if produkt.marke != marke:
+                    produkt.marke = marke
                     changed = True
 
                 if changed:

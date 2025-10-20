@@ -137,8 +137,12 @@ def migrate_categories_forward(apps, schema_editor):
     mit_produktgruppe = BillaProdukt.objects.filter(produktgruppe__isnull=False).count()
 
     print(f'\nProdukte gesamt: {total_produkte}')
-    print(f'Mit Überkategorie: {mit_ueberkategorie} ({mit_ueberkategorie / total_produkte * 100:.1f}%)')
-    print(f'Mit Produktgruppe: {mit_produktgruppe} ({mit_produktgruppe / total_produkte * 100:.1f}%)')
+    if total_produkte:
+        print(f'Mit Überkategorie: {mit_ueberkategorie} ({mit_ueberkategorie / total_produkte * 100:.1f}%)')
+        print(f'Mit Produktgruppe: {mit_produktgruppe} ({mit_produktgruppe / total_produkte * 100:.1f}%)')
+    else:
+        print('Mit Überkategorie: 0 (0.0%)')
+        print('Mit Produktgruppe: 0 (0.0%)')
     print(f'\nÜberkategorien: {BillaUeberkategorie.objects.count()}')
     print(f'Produktgruppen: {BillaProduktgruppe.objects.count()}')
     print("")

@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from energiedaten.models import Stromverbrauch
 
+
 class Command(BaseCommand):
     help = 'Importiert Stromverbrauchsdaten aus CSV-Datei'
 
@@ -28,17 +29,21 @@ class Command(BaseCommand):
         self.stdout.write(f'Importiere Daten aus {csv_file}...')
 
         try:
-            with open(csv_file, 'r', encoding='utf-8') as file:
+            with open(csv_file, 'r', encoding='utf-8-sig') as file:
                 # CSV mit Semikolon als Delimiter
                 reader = csv.DictReader(file, delimiter=';')
 
                 for row_num, row in enumerate(reader, start=2):
                     try:
-                        # Datum parsen (Format: DD.MM.YYYY)
+                        # Datum parsen - flexibel für mit/ohne führende Nullen
                         datum_str = row['Zeitstempel'].strip()
-                        datum = datetime.strptime(datum_str, '%d.%m.%Y').date()
 
-                        # Wert parsen (deutsches Format mit Komma)
+                        try:
+                            datum = datetime.strptime(datum_str, '%d.%m.%Y').date()
+                        except ValueError:
+                            datum = datetime.strptime(datum_str, '%-d.%-m.%Y').date()
+
+                        # Wert parsen - funktioniert mit Punkt UND Komma
                         wert_str = row['Wert (kWh)'].strip().replace(',', '.')
                         verbrauch = Decimal(wert_str)
 
@@ -50,6 +55,9 @@ class Command(BaseCommand):
 
                         if created:
                             created_count += 1
+                            self.stdout.write(
+                                self.style.SUCCESS(f'  ✓ {datum}: {verbrauch} kWh')
+                            )
                         elif not skip_existing:
                             updated_count += 1
                         else:
@@ -79,7 +87,7 @@ class Command(BaseCommand):
 
             # Zusammenfassung
             self.stdout.write(self.style.SUCCESS(
-                f'\nImport abgeschlossen!'
+                f'\n✅ Import abgeschlossen!'
             ))
             self.stdout.write(f'  Neu erstellt: {created_count}')
             if not skip_existing:
@@ -88,7 +96,7 @@ class Command(BaseCommand):
                 self.stdout.write(f'  Übersprungen: {skipped_count}')
             if error_count > 0:
                 self.stdout.write(self.style.WARNING(
-                    f'  Fehler: {error_count}'
+                    f'  ⚠ Fehler: {error_count}'
                 ))
 
         except FileNotFoundError:
