@@ -2671,6 +2671,7 @@ def api_household_category_breakdown(request):
     year = request.GET.get('year', datetime.now().year)
     year = int(year)
     categorygroup_id = request.GET.get('categorygroup_id')
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Definiere die gewünschten CategoryGroups mit Farben
     category_config = {
@@ -2855,9 +2856,6 @@ def api_categorygroup_monthly_trend(request):
         return JsonResponse({'error': 'group_id required'}, status=400)
 
     group_id = int(group_id)
-    _, include_robert, include_sigi = _parse_person_filter(request)
-    _, include_robert, include_sigi = _parse_person_filter(request)
-    _, include_robert, include_sigi = _parse_person_filter(request)
     _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Hole Daten für 2024 und 2025
@@ -3078,6 +3076,7 @@ def api_categorygroup_quarterly_breakdown(request):
         return JsonResponse({'error': 'group_id required'}, status=400)
 
     group_id = int(group_id)
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Hole alle Kategorien dieser CategoryGroup
     categories = DimCategory.objects.filter(
@@ -3197,6 +3196,7 @@ def api_categorygroup_stats(request):
         return JsonResponse({'error': 'group_id required'}, status=400)
 
     group_id = int(group_id)
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     # Berechne Monthly Average (nur vollständige Monate)
     current_month_start = datetime.now().replace(day=1)
