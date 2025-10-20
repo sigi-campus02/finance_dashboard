@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'finance',
     'billa',
     'energiedaten',
+    'bitpanda',
 ]
 
 MIDDLEWARE = [

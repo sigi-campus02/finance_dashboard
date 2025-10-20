@@ -18,6 +18,7 @@ urlpatterns = [
     path('', include('finance.urls')),
     path('billa/', include('billa.urls')),
     path('energiedaten/', include('energiedaten.urls')),
+    path('bitpanda/', include('bitpanda.urls')),
 ]
 
 if settings.DEBUG:

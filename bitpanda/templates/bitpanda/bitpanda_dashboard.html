@@ -1,0 +1,281 @@
+{% extends 'finance/base.html' %}
+
+{% block title %}Bitpanda Dashboard - Finance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wallet-card {
+        border-left: 4px solid #0d6efd;
+        transition: transform 0.2s;
+    }
+    .wallet-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .crypto-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .fiat-icon {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .balance-positive {
+        color: #28a745;
+    }
+    .sync-info {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-currency-bitcoin"></i> Bitpanda Dashboard
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if has_api_key %}
+        <form method="post" action="{% url 'bitpanda:bitpanda_sync' %}" class="me-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-arrow-repeat"></i> Jetzt synchronisieren
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if not has_api_key %}
+<!-- Kein API Key konfiguriert -->
+<div class="alert alert-warning" role="alert">
+    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Kein API Key konfiguriert</h4>
+    <p>Um dein Bitpanda Portfolio zu verfolgen, muss der API Key in den Environment Variables gesetzt sein.</p>
+    <hr>
+    <p class="mb-0">
+        <a href="https://developers.bitpanda.com" target="_blank" class="btn btn-outline-secondary">
+            <i class="bi bi-info-circle"></i> API Dokumentation
+        </a>
+    </p>
+</div>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <h5 class="card-title">So richtest du den API Key auf Render ein:</h5>
+        <ol>
+            <li>Melde dich bei <a href="https://www.bitpanda.com" target="_blank">Bitpanda</a> an</li>
+            <li>Gehe zu: <strong>Einstellungen → API → Neue API erstellen</strong></li>
+            <li>Wähle nur <strong>Lese-Rechte</strong> (Wallets & Transaktionen anzeigen)</li>
+            <li>Kopiere den generierten API Key</li>
+            <li>Gehe zu deinem <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a></li>
+            <li>Wähle deinen Service → <strong>Environment</strong></li>
+            <li>Klicke <strong>Add Environment Variable</strong></li>
+            <li>Key: <code>BITPANDA_API_KEY</code></li>
+            <li>Value: <em>[Dein API Key]</em></li>
+            <li>Speichern und Service neu starten</li>
+        </ol>
+    </div>
+</div>
+
+{% else %}
+
+<!-- Portfolio vorhanden -->
+{% if portfolio %}
+
+<!-- Synchronisations-Info -->
+<div class="sync-info mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-6">
+            <small class="text-muted">
+                <i class="bi bi-clock"></i> 
+                Letzte Synchronisation: 
+                {% if last_sync %}
+                    {{ last_sync|date:"d.m.Y H:i" }} Uhr
+                {% else %}
+                    Noch nie synchronisiert
+                {% endif %}
+            </small>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <span class="badge bg-success">
+                <i class="bi bi-check-circle"></i> Verbunden
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Portfolio Übersicht -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Gesamtwert (Fiat)</h6>
+                <h3 class="card-title balance-positive">€{{ portfolio.total_fiat_eur|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Anzahl Crypto Wallets</h6>
+                <h3 class="card-title">{{ portfolio.crypto_count }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Anzahl Fiat Wallets</h6>
+                <h3 class="card-title">{{ portfolio.fiat_count }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fiat Wallets -->
+{% if portfolio.fiat_wallets %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Fiat Wallets</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for wallet in portfolio.fiat_wallets %}
+            <div class="col-md-6 mb-3">
+                <div class="wallet-card card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="crypto-icon fiat-icon me-3">
+                                {{ wallet.attributes.fiat_symbol }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">{{ wallet.attributes.name }}</h6>
+                                <small class="text-muted">{{ wallet.attributes.fiat_symbol }}</small>
+                            </div>
+                            <div class="text-end">
+                                <h5 class="mb-0">{{ wallet.attributes.balance|floatformat:2 }}</h5>
+                                {% if wallet.attributes.pending_transactions_count > 0 %}
+                                <small class="text-warning">
+                                    <i class="bi bi-hourglass-split"></i> {{ wallet.attributes.pending_transactions_count }} ausstehend
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Crypto Wallets -->
+{% if portfolio.crypto_wallets %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-currency-bitcoin"></i> Crypto Wallets</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for wallet in portfolio.crypto_wallets %}
+            {% if not wallet.attributes.deleted %}
+            <div class="col-md-6 mb-3">
+                <div class="wallet-card card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="crypto-icon me-3">
+                                {{ wallet.attributes.cryptocoin_symbol|slice:":3" }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">{{ wallet.attributes.name }}</h6>
+                                <small class="text-muted">{{ wallet.attributes.cryptocoin_symbol }}</small>
+                            </div>
+                            <div class="text-end">
+                                <h5 class="mb-0">{{ wallet.attributes.balance|floatformat:8 }}</h5>
+                                {% if wallet.attributes.is_default %}
+                                <span class="badge bg-primary">Standard</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Portfolio Chart -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Portfolio-Entwicklung</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="portfolioChart" style="max-height: 400px;"></canvas>
+    </div>
+</div>
+
+{% else %}
+<!-- Fehler beim Laden -->
+<div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading"><i class="bi bi-exclamation-octagon"></i> Fehler</h4>
+    <p>Die Portfolio-Daten konnten nicht geladen werden. Bitte synchronisiere erneut.</p>
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Portfolio Chart
+{% if portfolio and recent_snapshots %}
+fetch('{% url "bitpanda:api_bitpanda_portfolio_chart" %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Portfolio-Wert über Zeit'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '€' + value.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    })
+    .catch(error => console.error('Fehler beim Laden der Chart-Daten:', error));
+{% endif %}
+</script>
+{% endblock %}
