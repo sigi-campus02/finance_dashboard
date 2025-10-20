@@ -3002,6 +3002,7 @@ def api_categorygroup_year_comparison(request):
         return JsonResponse({'error': 'group_id required'}, status=400)
 
     group_id = int(group_id)
+    _, include_robert, include_sigi = _parse_person_filter(request)
 
     months_labels = [
         'Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun',
