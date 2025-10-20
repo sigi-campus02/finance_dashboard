@@ -62,6 +62,25 @@ def billa_dashboard(request):
         for item in daily_spending_raw
     ]
 
+    # Durchschnittliche Kosten pro Produkt und Einkauf
+    avg_cost_per_purchase_raw = einkaufe.annotate(
+        artikelanzahl=Count('artikel')
+    ).order_by('datum', 'id')
+
+    avg_cost_per_purchase = []
+    for einkauf in avg_cost_per_purchase_raw:
+        artikelanzahl = einkauf.artikelanzahl or 0
+        gesamt_preis = float(einkauf.gesamt_preis) if einkauf.gesamt_preis is not None else 0.0
+        durchschnitt = gesamt_preis / artikelanzahl if artikelanzahl else 0
+
+        avg_cost_per_purchase.append({
+            'datum': einkauf.datum.strftime('%Y-%m-%d'),
+            'durchschnitt': durchschnitt,
+            'anzahl_produkte': artikelanzahl,
+            'gesamt_preis': gesamt_preis,
+            'filiale': str(einkauf.filiale) if einkauf.filiale else ''
+        })
+
     # Monatliche Ausgaben nach Überkategorie
     monthly_by_group_raw = artikel.annotate(
         monat=TruncMonth('einkauf__datum')
@@ -272,6 +291,7 @@ def billa_dashboard(request):
     context = {
         'stats': stats,
         'daily_spending': json.dumps(daily_spending),
+        'avg_cost_per_purchase': json.dumps(avg_cost_per_purchase),
         'monthly_spending': json.dumps(monthly_spending),
         'monthly_spending_stacked': json.dumps(monthly_spending_stacked),
         'top_produkte_anzahl': json.dumps(top_produkte_anzahl),
