@@ -66,6 +66,7 @@ urlpatterns = [
     path('api/household-category-breakdown/', views.api_household_category_breakdown, name='api_household_category_breakdown'),
     path('api/household-filter-accounts/', views.api_household_filter_accounts, name='api_household_filter_accounts'),
     path('api/household-filter-categories/', views.api_household_filter_categories, name='api_household_filter_categories'),
+    path('api/household-transactions-list/', views.api_household_transactions_list, name='api_household_transactions_list'),
     path('api/household-save-filter-favorite/', views.api_household_save_filter_favorite, name='api_household_save_filter_favorite'),
     path('api/household-load-filter-favorites/', views.api_household_load_filter_favorites, name='api_household_load_filter_favorites'),
 

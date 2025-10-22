@@ -273,6 +273,119 @@
         }
     }
 
+    /* Transaktions-Tabelle Styles */
+    #transactionsTable {
+        font-size: 0.9rem;
+    }
+
+    #transactionsTable thead {
+        position: sticky;
+        top: 56px;
+        z-index: 10;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    #transactionsTable tbody tr {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    #transactionsTable tbody tr:hover {
+        background-color: rgba(91, 155, 213, 0.05);
+    }
+
+    .sticky-actions {
+        position: sticky;
+        right: 0;
+        background-color: white;
+        box-shadow: -2px 0 4px rgba(0,0,0,0.05);
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) .sticky-actions {
+        background-color: rgba(0,0,0,.05);
+    }
+
+    /* Mobile Transaction Cards */
+    .transaction-card {
+        border: 1px solid var(--color-card-border);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: var(--color-card-bg);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+
+    .transaction-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+    }
+
+    .transaction-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--color-card-border);
+    }
+
+    .transaction-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .transaction-card-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .transaction-card-label {
+        font-size: 0.7rem;
+        color: var(--color-neutral);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+
+    .transaction-card-value {
+        font-weight: 500;
+        color: #212529;
+    }
+
+    .transaction-card-amount {
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+
+    /* Transaction Details (collapsible) */
+    .transaction-details {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--color-card-border);
+        display: none;
+    }
+
+    .transaction-details.show {
+        display: block;
+    }
+
+    @media (max-width: 576px) {
+        .transaction-card {
+            padding: 0.75rem;
+        }
+
+        .transaction-card-body {
+            font-size: 0.8rem;
+        }
+
+        .transaction-card-amount {
+            font-size: 1.1rem;
+        }
+    }
+
     .chart-container-horizontal {
         position: relative;
         height: 600px;
@@ -1104,6 +1217,79 @@
         Dieses Dashboard zeigt alle Transaktionen von Robert sowie nur Sigis Transaktionen mit Flag "Relevant für Haushaltsbudget" (flag_id=5).
         Transfers und Kursschwankungen sind ausgeschlossen.
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Transaktions-Tabelle -->
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">
+                    <i class="bi bi-table"></i> Transaktionen
+                </h5>
+                <small class="text-muted" id="transactionsCountText">Lade Transaktionen...</small>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportTransactions('csv')">
+                    <i class="bi bi-download"></i> CSV Export
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <!-- Desktop Tabelle -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover table-striped mb-0" id="transactionsTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Datum</th>
+                            <th>Payee</th>
+                            <th>Konto</th>
+                            <th>Kategorie</th>
+                            <th>Person</th>
+                            <th>Memo</th>
+                            <th class="text-end">Ausgaben</th>
+                            <th class="text-end">Einnahmen</th>
+                            <th class="text-end sticky-actions">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Laden...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr class="fw-bold">
+                            <td colspan="6" class="text-end">Summen:</td>
+                            <td class="text-end" id="totalOutflow">0,00 €</td>
+                            <td class="text-end" id="totalInflow">0,00 €</td>
+                            <td class="text-end">Netto: <span id="totalNetto">0,00 €</span></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="d-md-none" id="transactionsMobileCards">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted" id="paginationInfo">Seite 1 von 1</span>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-primary" id="loadMoreBtn" onclick="loadMoreTransactions()" style="display: none;">
+                    <i class="bi bi-arrow-down-circle"></i> Weitere laden
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Gestapeltes Balkendiagramm -->
@@ -3402,6 +3588,9 @@ function applyFilters() {
     // Filter-Chips aktualisieren
     updateAppliedFilterChips();
 
+    // Transaktionsliste neu laden
+    loadTransactions();
+
     // Charts neu laden (später: mit Filtern)
     // reloadAllCharts();
 
@@ -3558,7 +3747,7 @@ function removeFilterChip(filterType, filterId = null) {
     }
 
     updateAppliedFilterChips();
-    // reloadAllCharts();
+    loadTransactions();
 }
 
 // Alle Filter-Chips entfernen
@@ -3600,7 +3789,7 @@ function resetAllFilters() {
     };
 
     updateAppliedFilterChips();
-    // reloadAllCharts();
+    loadTransactions();
 
     showFilterNotification('Alle Filter wurden zurückgesetzt');
 }
@@ -3705,16 +3894,231 @@ function setupInstantSearch() {
             }
 
             searchTimeout = setTimeout(() => {
-                // Simuliere Suche (später: echte API-Anfrage)
                 const query = this.value.toLowerCase();
                 searchResultsCount.textContent = `Suche nach "${query}"...`;
 
-                // Hier würde die echte Suche stattfinden
-                setTimeout(() => {
-                    searchResultsCount.textContent = `Gefunden: ~ Ergebnisse`;
-                }, 300);
+                // Transaktionen neu laden mit Suchbegriff
+                loadTransactions();
             }, 500);
         });
+    }
+}
+
+// ===== PHASE 3: TRANSAKTIONS-TABELLE =====
+
+let currentPage = 1;
+let allTransactions = [];
+
+// Transaktionen laden
+async function loadTransactions(append = false) {
+    if (!append) {
+        currentPage = 1;
+        allTransactions = [];
+    }
+
+    // Filter-Parameter sammeln
+    const params = new URLSearchParams();
+
+    if (currentFilters.year) params.append('year', currentFilters.year);
+    if (currentFilters.month) params.append('month', currentFilters.month);
+    if (currentFilters.person) params.append('person', currentFilters.person);
+    if (currentFilters.search) params.append('search', currentFilters.search);
+    if (currentFilters.amountMin) params.append('amount_min', currentFilters.amountMin);
+    if (currentFilters.amountMax) params.append('amount_max', currentFilters.amountMax);
+
+    currentFilters.accounts.forEach(acc => params.append('accounts[]', acc));
+    currentFilters.categories.forEach(cat => params.append('categories[]', cat));
+
+    params.append('page', currentPage);
+    params.append('page_size', 50);
+
+    try {
+        const response = await fetch(`/finance/api/household-transactions-list/?${params.toString()}`);
+        const data = await response.json();
+
+        if (append) {
+            allTransactions = allTransactions.concat(data.transactions);
+        } else {
+            allTransactions = data.transactions;
+        }
+
+        renderTransactions(data);
+        updatePaginationInfo(data.pagination);
+        updateTotals(data.totals);
+    } catch (error) {
+        console.error('Fehler beim Laden der Transaktionen:', error);
+        showFilterNotification('Fehler beim Laden der Transaktionen', 'error');
+    }
+}
+
+// Transaktionen rendern
+function renderTransactions(data) {
+    const tableBody = document.getElementById('transactionsTableBody');
+    const mobileCards = document.getElementById('transactionsMobileCards');
+    const countText = document.getElementById('transactionsCountText');
+
+    // Update count
+    countText.textContent = `${data.pagination.total_count} Transaktionen`;
+
+    // Desktop Tabelle
+    if (allTransactions.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Keine Transaktionen gefunden</td></tr>';
+        mobileCards.innerHTML = '<div class="text-center py-4 text-muted">Keine Transaktionen gefunden</div>';
+        return;
+    }
+
+    tableBody.innerHTML = '';
+    allTransactions.forEach(trans => {
+        const row = document.createElement('tr');
+        row.onclick = () => viewTransactionDetails(trans);
+
+        row.innerHTML = `
+            <td>${formatDate(trans.date)}</td>
+            <td>${trans.payee}</td>
+            <td>${trans.account}</td>
+            <td>${trans.category}</td>
+            <td><span class="person-badge person-badge-${trans.person.toLowerCase()}">${trans.person}</span></td>
+            <td>${trans.memo || '-'}</td>
+            <td class="text-end">${trans.outflow > 0 ? formatCurrency(trans.outflow) : '-'}</td>
+            <td class="text-end">${trans.inflow > 0 ? formatCurrency(trans.inflow) : '-'}</td>
+            <td class="text-end sticky-actions">
+                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTransaction(${trans.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+
+    // Mobile Cards
+    mobileCards.innerHTML = '';
+    allTransactions.forEach(trans => {
+        const card = createTransactionCard(trans);
+        mobileCards.appendChild(card);
+    });
+}
+
+// Mobile Transaction Card erstellen
+function createTransactionCard(trans) {
+    const card = document.createElement('div');
+    card.className = 'transaction-card';
+    card.onclick = () => viewTransactionDetails(trans);
+
+    const amountClass = trans.amount > 0 ? 'text-danger' : trans.amount < 0 ? 'text-success' : 'text-muted';
+
+    card.innerHTML = `
+        <div class="transaction-card-header">
+            <div>
+                <h6 class="mb-1">${trans.payee}</h6>
+                <small class="text-muted">${formatDate(trans.date)}</small>
+            </div>
+            <div class="text-end">
+                <div class="transaction-card-amount ${amountClass}">
+                    ${formatCurrency(Math.abs(trans.amount))} €
+                </div>
+                <span class="person-badge person-badge-${trans.person.toLowerCase()}">${trans.person}</span>
+            </div>
+        </div>
+        <div class="transaction-card-body">
+            <div class="transaction-card-field">
+                <span class="transaction-card-label">Kategorie</span>
+                <span class="transaction-card-value">${trans.category}</span>
+            </div>
+            <div class="transaction-card-field">
+                <span class="transaction-card-label">Konto</span>
+                <span class="transaction-card-value">${trans.account}</span>
+            </div>
+            ${trans.memo ? `
+                <div class="transaction-card-field" style="grid-column: 1 / -1;">
+                    <span class="transaction-card-label">Memo</span>
+                    <span class="transaction-card-value">${trans.memo}</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    return card;
+}
+
+// Weitere Transaktionen laden
+function loadMoreTransactions() {
+    currentPage++;
+    loadTransactions(true);
+}
+
+// Pagination Info aktualisieren
+function updatePaginationInfo(pagination) {
+    const paginationInfo = document.getElementById('paginationInfo');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+    paginationInfo.textContent = `Seite ${pagination.page} von ${pagination.total_pages} (${pagination.total_count} Transaktionen)`;
+
+    if (pagination.has_next) {
+        loadMoreBtn.style.display = 'inline-block';
+    } else {
+        loadMoreBtn.style.display = 'none';
+    }
+}
+
+// Summen aktualisieren
+function updateTotals(totals) {
+    document.getElementById('totalOutflow').textContent = formatCurrency(totals.outflow);
+    document.getElementById('totalInflow').textContent = formatCurrency(totals.inflow);
+    document.getElementById('totalNetto').textContent = formatCurrency(totals.netto);
+}
+
+// Helper: Datum formatieren
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+// Helper: Währung formatieren
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('de-DE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+}
+
+// Transaction Details anzeigen (Platzhalter)
+function viewTransactionDetails(trans) {
+    console.log('Transaction details:', trans);
+    // TODO: Phase 4 - Offcanvas mit Details öffnen
+}
+
+// Transaction bearbeiten (Platzhalter)
+function editTransaction(transId) {
+    window.location.href = `/finance/transactions/edit/${transId}/`;
+}
+
+// CSV Export
+function exportTransactions(format) {
+    if (format === 'csv') {
+        let csv = 'Datum,Payee,Konto,Kategorie,Person,Memo,Ausgaben,Einnahmen\n';
+
+        allTransactions.forEach(trans => {
+            csv += `${trans.date},"${trans.payee}","${trans.account}","${trans.category}",${trans.person},"${trans.memo}",${trans.outflow},${trans.inflow}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `transaktionen_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showFilterNotification('CSV-Export erfolgreich', 'success');
     }
 }
 
@@ -3750,6 +4154,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     reloadAllCharts();
+
+    // === PHASE 3: TRANSAKTIONS-TABELLE ===
+    loadTransactions();
 
     // === Floating Navigation ===
     const floatingBtn = document.getElementById('floatingNavBtn');
