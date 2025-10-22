@@ -579,6 +579,76 @@
         pointer-events: none;
     }
 
+    /* ===== TRANSAKTIONEN TABELLE STYLES ===== */
+    .memo-cell {
+        max-width: 250px;
+        word-wrap: break-word;
+        white-space: normal;
+        font-size: 0.875rem;
+    }
+
+    /* Farbliche Kennzeichnung nach Person */
+    tr.row-sigi td {
+        background-color: rgba(91, 155, 213, 0.08) !important;
+    }
+    tr.row-robert td {
+        background-color: rgba(52, 168, 83, 0.08) !important;
+    }
+
+    /* Transfer und Kursschwankung bleiben grau */
+    tr.table-secondary.row-sigi td,
+    tr.table-secondary.row-robert td {
+        background-color: rgba(108, 117, 125, 0.15) !important;
+    }
+
+    /* Hover-Effekt */
+    .table-hover tr.row-sigi:hover td {
+        background-color: rgba(91, 155, 213, 0.15) !important;
+    }
+    .table-hover tr.row-robert:hover td {
+        background-color: rgba(52, 168, 83, 0.15) !important;
+    }
+
+    /* Mobile Card Styling */
+    .transaction-card {
+        margin-bottom: 0.5rem;
+        border-left: 4px solid;
+    }
+    .transaction-card .card-body {
+        padding: 0.75rem;
+    }
+    .transaction-card.card-sigi {
+        border-left-color: #5b9bd5;
+        background-color: rgba(91, 155, 213, 0.03);
+    }
+    .transaction-card.card-robert {
+        border-left-color: #34a853;
+        background-color: rgba(52, 168, 83, 0.03);
+    }
+    .transaction-card.card-transfer {
+        border-left-color: #6c757d;
+        opacity: 0.7;
+    }
+
+    /* Mobile/Desktop Views */
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none !important;
+        }
+        .mobile-cards {
+            display: block !important;
+        }
+    }
+
+    @media (min-width: 769px) {
+        .desktop-table {
+            display: block !important;
+        }
+        .mobile-cards {
+            display: none !important;
+        }
+    }
+
     /* Mobile Optimierung für Filtersektion */
     @media (max-width: 768px) {
         .filter-section {
@@ -1248,6 +1318,83 @@
                                     <small class="text-muted">Monatliche Entwicklung nach Kategoriegruppen</small>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TRANSAKTIONEN TABELLE ===== -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h6 class="mb-0">
+                                <i class="bi bi-list-ul"></i> Transaktionen
+                                <span id="transactionCountBadge" class="badge bg-primary ms-2">0</span>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <!-- Loading Indicator -->
+                            <div id="transactionsLoadingIndicator" class="text-center py-4 d-none">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Lädt...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Transaktionen werden geladen...</p>
+                            </div>
+
+                            <!-- Desktop Tabelle -->
+                            <div class="table-responsive desktop-table">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Person</th>
+                                            <th>Payee</th>
+                                            <th>Kategorie</th>
+                                            <th>Memo</th>
+                                            <th class="text-end">Ausgaben</th>
+                                            <th class="text-end">Einnahmen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="transactionsTableBody">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">Klicken Sie auf "Filter anwenden" um Transaktionen anzuzeigen</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot class="table-light" id="transactionsTableFooter" style="display: none;">
+                                        <tr class="fw-bold">
+                                            <td colspan="5" class="text-end">Summe Ausgaben (gefiltert):</td>
+                                            <td class="text-end text-danger" id="totalOutflow">€ 0.00</td>
+                                            <td class="text-end">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="5" class="text-end">
+                                                <small class="text-muted" id="personPercentages">
+                                                    Robert: <span class="badge bg-success">0%</span> | Sigi: <span class="badge bg-primary">0%</span>
+                                                </small>
+                                            </td>
+                                            <td colspan="2" class="text-end">
+                                                <small class="text-muted" id="personAmounts">
+                                                    Robert: €0.00 | Sigi: €0.00
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <!-- Mobile Card Ansicht -->
+                            <div class="mobile-cards" id="transactionsMobileCards">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> Klicken Sie auf "Filter anwenden" um Transaktionen anzuzeigen
+                                </div>
+                            </div>
+
+                            <!-- Pagination -->
+                            <nav aria-label="Transaktionen Pagination" id="transactionsPaginationContainer" style="display: none;">
+                                <ul class="pagination justify-content-center mb-0" id="transactionsPagination">
+                                </ul>
+                            </nav>
                         </div>
                     </div>
                 </div>
@@ -3997,6 +4144,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let filteredDonutChart = null;
     let filteredTrendChart = null;
 
+    // Transaktionen State
+    let currentPage = 1;
+    const pageSize = 10;
+    let totalTransactions = 0;
+
     // DOM Elemente
     const filterCategoryGroups = document.getElementById('filterCategoryGroups');
     const filterCategories = document.getElementById('filterCategories');
@@ -4283,25 +4435,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Filter anwenden
-    btnApplyFilters.addEventListener('click', async function() {
-        // Zeige Loading Indicator
-        filterLoadingIndicator.classList.remove('d-none');
-        filterLoadingIndicator.classList.add('d-flex');
-
-        try {
-            // Lade beide Charts
-            await Promise.all([
-                loadDonutChart(),
-                loadTrendChart()
-            ]);
-        } finally {
-            // Verstecke Loading Indicator
-            filterLoadingIndicator.classList.remove('d-flex');
-            filterLoadingIndicator.classList.add('d-none');
-        }
-    });
-
     // Filter zurücksetzen
     btnResetFilters.addEventListener('click', function() {
         // Leere alle Selects
@@ -4315,6 +4448,22 @@ document.addEventListener('DOMContentLoaded', function() {
         datePresetButtons.forEach(b => b.classList.remove('active'));
         document.querySelector('[data-preset="all"]').classList.add('active');
 
+        // Reset Transaktionen
+        currentPage = 1;
+        document.getElementById('transactionCountBadge').textContent = '0';
+        document.getElementById('transactionsTableBody').innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center text-muted">Klicken Sie auf "Filter anwenden" um Transaktionen anzuzeigen</td>
+            </tr>
+        `;
+        document.getElementById('transactionsMobileCards').innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Klicken Sie auf "Filter anwenden" um Transaktionen anzuzeigen
+            </div>
+        `;
+        document.getElementById('transactionsPaginationContainer').style.display = 'none';
+        document.getElementById('transactionsTableFooter').style.display = 'none';
+
         // Lade Charts neu
         btnApplyFilters.click();
     });
@@ -4324,6 +4473,307 @@ document.addEventListener('DOMContentLoaded', function() {
         // Lade Charts initial (ohne Filter = alle Daten)
         loadDonutChart();
         loadTrendChart();
+    });
+
+
+    // ===== TRANSAKTIONEN TABELLE =====
+    // Hilfsfunktion: Formatiere Datum
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+    }
+
+    // Hilfsfunktion: Formatiere Währung
+    function formatCurrency(value) {
+        if (!value || value === 0) return '-';
+        return `€ ${parseFloat(value).toFixed(2)}`;
+    }
+
+    // Lade Transaktionen
+    async function loadTransactions(page = 1) {
+        const params = getFilterParams();
+        params.append('page', page);
+        params.append('page_size', pageSize);
+
+        // Zeige Loading Indicator
+        document.getElementById('transactionsLoadingIndicator').classList.remove('d-none');
+        document.getElementById('transactionsTableBody').innerHTML = '';
+        document.getElementById('transactionsMobileCards').innerHTML = '';
+
+        try {
+            const response = await fetch(`/api/household-transactions-list/?${params}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            currentPage = page;
+            totalTransactions = data.total_count;
+
+            // Update Badge
+            document.getElementById('transactionCountBadge').textContent = totalTransactions;
+
+            // Rendere Desktop Tabelle
+            renderDesktopTable(data.transactions);
+
+            // Rendere Mobile Cards
+            renderMobileCards(data.transactions);
+
+            // Rendere Pagination
+            renderPagination(data.total_pages);
+
+            // Update Footer Statistiken
+            updateFooterStats(data.stats);
+
+            // Zeige/Verstecke Footer und Pagination
+            if (data.transactions.length > 0) {
+                document.getElementById('transactionsTableFooter').style.display = '';
+                document.getElementById('transactionsPaginationContainer').style.display = 'block';
+            } else {
+                document.getElementById('transactionsTableFooter').style.display = 'none';
+                document.getElementById('transactionsPaginationContainer').style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error('Fehler beim Laden der Transaktionen:', error);
+            document.getElementById('transactionsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Fehler beim Laden der Transaktionen
+                    </td>
+                </tr>
+            `;
+        } finally {
+            // Verstecke Loading Indicator
+            document.getElementById('transactionsLoadingIndicator').classList.add('d-none');
+        }
+    }
+
+    // Rendere Desktop Tabelle
+    function renderDesktopTable(transactions) {
+        const tbody = document.getElementById('transactionsTableBody');
+
+        if (transactions.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted">
+                        <i class="bi bi-info-circle"></i> Keine Transaktionen gefunden
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = transactions.map(trans => {
+            const isTransfer = trans.payee_type === 'transfer' || trans.payee_type === 'kursschwankung';
+            const rowClass = `${isTransfer ? 'table-secondary' : ''} ${trans.person === 'Sigi' ? 'row-sigi' : 'row-robert'}`;
+            const opacity = isTransfer ? 'style="opacity: 0.6;"' : '';
+
+            return `
+                <tr class="${rowClass}" ${opacity}>
+                    <td>${formatDate(trans.date)}</td>
+                    <td>
+                        ${trans.person === 'Sigi'
+                            ? '<span class="badge bg-primary">Sigi</span>'
+                            : '<span class="badge bg-success">Robert</span>'}
+                    </td>
+                    <td>
+                        ${trans.payee || '-'}
+                        ${trans.payee_type === 'transfer'
+                            ? '<span class="badge bg-secondary ms-1" title="Transfer"><i class="bi bi-arrow-left-right"></i></span>'
+                            : ''}
+                        ${trans.payee_type === 'kursschwankung'
+                            ? '<span class="badge bg-info ms-1" title="Kursschwankung"><i class="bi bi-graph-up-arrow"></i></span>'
+                            : ''}
+                    </td>
+                    <td>
+                        <small class="text-muted">${trans.categorygroup || '-'}</small><br>
+                        ${trans.category || '-'}
+                    </td>
+                    <td class="memo-cell"><small>${trans.memo || '-'}</small></td>
+                    <td class="text-end text-danger">${formatCurrency(trans.outflow)}</td>
+                    <td class="text-end text-success">${formatCurrency(trans.inflow)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Rendere Mobile Cards
+    function renderMobileCards(transactions) {
+        const container = document.getElementById('transactionsMobileCards');
+
+        if (transactions.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Keine Transaktionen gefunden
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = transactions.map(trans => {
+            const isTransfer = trans.payee_type === 'transfer' || trans.payee_type === 'kursschwankung';
+            const cardClass = isTransfer ? 'card-transfer' : (trans.person === 'Sigi' ? 'card-sigi' : 'card-robert');
+
+            return `
+                <div class="card transaction-card ${cardClass}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <strong>${trans.payee || '-'}</strong>
+                                ${trans.payee_type === 'transfer'
+                                    ? '<span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">Transfer</span>'
+                                    : ''}
+                                ${trans.payee_type === 'kursschwankung'
+                                    ? '<span class="badge bg-info ms-1" style="font-size: 0.7rem;">Kursschwankung</span>'
+                                    : ''}
+                                <div>
+                                    <small class="text-muted">${formatDate(trans.date)}</small>
+                                    <span class="mx-1">•</span>
+                                    ${trans.person === 'Sigi'
+                                        ? '<span class="badge bg-primary" style="font-size: 0.7rem;">Sigi</span>'
+                                        : '<span class="badge bg-success" style="font-size: 0.7rem;">Robert</span>'}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-1">
+                            <small class="text-muted">${trans.categorygroup || '-'} › ${trans.category || '-'}</small>
+                        </div>
+                        ${trans.memo ? `<div class="mb-1"><small>${trans.memo}</small></div>` : ''}
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div>
+                                <strong class="text-danger">${formatCurrency(trans.outflow)}</strong>
+                            </div>
+                            <div>
+                                <strong class="text-success">${formatCurrency(trans.inflow)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Rendere Pagination
+    function renderPagination(totalPages) {
+        const pagination = document.getElementById('transactionsPagination');
+
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+
+        // Previous Button
+        html += `
+            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" data-page="${currentPage - 1}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+        `;
+
+        // Page Numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+
+        if (startPage > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+            if (startPage > 2) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" data-page="${i}">${i}</a>
+                </li>
+            `;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            html += `<li class="page-item"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`;
+        }
+
+        // Next Button
+        html += `
+            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" data-page="${currentPage + 1}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        `;
+
+        pagination.innerHTML = html;
+
+        // Event Listener für Pagination Links
+        pagination.querySelectorAll('a.page-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = parseInt(this.getAttribute('data-page'));
+                if (page && page !== currentPage) {
+                    loadTransactions(page);
+                    // Scroll zur Tabelle
+                    document.getElementById('transactionsTableBody').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    }
+
+    // Update Footer Statistiken
+    function updateFooterStats(stats) {
+        if (!stats) return;
+
+        document.getElementById('totalOutflow').textContent = formatCurrency(stats.total_outflow);
+
+        // Berechne Prozente
+        const total = parseFloat(stats.total_outflow || 0);
+        const robertAmount = parseFloat(stats.robert_outflow || 0);
+        const sigiAmount = parseFloat(stats.sigi_outflow || 0);
+
+        const robertPercent = total > 0 ? (robertAmount / total * 100).toFixed(1) : 0;
+        const sigiPercent = total > 0 ? (sigiAmount / total * 100).toFixed(1) : 0;
+
+        document.getElementById('personPercentages').innerHTML = `
+            Robert: <span class="badge bg-success">${robertPercent}%</span> |
+            Sigi: <span class="badge bg-primary">${sigiPercent}%</span>
+        `;
+
+        document.getElementById('personAmounts').textContent =
+            `Robert: ${formatCurrency(robertAmount)} | Sigi: ${formatCurrency(sigiAmount)}`;
+    }
+
+    // Filter anwenden - erweitert um Transaktionen zu laden
+    btnApplyFilters.addEventListener('click', async function() {
+        // Zeige Loading Indicator
+        filterLoadingIndicator.classList.remove('d-none');
+        filterLoadingIndicator.classList.add('d-flex');
+
+        try {
+            // Lade Charts und Transaktionen parallel
+            await Promise.all([
+                loadDonutChart(),
+                loadTrendChart(),
+                loadTransactions(1) // Immer Seite 1 beim Filtern
+            ]);
+        } finally {
+            // Verstecke Loading Indicator
+            filterLoadingIndicator.classList.remove('d-flex');
+            filterLoadingIndicator.classList.add('d-none');
+        }
     });
 });
 </script>
