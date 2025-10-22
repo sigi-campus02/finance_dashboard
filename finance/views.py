@@ -4641,6 +4641,12 @@ def api_household_filtered_donut_chart(request):
             data.append(round(category_totals[group_id], 2))
             colors.append(category_config[group_id]['color'])
 
+    # Fallback wenn keine Daten vorhanden
+    if not data:
+        labels = ['Keine Daten']
+        data = [0]
+        colors = ['rgb(200, 200, 200)']
+
     return JsonResponse({
         'labels': labels,
         'datasets': [{
@@ -4781,6 +4787,17 @@ def api_household_filtered_trend_chart(request):
                 'borderColor': category_config[group_id]['color'],
                 'borderWidth': 1
             })
+
+    # Fallback wenn keine Daten vorhanden
+    if not labels:
+        labels = ['Keine Daten']
+        datasets = [{
+            'label': 'Keine Daten',
+            'data': [0],
+            'backgroundColor': 'rgb(200, 200, 200)',
+            'borderColor': 'rgb(200, 200, 200)',
+            'borderWidth': 1
+        }]
 
     return JsonResponse({
         'labels': labels,

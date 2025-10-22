@@ -4016,7 +4016,10 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadFilterOptions() {
         try {
             // Lade CategoryGroups
-            const cgResponse = await fetch('/finance/api/household-filter-categorygroups/');
+            const cgResponse = await fetch('/api/household-filter-categorygroups/');
+            if (!cgResponse.ok) {
+                throw new Error(`HTTP error! status: ${cgResponse.status}`);
+            }
             const cgData = await cgResponse.json();
 
             filterCategoryGroups.innerHTML = '';
@@ -4028,7 +4031,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // Lade Categories
-            const catResponse = await fetch('/finance/api/household-filter-categories/');
+            const catResponse = await fetch('/api/household-filter-categories/');
+            if (!catResponse.ok) {
+                throw new Error(`HTTP error! status: ${catResponse.status}`);
+            }
             const catData = await catResponse.json();
 
             filterCategories.innerHTML = '';
@@ -4040,6 +4046,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         } catch (error) {
             console.error('Fehler beim Laden der Filter-Optionen:', error);
+            console.error('Details:', error.message);
         }
     }
 
@@ -4147,7 +4154,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const params = getFilterParams();
 
         try {
-            const response = await fetch(`/finance/api/household-filtered-donut-chart/?${params}`);
+            const response = await fetch(`/api/household-filtered-donut-chart/?${params}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
 
             // Zerstöre altes Chart
@@ -4202,7 +4212,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const params = getFilterParams();
 
         try {
-            const response = await fetch(`/finance/api/household-filtered-trend-chart/?${params}`);
+            const response = await fetch(`/api/household-filtered-trend-chart/?${params}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
 
             // Zerstöre altes Chart
