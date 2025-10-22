@@ -2696,7 +2696,7 @@ def household_dashboard(request):
             'date': trans.date,
             'payee': trans.payee.payee if trans.payee else '-',
             'category': trans.category.category if trans.category else '-',
-            'amount': float(trans.outflow - trans.inflow),
+            'amount': float((trans.outflow or 0) - (trans.inflow or 0)),
             'memo': trans.memo or ''
         })
     for trans in robert_notable:
@@ -2705,7 +2705,7 @@ def household_dashboard(request):
             'date': trans.date,
             'payee': trans.payee.payee if trans.payee else '-',
             'category': trans.category.category if trans.category else '-',
-            'amount': float(trans.outflow - trans.inflow),
+            'amount': float((trans.outflow or 0) - (trans.inflow or 0)),
             'memo': trans.memo or ''
         })
     notable_transactions = sorted(notable_transactions, key=lambda x: abs(x['amount']), reverse=True)[:10]
