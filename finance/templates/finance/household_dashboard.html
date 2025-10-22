@@ -136,45 +136,6 @@
         color: var(--color-negative);
     }
 
-    /* Drilldown Cards */
-    .drilldown-card {
-        background: var(--color-card-bg);
-        border-radius: var(--radius-md);
-        padding: 1.25rem;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.3s ease;
-        border: 1px solid var(--color-card-border);
-        cursor: pointer;
-        height: 100%;
-    }
-
-    .drilldown-card:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateY(-2px);
-        border-color: var(--color-sigi);
-    }
-
-    .drilldown-card-title {
-        font-size: 1rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .drilldown-list-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid var(--color-card-border);
-    }
-
-    .drilldown-list-item:last-child {
-        border-bottom: none;
-    }
-
     /* Person Badges */
     .person-badge {
         padding: 0.25rem 0.5rem;
@@ -1065,65 +1026,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Drilldown Startpunkte -->
-    <div class="row g-3 mb-4">
-        <!-- Top 5 Kategorien -->
-        <div class="col-12 col-md-4">
-            <div class="drilldown-card" onclick="scrollToElement('#section-pie-charts')">
-                <div class="drilldown-card-title">
-                    <i class="bi bi-bar-chart-fill"></i>
-                    <span>Top 5 Kategorien</span>
-                </div>
-                {% for category in top_categories|slice:":5" %}
-                    <div class="drilldown-list-item">
-                        <span>{{ category.name }}</span>
-                        <strong>{{ category.amount|floatformat:2 }} €</strong>
-                    </div>
-                {% empty %}
-                    <p class="text-muted mb-0">Keine Daten verfügbar</p>
-                {% endfor %}
-                <div class="text-end mt-2">
-                    <small class="text-primary">
-                        <i class="bi bi-arrow-right"></i> Details anzeigen
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Auffällige Transaktionen -->
-        <div class="col-12 col-md-4">
-            <div class="drilldown-card">
-                <div class="drilldown-card-title">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span>Auffällige Transaktionen</span>
-                </div>
-                {% for trans in notable_transactions|slice:":5" %}
-                    <div class="drilldown-list-item">
-                        <div class="d-flex flex-column">
-                            <span>{{ trans.payee }}</span>
-                            <small class="text-muted">{{ trans.date }} •
-                                <span class="person-badge person-badge-{{ trans.person|lower }}">
-                                    {{ trans.person }}
-                                </span>
-                            </small>
-                        </div>
-                        <strong style="color: {% if trans.amount > 0 %}var(--color-negative){% else %}var(--color-positive){% endif %}">
-                            {{ trans.amount|floatformat:2 }} €
-                        </strong>
-                    </div>
-                {% empty %}
-                    <p class="text-muted mb-0">Keine auffälligen Transaktionen</p>
-                {% endfor %}
-                <div class="text-end mt-2">
-                    <small class="text-muted">
-                        Transaktionen > 200€
-                    </small>
-                </div>
-            </div>
-        </div>
-
     </div>
 
 
@@ -3380,19 +3282,6 @@ function clearPersonFilter() {
     if (personSelect) {
         personSelect.value = 'all';
         personSelect.dispatchEvent(new Event('change'));
-    }
-}
-
-// Scroll zu Element
-function scrollToElement(selector) {
-    const element = document.querySelector(selector);
-    if (element) {
-        const yOffset = -80;
-        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        window.scrollTo({
-            top: y,
-            behavior: 'smooth'
-        });
     }
 }
 
