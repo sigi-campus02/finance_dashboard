@@ -549,6 +549,82 @@
         margin-bottom: 20px;
     }
 
+    /* ===== NEUE FILTERSEKTION STYLES ===== */
+    .filter-section {
+        background: rgba(91, 155, 213, 0.03);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        border: 1px solid var(--color-card-border);
+    }
+
+    .date-preset {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.5rem;
+        white-space: nowrap;
+    }
+
+    .date-preset.active {
+        background-color: var(--color-sigi);
+        color: white;
+        border-color: var(--color-sigi);
+    }
+
+    .chart-container-view {
+        transition: opacity 0.3s ease;
+    }
+
+    /* Loading state für Charts */
+    .chart-loading {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    /* Mobile Optimierung für Filtersektion */
+    @media (max-width: 768px) {
+        .filter-section {
+            padding: 1rem;
+        }
+
+        .filter-section .col-md-3,
+        .filter-section .col-md-2,
+        .filter-section .col-md-4 {
+            margin-bottom: 1rem;
+        }
+
+        .date-preset {
+            font-size: 0.65rem;
+            padding: 0.3rem 0.4rem;
+        }
+
+        .chart-toggle-section .btn-group label {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        select[multiple] {
+            font-size: 0.85rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .filter-section .row.g-3 {
+            gap: 1rem !important;
+        }
+
+        .btn-group.d-flex {
+            flex-direction: column !important;
+        }
+
+        .date-preset {
+            font-size: 0.7rem;
+            width: 100%;
+        }
+
+        .chart-toggle-section {
+            text-align: center;
+        }
+    }
+
 
     /* Mobile: Kompaktere Chart-Höhen */
     @media (max-width: 768px) {
@@ -1023,6 +1099,157 @@
                 </div>
                 <div class="kpi-card-comparison">
                     <span class="text-muted">Ø {{ current_year }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ===== NEUE FILTERSEKTION MIT INTERAKTIVEN DIAGRAMMEN ===== -->
+    <div class="section-wrapper section-bg-overview">
+        <div class="row mb-4" id="section-filter-charts">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-funnel-fill"></i> Ausgaben-Analyse mit Filtern
+                        </h5>
+                        <small>Interaktive Filterung nach Kategorien, Personen und Zeitraum</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Filter-Bereich -->
+                        <div class="filter-section mb-4">
+                            <div class="row g-3">
+                                <!-- CategoryGroup Filter -->
+                                <div class="col-md-3">
+                                    <label for="filterCategoryGroups" class="form-label fw-bold">
+                                        <i class="bi bi-folder"></i> Kategoriegruppen
+                                    </label>
+                                    <select id="filterCategoryGroups" class="form-select" multiple size="5" aria-label="Kategoriegruppen auswählen">
+                                        <!-- Wird dynamisch geladen -->
+                                    </select>
+                                    <small class="text-muted">Mehrfachauswahl mit Strg/Cmd</small>
+                                </div>
+
+                                <!-- Category Filter -->
+                                <div class="col-md-3">
+                                    <label for="filterCategories" class="form-label fw-bold">
+                                        <i class="bi bi-tag"></i> Kategorien
+                                    </label>
+                                    <select id="filterCategories" class="form-select" multiple size="5" aria-label="Kategorien auswählen">
+                                        <!-- Wird dynamisch geladen -->
+                                    </select>
+                                    <small class="text-muted">Mehrfachauswahl mit Strg/Cmd</small>
+                                </div>
+
+                                <!-- Person Filter -->
+                                <div class="col-md-2">
+                                    <label for="filterPerson" class="form-label fw-bold">
+                                        <i class="bi bi-person"></i> Person
+                                    </label>
+                                    <select id="filterPerson" class="form-select" aria-label="Person auswählen">
+                                        <option value="all" selected>Alle</option>
+                                        <option value="sigi">Sigi</option>
+                                        <option value="robert">Robert</option>
+                                    </select>
+                                </div>
+
+                                <!-- Zeitraum Filter -->
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-calendar"></i> Zeitraum
+                                    </label>
+
+                                    <!-- Preset Buttons -->
+                                    <div class="btn-group d-flex mb-2" role="group" aria-label="Zeitraum Presets">
+                                        <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="this-month">
+                                            Aktueller Monat
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="last-3-months">
+                                            3 Monate
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="this-year">
+                                            Dieses Jahr
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="last-year">
+                                            Letztes Jahr
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm date-preset active" data-preset="all">
+                                            Alle
+                                        </button>
+                                    </div>
+
+                                    <!-- Custom Date Range -->
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <input type="date" id="filterDateFrom" class="form-control form-control-sm" placeholder="Von" aria-label="Datum von">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="date" id="filterDateTo" class="form-control form-control-sm" placeholder="Bis" aria-label="Datum bis">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filter Actions -->
+                            <div class="row mt-3">
+                                <div class="col-12 d-flex gap-2">
+                                    <button id="btnApplyFilters" class="btn btn-primary">
+                                        <i class="bi bi-check-circle"></i> Filter anwenden
+                                    </button>
+                                    <button id="btnResetFilters" class="btn btn-outline-secondary">
+                                        <i class="bi bi-x-circle"></i> Zurücksetzen
+                                    </button>
+                                    <div id="filterLoadingIndicator" class="ms-3 d-none align-items-center">
+                                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                                            <span class="visually-hidden">Lädt...</span>
+                                        </div>
+                                        <span>Daten werden aktualisiert...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Chart Toggle Buttons -->
+                        <div class="chart-toggle-section mb-3">
+                            <div class="btn-group" role="group" aria-label="Diagramm Ansicht">
+                                <input type="radio" class="btn-check" name="chartView" id="chartViewDonut" autocomplete="off" checked>
+                                <label class="btn btn-outline-primary" for="chartViewDonut">
+                                    <i class="bi bi-pie-chart-fill"></i> Totals (Donut)
+                                </label>
+
+                                <input type="radio" class="btn-check" name="chartView" id="chartViewTrend" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="chartViewTrend">
+                                    <i class="bi bi-bar-chart-line"></i> Trends (Monatlich)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Chart Container -->
+                        <div class="chart-display-section">
+                            <!-- Donut Chart -->
+                            <div id="chartContainerDonut" class="chart-container-view">
+                                <div class="chart-container-medium">
+                                    <canvas id="filteredDonutChart" role="img" aria-label="Donut Chart für CategoryGroup Totals"></canvas>
+                                </div>
+                                <div class="text-center mt-2">
+                                    <small class="text-muted">Gesamtausgaben nach Kategoriegruppen</small>
+                                </div>
+                            </div>
+
+                            <!-- Trend Chart -->
+                            <div id="chartContainerTrend" class="chart-container-view d-none">
+                                <div class="chart-container-horizontal" style="height: 400px;">
+                                    <canvas id="filteredTrendChart" role="img" aria-label="Stacked Bar Chart für monatliche Trends"></canvas>
+                                </div>
+                                <div class="text-center mt-2">
+                                    <small class="text-muted">Monatliche Entwicklung nach Kategoriegruppen</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3760,6 +3987,330 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
+    });
+});
+
+
+// ===== FILTERSEKTION MIT INTERAKTIVEN DIAGRAMMEN =====
+document.addEventListener('DOMContentLoaded', function() {
+    // Chart Instanzen
+    let filteredDonutChart = null;
+    let filteredTrendChart = null;
+
+    // DOM Elemente
+    const filterCategoryGroups = document.getElementById('filterCategoryGroups');
+    const filterCategories = document.getElementById('filterCategories');
+    const filterPerson = document.getElementById('filterPerson');
+    const filterDateFrom = document.getElementById('filterDateFrom');
+    const filterDateTo = document.getElementById('filterDateTo');
+    const btnApplyFilters = document.getElementById('btnApplyFilters');
+    const btnResetFilters = document.getElementById('btnResetFilters');
+    const filterLoadingIndicator = document.getElementById('filterLoadingIndicator');
+
+    const chartViewDonut = document.getElementById('chartViewDonut');
+    const chartViewTrend = document.getElementById('chartViewTrend');
+    const chartContainerDonut = document.getElementById('chartContainerDonut');
+    const chartContainerTrend = document.getElementById('chartContainerTrend');
+
+    // Lade Filter-Optionen
+    async function loadFilterOptions() {
+        try {
+            // Lade CategoryGroups
+            const cgResponse = await fetch('/finance/api/household-filter-categorygroups/');
+            const cgData = await cgResponse.json();
+
+            filterCategoryGroups.innerHTML = '';
+            cgData.categorygroups.forEach(cg => {
+                const option = document.createElement('option');
+                option.value = cg.id;
+                option.textContent = cg.name;
+                filterCategoryGroups.appendChild(option);
+            });
+
+            // Lade Categories
+            const catResponse = await fetch('/finance/api/household-filter-categories/');
+            const catData = await catResponse.json();
+
+            filterCategories.innerHTML = '';
+            catData.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.name;
+                filterCategories.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Fehler beim Laden der Filter-Optionen:', error);
+        }
+    }
+
+    // Date Preset Buttons
+    const datePresetButtons = document.querySelectorAll('.date-preset');
+    datePresetButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Entferne active von allen Buttons
+            datePresetButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const preset = this.getAttribute('data-preset');
+            const today = new Date();
+            let dateFrom = '';
+            let dateTo = '';
+
+            switch(preset) {
+                case 'this-month':
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    dateFrom = firstDay.toISOString().split('T')[0];
+                    dateTo = today.toISOString().split('T')[0];
+                    break;
+
+                case 'last-3-months':
+                    const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+                    dateFrom = threeMonthsAgo.toISOString().split('T')[0];
+                    dateTo = today.toISOString().split('T')[0];
+                    break;
+
+                case 'this-year':
+                    const yearStart = new Date(today.getFullYear(), 0, 1);
+                    dateFrom = yearStart.toISOString().split('T')[0];
+                    dateTo = today.toISOString().split('T')[0];
+                    break;
+
+                case 'last-year':
+                    const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
+                    const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31);
+                    dateFrom = lastYearStart.toISOString().split('T')[0];
+                    dateTo = lastYearEnd.toISOString().split('T')[0];
+                    break;
+
+                case 'all':
+                    dateFrom = '';
+                    dateTo = '';
+                    break;
+            }
+
+            filterDateFrom.value = dateFrom;
+            filterDateTo.value = dateTo;
+        });
+    });
+
+    // Custom Date Range - deaktiviert Preset wenn manuell eingegeben
+    filterDateFrom.addEventListener('change', () => {
+        datePresetButtons.forEach(b => b.classList.remove('active'));
+    });
+    filterDateTo.addEventListener('change', () => {
+        datePresetButtons.forEach(b => b.classList.remove('active'));
+    });
+
+    // Chart Toggle
+    chartViewDonut.addEventListener('change', function() {
+        if (this.checked) {
+            chartContainerDonut.classList.remove('d-none');
+            chartContainerTrend.classList.add('d-none');
+        }
+    });
+
+    chartViewTrend.addEventListener('change', function() {
+        if (this.checked) {
+            chartContainerDonut.classList.add('d-none');
+            chartContainerTrend.classList.remove('d-none');
+        }
+    });
+
+    // Sammle Filter-Parameter
+    function getFilterParams() {
+        const params = new URLSearchParams();
+
+        // CategoryGroups
+        const selectedCG = Array.from(filterCategoryGroups.selectedOptions).map(opt => opt.value);
+        selectedCG.forEach(id => params.append('categorygroups[]', id));
+
+        // Categories
+        const selectedCat = Array.from(filterCategories.selectedOptions).map(opt => opt.value);
+        selectedCat.forEach(id => params.append('categories[]', id));
+
+        // Person
+        params.append('person', filterPerson.value);
+
+        // Datum
+        if (filterDateFrom.value) {
+            params.append('date_from', filterDateFrom.value);
+        }
+        if (filterDateTo.value) {
+            params.append('date_to', filterDateTo.value);
+        }
+
+        return params;
+    }
+
+    // Lade Donut Chart
+    async function loadDonutChart() {
+        const params = getFilterParams();
+
+        try {
+            const response = await fetch(`/finance/api/household-filtered-donut-chart/?${params}`);
+            const data = await response.json();
+
+            // Zerstöre altes Chart
+            if (filteredDonutChart) {
+                filteredDonutChart.destroy();
+            }
+
+            // Erstelle neues Chart
+            const ctx = document.getElementById('filteredDonutChart').getContext('2d');
+            filteredDonutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toFixed(2)} € (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Zeige Gesamtsumme in der Mitte (optional)
+            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+            console.log('Gesamtsumme:', total.toFixed(2), '€');
+
+        } catch (error) {
+            console.error('Fehler beim Laden des Donut Charts:', error);
+        }
+    }
+
+    // Lade Trend Chart
+    async function loadTrendChart() {
+        const params = getFilterParams();
+
+        try {
+            const response = await fetch(`/finance/api/household-filtered-trend-chart/?${params}`);
+            const data = await response.json();
+
+            // Zerstöre altes Chart
+            if (filteredTrendChart) {
+                filteredTrendChart.destroy();
+            }
+
+            // Erstelle neues Chart
+            const ctx = document.getElementById('filteredTrendChart').getContext('2d');
+            filteredTrendChart = new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(0) + ' €';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y || 0;
+                                    return `${label}: ${value.toFixed(2)} €`;
+                                },
+                                footer: function(tooltipItems) {
+                                    let sum = 0;
+                                    tooltipItems.forEach(item => {
+                                        sum += item.parsed.y;
+                                    });
+                                    return `Gesamt: ${sum.toFixed(2)} €`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Fehler beim Laden des Trend Charts:', error);
+        }
+    }
+
+    // Filter anwenden
+    btnApplyFilters.addEventListener('click', async function() {
+        // Zeige Loading Indicator
+        filterLoadingIndicator.classList.remove('d-none');
+        filterLoadingIndicator.classList.add('d-flex');
+
+        try {
+            // Lade beide Charts
+            await Promise.all([
+                loadDonutChart(),
+                loadTrendChart()
+            ]);
+        } finally {
+            // Verstecke Loading Indicator
+            filterLoadingIndicator.classList.remove('d-flex');
+            filterLoadingIndicator.classList.add('d-none');
+        }
+    });
+
+    // Filter zurücksetzen
+    btnResetFilters.addEventListener('click', function() {
+        // Leere alle Selects
+        filterCategoryGroups.selectedIndex = -1;
+        filterCategories.selectedIndex = -1;
+        filterPerson.value = 'all';
+        filterDateFrom.value = '';
+        filterDateTo.value = '';
+
+        // Setze "Alle" Preset aktiv
+        datePresetButtons.forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-preset="all"]').classList.add('active');
+
+        // Lade Charts neu
+        btnApplyFilters.click();
+    });
+
+    // Initialisierung
+    loadFilterOptions().then(() => {
+        // Lade Charts initial (ohne Filter = alle Daten)
+        loadDonutChart();
+        loadTrendChart();
     });
 });
 </script>
