@@ -4,6 +4,195 @@
 
 {% block content %}
 <style>
+    /* CSS-Variablen für Theming */
+    :root {
+        --color-sigi: #5b9bd5;
+        --color-sigi-light: rgba(91, 155, 213, 0.1);
+        --color-robert: #34a853;
+        --color-robert-light: rgba(52, 168, 83, 0.1);
+        --color-neutral: #6c757d;
+        --color-transfer: #9bafc8;
+        --color-positive: #34a853;
+        --color-negative: #ea4335;
+        --color-warning: #fbbc04;
+        --color-card-bg: #ffffff;
+        --color-card-border: #e9ecef;
+        --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+    }
+
+    /* Dark Mode Support */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --color-card-bg: #1e1e1e;
+            --color-card-border: #343a40;
+        }
+    }
+
+    /* KPI Card Styles */
+    .kpi-card {
+        background: var(--color-card-bg);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s ease;
+        border: 1px solid var(--color-card-border);
+        height: 100%;
+    }
+
+    .kpi-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .kpi-card-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-neutral);
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .kpi-card-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        color: #212529;
+    }
+
+    .kpi-card-comparison {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .trend-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .trend-positive {
+        background-color: rgba(52, 168, 83, 0.1);
+        color: var(--color-positive);
+    }
+
+    .trend-negative {
+        background-color: rgba(234, 67, 53, 0.1);
+        color: var(--color-negative);
+    }
+
+    .trend-neutral {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: var(--color-neutral);
+    }
+
+    /* Filter Chips */
+    .filter-chips-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--color-card-bg);
+        border: 1px solid var(--color-card-border);
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-chip-person-sigi {
+        border-left: 3px solid var(--color-sigi);
+    }
+
+    .filter-chip-person-robert {
+        border-left: 3px solid var(--color-robert);
+    }
+
+    .filter-chip-remove {
+        cursor: pointer;
+        color: var(--color-neutral);
+        transition: color 0.2s ease;
+    }
+
+    .filter-chip-remove:hover {
+        color: var(--color-negative);
+    }
+
+    /* Drilldown Cards */
+    .drilldown-card {
+        background: var(--color-card-bg);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s ease;
+        border: 1px solid var(--color-card-border);
+        cursor: pointer;
+        height: 100%;
+    }
+
+    .drilldown-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+        border-color: var(--color-sigi);
+    }
+
+    .drilldown-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .drilldown-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--color-card-border);
+    }
+
+    .drilldown-list-item:last-child {
+        border-bottom: none;
+    }
+
+    /* Person Badges */
+    .person-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .person-badge-sigi {
+        background-color: var(--color-sigi-light);
+        color: var(--color-sigi);
+    }
+
+    .person-badge-robert {
+        background-color: var(--color-robert-light);
+        color: var(--color-robert);
+    }
+
     .chart-container-horizontal {
         position: relative;
         height: 600px;
@@ -490,22 +679,222 @@
 </style>
 
 <div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-            <h1 class="h3 mb-1">
+    <!-- Modernisierter Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div class="flex-grow-1">
+            <h1 class="h3 mb-2">
                 <i class="bi bi-house-door"></i> Dashboard Haushalt
             </h1>
-            <p class="text-muted mb-0">Visualisierung der Haushaltsausgaben</p>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <p class="text-muted mb-0">
+                    <i class="bi bi-calendar3"></i> {{ current_month }}
+                </p>
+                <!-- Filter Chips -->
+                <div class="filter-chips-container mb-0" id="filterChipsContainer">
+                    <div class="filter-chip filter-chip-person-{{ current_person }}" id="personFilterChip" style="display: none;">
+                        <span id="personFilterChipLabel"></span>
+                        <i class="bi bi-x filter-chip-remove" onclick="clearPersonFilter()"></i>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="person-filter-wrapper ms-auto">
-            <div class="person-filter-card">
-                <label for="personFilter" class="form-label mb-0 text-muted small">Person</label>
-                <select id="personFilter" class="form-select form-select-sm">
-                    {% for option in person_options %}
-                        <option value="{{ option.value }}" {% if option.value == current_person %}selected{% endif %}>{{ option.label }}</option>
-                    {% endfor %}
-                </select>
+        <div class="d-flex align-items-center gap-2">
+            <div class="person-filter-wrapper">
+                <div class="person-filter-card">
+                    <label for="personFilter" class="form-label mb-0 text-muted small">Person</label>
+                    <select id="personFilter" class="form-select form-select-sm">
+                        {% for option in person_options %}
+                            <option value="{{ option.value }}" {% if option.value == current_person %}selected{% endif %}>{{ option.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <a href="{% url 'finance:add_transaction' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Neue Transaktion
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Karten Bereich -->
+    <div class="row g-3 mb-4">
+        <!-- KPI 1: Ausgaben aktueller Monat -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="kpi-card">
+                <div class="kpi-card-title">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Ausgaben Aktueller Monat</span>
+                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top"
+                       title="Netto-Ausgaben (Ausgaben minus Einnahmen) für {{ current_month }}"></i>
+                </div>
+                <div class="kpi-card-value">
+                    {{ current_month_spending|floatformat:2 }} €
+                </div>
+                <div class="kpi-card-comparison">
+                    {% if mom_change_percent > 0 %}
+                        <span class="trend-badge trend-negative">
+                            <i class="bi bi-arrow-up"></i>
+                            {{ mom_change_percent|floatformat:1 }}%
+                        </span>
+                    {% elif mom_change_percent < 0 %}
+                        <span class="trend-badge trend-positive">
+                            <i class="bi bi-arrow-down"></i>
+                            {{ mom_change_percent|floatformat:1|slice:"1:" }}%
+                        </span>
+                    {% else %}
+                        <span class="trend-badge trend-neutral">
+                            <i class="bi bi-dash"></i>
+                            0%
+                        </span>
+                    {% endif %}
+                    <span class="text-muted">vs. Vormonat</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 2: Vorjahresvergleich -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="kpi-card">
+                <div class="kpi-card-title">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Vorjahresvergleich</span>
+                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top"
+                       title="Vergleich zum gleichen Monat im Vorjahr"></i>
+                </div>
+                <div class="kpi-card-value">
+                    {% if yoy_change >= 0 %}+{% endif %}{{ yoy_change|floatformat:2 }} €
+                </div>
+                <div class="kpi-card-comparison">
+                    {% if yoy_change_percent > 0 %}
+                        <span class="trend-badge trend-negative">
+                            <i class="bi bi-arrow-up"></i>
+                            {{ yoy_change_percent|floatformat:1 }}%
+                        </span>
+                    {% elif yoy_change_percent < 0 %}
+                        <span class="trend-badge trend-positive">
+                            <i class="bi bi-arrow-down"></i>
+                            {{ yoy_change_percent|floatformat:1|slice:"1:" }}%
+                        </span>
+                    {% else %}
+                        <span class="trend-badge trend-neutral">
+                            <i class="bi bi-dash"></i>
+                            0%
+                        </span>
+                    {% endif %}
+                    <span class="text-muted">YoY</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 3: Ready to Assign -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="kpi-card">
+                <div class="kpi-card-title">
+                    <i class="bi bi-piggy-bank"></i>
+                    <span>Ready to Assign</span>
+                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top"
+                       title="Verfügbares Budget zum Zuweisen"></i>
+                </div>
+                <div class="kpi-card-value" style="color: {% if ready_to_assign >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %}">
+                    {{ ready_to_assign|floatformat:2 }} €
+                </div>
+                <div class="kpi-card-comparison">
+                    <span class="text-muted">Verfügbares Budget</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 4: Durchschnitt pro Monat -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="kpi-card">
+                <div class="kpi-card-title">
+                    <i class="bi bi-calculator"></i>
+                    <span>Durchschnitt pro Monat</span>
+                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top"
+                       title="Durchschnittliche Ausgaben pro Monat in {{ current_year }}"></i>
+                </div>
+                <div class="kpi-card-value">
+                    {{ avg_monthly_spending|floatformat:2 }} €
+                </div>
+                <div class="kpi-card-comparison">
+                    <span class="text-muted">Ø {{ current_year }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drilldown Startpunkte -->
+    <div class="row g-3 mb-4">
+        <!-- Top 5 Kategorien -->
+        <div class="col-12 col-md-4">
+            <div class="drilldown-card" onclick="scrollToElement('#section-pie-charts')">
+                <div class="drilldown-card-title">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    <span>Top 5 Kategorien</span>
+                </div>
+                {% for category in top_categories|slice:":5" %}
+                    <div class="drilldown-list-item">
+                        <span>{{ category.name }}</span>
+                        <strong>{{ category.amount|floatformat:2 }} €</strong>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">Keine Daten verfügbar</p>
+                {% endfor %}
+                <div class="text-end mt-2">
+                    <small class="text-primary">
+                        <i class="bi bi-arrow-right"></i> Details anzeigen
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auffällige Transaktionen -->
+        <div class="col-12 col-md-4">
+            <div class="drilldown-card">
+                <div class="drilldown-card-title">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>Auffällige Transaktionen</span>
+                </div>
+                {% for trans in notable_transactions|slice:":5" %}
+                    <div class="drilldown-list-item">
+                        <div class="d-flex flex-column">
+                            <span>{{ trans.payee }}</span>
+                            <small class="text-muted">{{ trans.date }} •
+                                <span class="person-badge person-badge-{{ trans.person|lower }}">
+                                    {{ trans.person }}
+                                </span>
+                            </small>
+                        </div>
+                        <strong style="color: {% if trans.amount > 0 %}var(--color-negative){% else %}var(--color-positive){% endif %}">
+                            {{ trans.amount|floatformat:2 }} €
+                        </strong>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">Keine auffälligen Transaktionen</p>
+                {% endfor %}
+                <div class="text-end mt-2">
+                    <small class="text-muted">
+                        Transaktionen > 200€
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geplante Transaktionen Link -->
+        <div class="col-12 col-md-4">
+            <div class="drilldown-card" onclick="window.location.href='{% url 'finance:scheduled_transactions' %}'">
+                <div class="drilldown-card-title">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Geplante Transaktionen</span>
+                </div>
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar-check" style="font-size: 3rem; color: var(--color-sigi);"></i>
+                    <p class="mt-3 mb-0">Wiederkehrende und geplante Zahlungen verwalten</p>
+                </div>
+                <div class="text-end mt-2">
+                    <small class="text-primary">
+                        <i class="bi bi-arrow-right"></i> Zur Übersicht
+                    </small>
+                </div>
             </div>
         </div>
     </div>
@@ -2687,15 +3076,74 @@ function reloadAllCharts() {
 }
 
 
+// ===== NEUE FUNKTIONEN FÜR MODERNISIERTES DASHBOARD =====
+
+// Filter-Chip Management
+function updateFilterChips() {
+    const personSelect = document.getElementById('personFilter');
+    const personChip = document.getElementById('personFilterChip');
+    const personChipLabel = document.getElementById('personFilterChipLabel');
+
+    if (personSelect && personChip && personChipLabel) {
+        const selectedValue = personSelect.value;
+        const selectedText = personSelect.options[personSelect.selectedIndex].text;
+
+        if (selectedValue !== 'all') {
+            personChip.style.display = 'flex';
+            personChipLabel.textContent = selectedText;
+            personChip.className = 'filter-chip filter-chip-person-' + selectedValue;
+        } else {
+            personChip.style.display = 'none';
+        }
+    }
+}
+
+// Filter zurücksetzen
+function clearPersonFilter() {
+    const personSelect = document.getElementById('personFilter');
+    if (personSelect) {
+        personSelect.value = 'all';
+        personSelect.dispatchEvent(new Event('change'));
+    }
+}
+
+// Scroll zu Element
+function scrollToElement(selector) {
+    const element = document.querySelector(selector);
+    if (element) {
+        const yOffset = -80;
+        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({
+            top: y,
+            behavior: 'smooth'
+        });
+    }
+}
+
+// Bootstrap Tooltips initialisieren
+function initializeTooltips() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     const yearSelect = document.getElementById('barChartYearSelect');
     const personSelect = document.getElementById('personFilter');
 
+    // Tooltips initialisieren
+    initializeTooltips();
+
+    // Filter-Chips initial setzen
+    updateFilterChips();
+
     if (personSelect) {
         currentPerson = personSelect.value;
         personSelect.addEventListener('change', function() {
             currentPerson = this.value;
+            updateFilterChips();
             resetPieDrilldownState();
             reloadAllCharts();
         });

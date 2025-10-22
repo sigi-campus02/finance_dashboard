@@ -2544,12 +2544,15 @@ def generate_distinct_colors(num_colors):
 
 @login_required
 def household_dashboard(request):
-    """Dashboard für Haushaltsausgaben - zeigt Visualisierungen"""
+    """Dashboard für Haushaltsausgaben - zeigt Visualisierungen mit erweiterten KPIs"""
+    from django.db.models import functions, Sum, Count, Q, Avg
+    from decimal import Decimal
+    from dateutil.relativedelta import relativedelta
+
     # Verfügbare Jahre ermitteln
     sigi_base = FactTransactionsSigi.objects.filter(flag_id=5)
     robert_base = FactTransactionsRobert.objects.all()
 
-    from django.db.models import functions
     sigi_years = sigi_base.annotate(
         year=functions.ExtractYear('date')
     ).values_list('year', flat=True).distinct()
@@ -2558,15 +2561,170 @@ def household_dashboard(request):
     ).values_list('year', flat=True).distinct()
     available_years = sorted(set(sigi_years) | set(robert_years), reverse=True)
 
+    # Aktuelle Datumsinformationen
+    now = datetime.now()
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_start = (current_month_start - relativedelta(months=1))
+    last_month_end = current_month_start - relativedelta(days=1)
+    year_ago_month_start = current_month_start - relativedelta(years=1)
+    year_ago_month_end = year_ago_month_start + relativedelta(months=1) - relativedelta(days=1)
+
+    # Helper-Funktion: Netto-Ausgaben berechnen (outflow - inflow)
+    def get_netto_spending(queryset):
+        """Berechnet Netto-Ausgaben (outflow - inflow)"""
+        result = queryset.aggregate(
+            total_outflow=Sum('outflow'),
+            total_inflow=Sum('inflow')
+        )
+        outflow = result['total_outflow'] or Decimal('0')
+        inflow = result['total_inflow'] or Decimal('0')
+        return float(outflow - inflow)
+
+    # Base Querysets (ohne "Ready to Assign" und ohne Transfers)
+    def get_household_transactions(start_date=None, end_date=None):
+        """Gibt kombinierte Haushalt-Transaktionen zurück"""
+        sigi_qs = FactTransactionsSigi.objects.filter(flag_id=5).exclude(
+            category_id=1  # Ready to Assign ausschließen
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        )
+        robert_qs = FactTransactionsRobert.objects.exclude(
+            category_id=1
+        ).exclude(
+            payee__payee_type__in=['transfer', 'kursschwankung']
+        )
+
+        if start_date:
+            sigi_qs = sigi_qs.filter(date__gte=start_date)
+            robert_qs = robert_qs.filter(date__gte=start_date)
+        if end_date:
+            sigi_qs = sigi_qs.filter(date__lte=end_date)
+            robert_qs = robert_qs.filter(date__lte=end_date)
+
+        return sigi_qs, robert_qs
+
+    # KPI 1: Ausgaben aktueller Monat
+    sigi_current, robert_current = get_household_transactions(current_month_start, now)
+    current_month_spending = get_netto_spending(sigi_current) + get_netto_spending(robert_current)
+
+    # KPI 2: Ausgaben letzter Monat (für MoM Vergleich)
+    sigi_last, robert_last = get_household_transactions(last_month_start, last_month_end)
+    last_month_spending = get_netto_spending(sigi_last) + get_netto_spending(robert_last)
+
+    # MoM Prozent berechnen
+    mom_change = 0
+    mom_change_percent = 0
+    if last_month_spending > 0:
+        mom_change = current_month_spending - last_month_spending
+        mom_change_percent = (mom_change / last_month_spending) * 100
+
+    # KPI 3: Ausgaben gleicher Monat Vorjahr (für YoY Vergleich)
+    sigi_year_ago, robert_year_ago = get_household_transactions(year_ago_month_start, year_ago_month_end)
+    year_ago_spending = get_netto_spending(sigi_year_ago) + get_netto_spending(robert_year_ago)
+
+    # YoY Prozent berechnen
+    yoy_change = 0
+    yoy_change_percent = 0
+    if year_ago_spending > 0:
+        yoy_change = current_month_spending - year_ago_spending
+        yoy_change_percent = (yoy_change / year_ago_spending) * 100
+
+    # KPI 4: Ready to Assign Betrag
+    sigi_rta = FactTransactionsSigi.objects.filter(category_id=1).aggregate(
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    )
+    robert_rta = FactTransactionsRobert.objects.filter(category_id=1).aggregate(
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    )
+    sigi_rta_amount = float((sigi_rta['total_inflow'] or 0) - (sigi_rta['total_outflow'] or 0))
+    robert_rta_amount = float((robert_rta['total_inflow'] or 0) - (robert_rta['total_outflow'] or 0))
+    ready_to_assign = sigi_rta_amount + robert_rta_amount
+
+    # KPI 5: Durchschnittliche Ausgaben pro Monat (aktuelles Jahr)
+    year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    sigi_year, robert_year = get_household_transactions(year_start, now)
+    year_spending = get_netto_spending(sigi_year) + get_netto_spending(robert_year)
+    months_elapsed = now.month
+    avg_monthly_spending = year_spending / months_elapsed if months_elapsed > 0 else 0
+
+    # KPI 6: Top 5 Kategorien aktueller Monat
+    sigi_current_top = sigi_current.values('category__name').annotate(
+        total=Sum('outflow') - Sum('inflow')
+    ).order_by('-total')[:5]
+    robert_current_top = robert_current.values('category__name').annotate(
+        total=Sum('outflow') - Sum('inflow')
+    ).order_by('-total')[:5]
+
+    # Kombiniere und aggregiere Top Kategorien
+    from collections import defaultdict
+    category_totals = defaultdict(float)
+    for item in sigi_current_top:
+        if item['category__name']:
+            category_totals[item['category__name']] += float(item['total'])
+    for item in robert_current_top:
+        if item['category__name']:
+            category_totals[item['category__name']] += float(item['total'])
+
+    top_categories = sorted(
+        [{'name': k, 'amount': v} for k, v in category_totals.items()],
+        key=lambda x: x['amount'],
+        reverse=True
+    )[:5]
+
+    # KPI 7: Auffällige Transaktionen (> 200€ im aktuellen Monat)
+    threshold = Decimal('200.00')
+    sigi_notable = sigi_current.filter(
+        Q(outflow__gt=threshold) | Q(inflow__gt=threshold)
+    ).order_by('-date')[:10]
+    robert_notable = robert_current.filter(
+        Q(outflow__gt=threshold) | Q(inflow__gt=threshold)
+    ).order_by('-date')[:10]
+
+    # Kombiniere und sortiere nach Datum
+    notable_transactions = []
+    for trans in sigi_notable:
+        notable_transactions.append({
+            'person': 'Sigi',
+            'date': trans.date,
+            'payee': trans.payee.payee_name if trans.payee else '-',
+            'category': trans.category.name if trans.category else '-',
+            'amount': float(trans.outflow - trans.inflow),
+            'memo': trans.memo or ''
+        })
+    for trans in robert_notable:
+        notable_transactions.append({
+            'person': 'Robert',
+            'date': trans.date,
+            'payee': trans.payee.payee_name if trans.payee else '-',
+            'category': trans.category.name if trans.category else '-',
+            'amount': float(trans.outflow - trans.inflow),
+            'memo': trans.memo or ''
+        })
+    notable_transactions = sorted(notable_transactions, key=lambda x: abs(x['amount']), reverse=True)[:10]
+
     context = {
         'available_years': available_years,
-        'current_year': datetime.now().year,
+        'current_year': now.year,
+        'current_month': now.strftime('%B %Y'),
         'person_options': [
             {'value': 'all', 'label': 'Alle'},
             {'value': 'robert', 'label': 'Robert'},
             {'value': 'sigi', 'label': 'Sigi'},
         ],
         'current_person': 'all',
+        # KPIs
+        'current_month_spending': current_month_spending,
+        'last_month_spending': last_month_spending,
+        'mom_change': mom_change,
+        'mom_change_percent': mom_change_percent,
+        'yoy_change': yoy_change,
+        'yoy_change_percent': yoy_change_percent,
+        'ready_to_assign': ready_to_assign,
+        'avg_monthly_spending': avg_monthly_spending,
+        'top_categories': top_categories,
+        'notable_transactions': notable_transactions,
     }
 
     return render(request, 'finance/household_dashboard.html', context)
