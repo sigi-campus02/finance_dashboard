@@ -1301,21 +1301,35 @@
                         <div class="chart-display-section">
                             <!-- Donut Chart -->
                             <div id="chartContainerDonut" class="chart-container-view">
+                                <!-- Zurück-Button für Donut Chart -->
+                                <div id="donutBackButton" class="mb-2 d-none">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="resetDonutDrilldown()">
+                                        <i class="bi bi-arrow-left"></i> Zurück zu Kategoriegruppen
+                                    </button>
+                                    <span id="donutDrilldownInfo" class="ms-2 badge bg-info"></span>
+                                </div>
                                 <div class="chart-container-medium">
                                     <canvas id="filteredDonutChart" role="img" aria-label="Donut Chart für CategoryGroup Totals"></canvas>
                                 </div>
                                 <div class="text-center mt-2">
-                                    <small class="text-muted">Gesamtausgaben nach Kategoriegruppen</small>
+                                    <small id="donutChartSubtitle" class="text-muted">Gesamtausgaben nach Kategoriegruppen</small>
                                 </div>
                             </div>
 
                             <!-- Trend Chart -->
                             <div id="chartContainerTrend" class="chart-container-view d-none">
+                                <!-- Zurück-Button für Trend Chart -->
+                                <div id="trendBackButton" class="mb-2 d-none">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="resetTrendDrilldown()">
+                                        <i class="bi bi-arrow-left"></i> Zurück zu Kategoriegruppen
+                                    </button>
+                                    <span id="trendDrilldownInfo" class="ms-2 badge bg-info"></span>
+                                </div>
                                 <div class="chart-container-horizontal" style="height: 400px;">
                                     <canvas id="filteredTrendChart" role="img" aria-label="Stacked Bar Chart für monatliche Trends"></canvas>
                                 </div>
                                 <div class="text-center mt-2">
-                                    <small class="text-muted">Monatliche Entwicklung nach Kategoriegruppen</small>
+                                    <small id="trendChartSubtitle" class="text-muted">Monatliche Entwicklung nach Kategoriegruppen</small>
                                 </div>
                             </div>
                         </div>
@@ -4144,6 +4158,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let filteredDonutChart = null;
     let filteredTrendChart = null;
 
+    // Drilldown State
+    let currentDonutDrilldownGroupId = null;
+    let currentTrendDrilldownGroupId = null;
+
     // Transaktionen State
     let currentPage = 1;
     const pageSize = 10;
@@ -4301,9 +4319,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return params;
     }
 
-    // Lade Donut Chart
-    async function loadDonutChart() {
+    // Lade Donut Chart (mit optionalem Drilldown)
+    async function loadDonutChart(drilldownGroupId = null) {
         const params = getFilterParams();
+
+        // Drilldown-Parameter hinzufügen
+        if (drilldownGroupId) {
+            params.append('drilldown_group_id', drilldownGroupId);
+            currentDonutDrilldownGroupId = drilldownGroupId;
+        } else {
+            currentDonutDrilldownGroupId = null;
+        }
 
         try {
             const response = await fetch(`/api/household-filtered-donut-chart/?${params}`);
@@ -4333,6 +4359,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                 font: {
                                     size: 12
                                 }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                // Custom onClick für Drilldown statt Hide
+                                if (!data.drilldown && legendItem.index !== undefined) {
+                                    const groupIds = data.datasets[0].groupIds;
+                                    if (groupIds && groupIds[legendItem.index]) {
+                                        const groupId = groupIds[legendItem.index];
+                                        loadDonutChart(groupId);
+                                    }
+                                }
+                                // Bei Drilldown: Standard-Verhalten (Hide/Show)
+                                else if (data.drilldown) {
+                                    Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+                                }
                             }
                         },
                         tooltip: {
@@ -4350,18 +4390,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            // UI Updates für Drilldown
+            if (data.drilldown) {
+                document.getElementById('donutBackButton').classList.remove('d-none');
+                document.getElementById('donutDrilldownInfo').textContent = data.drilldown_group_name;
+                document.getElementById('donutChartSubtitle').textContent =
+                    `Kategorien in ${data.drilldown_group_name}`;
+            } else {
+                document.getElementById('donutBackButton').classList.add('d-none');
+                document.getElementById('donutChartSubtitle').textContent =
+                    'Gesamtausgaben nach Kategoriegruppen';
+            }
+
             // Zeige Gesamtsumme in der Mitte (optional)
             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-            console.log('Gesamtsumme:', total.toFixed(2), '€');
+            console.log('Donut Gesamtsumme:', total.toFixed(2), '€');
 
         } catch (error) {
             console.error('Fehler beim Laden des Donut Charts:', error);
         }
     }
 
-    // Lade Trend Chart
-    async function loadTrendChart() {
+    // Lade Trend Chart (mit optionalem Drilldown)
+    async function loadTrendChart(drilldownGroupId = null) {
         const params = getFilterParams();
+
+        // Drilldown-Parameter hinzufügen
+        if (drilldownGroupId) {
+            params.append('drilldown_group_id', drilldownGroupId);
+            currentTrendDrilldownGroupId = drilldownGroupId;
+        } else {
+            currentTrendDrilldownGroupId = null;
+        }
 
         try {
             const response = await fetch(`/api/household-filtered-trend-chart/?${params}`);
@@ -4408,6 +4468,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                 font: {
                                     size: 12
                                 }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                // Custom onClick für Drilldown statt Hide
+                                if (!data.drilldown && legendItem.datasetIndex !== undefined) {
+                                    const dataset = data.datasets[legendItem.datasetIndex];
+                                    if (dataset && dataset.groupId) {
+                                        loadTrendChart(dataset.groupId);
+                                    }
+                                }
+                                // Bei Drilldown: Standard-Verhalten (Hide/Show)
+                                else if (data.drilldown) {
+                                    Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+                                }
                             }
                         },
                         tooltip: {
@@ -4430,10 +4503,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            // UI Updates für Drilldown
+            if (data.drilldown) {
+                document.getElementById('trendBackButton').classList.remove('d-none');
+                document.getElementById('trendDrilldownInfo').textContent = data.drilldown_group_name;
+                document.getElementById('trendChartSubtitle').textContent =
+                    `Kategorien in ${data.drilldown_group_name}`;
+            } else {
+                document.getElementById('trendBackButton').classList.add('d-none');
+                document.getElementById('trendChartSubtitle').textContent =
+                    'Monatliche Entwicklung nach Kategoriegruppen';
+            }
+
         } catch (error) {
             console.error('Fehler beim Laden des Trend Charts:', error);
         }
     }
+
+    // Reset-Funktionen für Drilldown (global für onclick)
+    window.resetDonutDrilldown = function() {
+        loadDonutChart();
+    };
+
+    window.resetTrendDrilldown = function() {
+        loadTrendChart();
+    };
 
     // Filter zurücksetzen
     btnResetFilters.addEventListener('click', function() {

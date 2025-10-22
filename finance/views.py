@@ -4520,7 +4520,7 @@ def api_household_filter_categorygroups(request):
 
 @login_required
 def api_household_filtered_donut_chart(request):
-    """API: Donut Chart für CategoryGroup Totals mit Filtern"""
+    """API: Donut Chart für CategoryGroup Totals mit Filtern und Drilldown"""
     from django.http import JsonResponse
     from django.db.models import Sum, Q
     from decimal import Decimal
@@ -4531,6 +4531,9 @@ def api_household_filtered_donut_chart(request):
     person = request.GET.get('person', 'all')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
+
+    # Drilldown-Parameter
+    drilldown_group_id = request.GET.get('drilldown_group_id', '')
 
     # Parse person filter
     include_sigi = person in ['all', 'sigi']
@@ -4579,7 +4582,85 @@ def api_household_filtered_donut_chart(request):
         sigi_qs = sigi_qs.filter(date__lte=date_to)
         robert_qs = robert_qs.filter(date__lte=date_to)
 
-    # Aggregiere nach CategoryGroup
+    # DRILLDOWN: Wenn eine CategoryGroup ausgewählt wurde
+    if drilldown_group_id:
+        try:
+            drilldown_group_id_int = int(drilldown_group_id)
+
+            # Filtere auf diese CategoryGroup
+            sigi_qs = sigi_qs.filter(category__categorygroup_id=drilldown_group_id_int)
+            robert_qs = robert_qs.filter(category__categorygroup_id=drilldown_group_id_int)
+
+            # Aggregiere nach Category statt CategoryGroup
+            category_totals = {}
+
+            if include_sigi:
+                sigi_by_category = sigi_qs.values(
+                    'category_id',
+                    'category__category'
+                ).annotate(
+                    inflow=Sum('inflow'),
+                    outflow=Sum('outflow')
+                )
+
+                for item in sigi_by_category:
+                    cat_id = item['category_id']
+                    cat_name = item['category__category'] or 'Unbekannt'
+                    netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                    if cat_id not in category_totals:
+                        category_totals[cat_id] = {'name': cat_name, 'amount': 0}
+                    category_totals[cat_id]['amount'] += netto
+
+            if include_robert:
+                robert_by_category = robert_qs.values(
+                    'category_id',
+                    'category__category'
+                ).annotate(
+                    inflow=Sum('inflow'),
+                    outflow=Sum('outflow')
+                )
+
+                for item in robert_by_category:
+                    cat_id = item['category_id']
+                    cat_name = item['category__category'] or 'Unbekannt'
+                    netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                    if cat_id not in category_totals:
+                        category_totals[cat_id] = {'name': cat_name, 'amount': 0}
+                    category_totals[cat_id]['amount'] += netto
+
+            # Sortiere nach Betrag
+            sorted_categories = sorted(
+                [(cat_id, data['name'], data['amount']) for cat_id, data in category_totals.items()],
+                key=lambda x: x[2],
+                reverse=True
+            )
+
+            labels = [cat[1] for cat in sorted_categories if cat[2] > 0]
+            data = [round(cat[2], 2) for cat in sorted_categories if cat[2] > 0]
+            category_ids_list = [cat[0] for cat in sorted_categories if cat[2] > 0]
+
+            # Generiere verschiedene Farben für Categories (Schattierungen der Base-Color)
+            base_color = category_config.get(drilldown_group_id_int, {}).get('color', 'rgb(91, 155, 213)')
+            colors = _generate_color_shades(base_color, len(data))
+
+            return JsonResponse({
+                'labels': labels,
+                'datasets': [{
+                    'data': data,
+                    'backgroundColor': colors,
+                    'borderColor': colors,
+                    'borderWidth': 1,
+                    'categoryIds': category_ids_list
+                }],
+                'drilldown': True,
+                'drilldown_group_id': drilldown_group_id_int,
+                'drilldown_group_name': category_config.get(drilldown_group_id_int, {}).get('name', 'Unbekannt')
+            })
+
+        except (ValueError, TypeError):
+            pass  # Falls ungültige ID, fahre mit normalem View fort
+
+    # OVERVIEW: Zeige CategoryGroups (Standard-Ansicht)
     category_totals = {}
 
     if include_sigi:
@@ -4614,18 +4695,21 @@ def api_household_filtered_donut_chart(request):
     labels = []
     data = []
     colors = []
+    group_ids = []
 
     for group_id in sorted(category_config.keys()):
         if group_id in category_totals and category_totals[group_id] > 0:
             labels.append(category_config[group_id]['name'])
             data.append(round(category_totals[group_id], 2))
             colors.append(category_config[group_id]['color'])
+            group_ids.append(group_id)
 
     # Fallback wenn keine Daten vorhanden
     if not data:
         labels = ['Keine Daten']
         data = [0]
         colors = ['rgb(200, 200, 200)']
+        group_ids = [0]
 
     return JsonResponse({
         'labels': labels,
@@ -4633,14 +4717,48 @@ def api_household_filtered_donut_chart(request):
             'data': data,
             'backgroundColor': colors,
             'borderColor': colors,
-            'borderWidth': 1
-        }]
+            'borderWidth': 1,
+            'groupIds': group_ids
+        }],
+        'drilldown': False
     })
+
+
+def _generate_color_shades(base_color, count):
+    """Generiert verschiedene Schattierungen einer Basis-Farbe"""
+    import re
+
+    # Parse RGB
+    match = re.match(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)', base_color)
+    if not match:
+        # Fallback zu verschiedenen Farben
+        default_colors = [
+            'rgb(130, 177, 255)', 'rgb(158, 206, 154)', 'rgb(255, 183, 178)',
+            'rgb(189, 178, 255)', 'rgb(255, 218, 121)', 'rgb(174, 214, 241)',
+            'rgb(255, 195, 160)', 'rgb(162, 217, 206)', 'rgb(229, 152, 155)',
+            'rgb(197, 202, 233)', 'rgb(255, 159, 243)', 'rgb(179, 229, 252)'
+        ]
+        return (default_colors * ((count // len(default_colors)) + 1))[:count]
+
+    r, g, b = int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+    colors = []
+    for i in range(count):
+        # Erstelle hellere/dunklere Variationen
+        factor = 0.6 + (i / max(1, count - 1)) * 0.8  # Von 0.6 bis 1.4
+
+        new_r = min(255, max(0, int(r * factor)))
+        new_g = min(255, max(0, int(g * factor)))
+        new_b = min(255, max(0, int(b * factor)))
+
+        colors.append(f'rgb({new_r}, {new_g}, {new_b})')
+
+    return colors
 
 
 @login_required
 def api_household_filtered_trend_chart(request):
-    """API: Stacked Bar Chart für monatliche Trends nach CategoryGroup mit Filtern"""
+    """API: Stacked Bar Chart für monatliche Trends nach CategoryGroup mit Filtern und Drilldown"""
     from django.http import JsonResponse
     from django.db.models import Sum
     from django.db.models.functions import TruncMonth
@@ -4652,6 +4770,9 @@ def api_household_filtered_trend_chart(request):
     person = request.GET.get('person', 'all')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
+
+    # Drilldown-Parameter
+    drilldown_group_id = request.GET.get('drilldown_group_id', '')
 
     # Parse person filter
     include_sigi = person in ['all', 'sigi']
@@ -4700,7 +4821,112 @@ def api_household_filtered_trend_chart(request):
         sigi_qs = sigi_qs.filter(date__lte=date_to)
         robert_qs = robert_qs.filter(date__lte=date_to)
 
-    # Aggregiere nach Monat und CategoryGroup
+    # DRILLDOWN: Wenn eine CategoryGroup ausgewählt wurde, zeige Categories
+    if drilldown_group_id:
+        try:
+            drilldown_group_id_int = int(drilldown_group_id)
+
+            # Filtere auf diese CategoryGroup
+            sigi_qs = sigi_qs.filter(category__categorygroup_id=drilldown_group_id_int)
+            robert_qs = robert_qs.filter(category__categorygroup_id=drilldown_group_id_int)
+
+            # Hole alle Categories in dieser Group
+            category_list = {}
+
+            # Aggregiere nach Monat und Category
+            monthly_data = {}
+
+            if include_sigi:
+                sigi_monthly = sigi_qs.annotate(
+                    month=TruncMonth('date')
+                ).values('month', 'category_id', 'category__category').annotate(
+                    inflow=Sum('inflow'),
+                    outflow=Sum('outflow')
+                ).order_by('month')
+
+                for item in sigi_monthly:
+                    month = item['month'].strftime('%Y-%m')
+                    cat_id = item['category_id']
+                    cat_name = item['category__category'] or 'Unbekannt'
+                    netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+
+                    if month not in monthly_data:
+                        monthly_data[month] = {}
+                    monthly_data[month][cat_id] = monthly_data[month].get(cat_id, 0) + netto
+                    category_list[cat_id] = cat_name
+
+            if include_robert:
+                robert_monthly = robert_qs.annotate(
+                    month=TruncMonth('date')
+                ).values('month', 'category_id', 'category__category').annotate(
+                    inflow=Sum('inflow'),
+                    outflow=Sum('outflow')
+                ).order_by('month')
+
+                for item in robert_monthly:
+                    month = item['month'].strftime('%Y-%m')
+                    cat_id = item['category_id']
+                    cat_name = item['category__category'] or 'Unbekannt'
+                    netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+
+                    if month not in monthly_data:
+                        monthly_data[month] = {}
+                    monthly_data[month][cat_id] = monthly_data[month].get(cat_id, 0) + netto
+                    category_list[cat_id] = cat_name
+
+            # Sortiere Monate
+            sorted_months = sorted(monthly_data.keys())
+
+            # Erstelle Labels
+            labels = []
+            for month_key in sorted_months:
+                try:
+                    month_obj = datetime.strptime(month_key, '%Y-%m')
+                    labels.append(month_obj.strftime('%b %Y'))
+                except:
+                    labels.append(month_key)
+
+            # Sortiere Categories nach Gesamtsumme
+            category_totals = {}
+            for month_data in monthly_data.values():
+                for cat_id, amount in month_data.items():
+                    category_totals[cat_id] = category_totals.get(cat_id, 0) + amount
+
+            sorted_categories = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)
+
+            # Erstelle Datasets
+            base_color = category_config.get(drilldown_group_id_int, {}).get('color', 'rgb(91, 155, 213)')
+            colors = _generate_color_shades(base_color, len(sorted_categories))
+
+            datasets = []
+            for i, (cat_id, _) in enumerate(sorted_categories):
+                data = []
+                for month_key in sorted_months:
+                    value = monthly_data[month_key].get(cat_id, 0)
+                    data.append(round(value, 2))
+
+                if any(d > 0 for d in data):
+                    datasets.append({
+                        'label': category_list.get(cat_id, 'Unbekannt'),
+                        'data': data,
+                        'backgroundColor': colors[i] if i < len(colors) else 'rgb(200, 200, 200)',
+                        'borderColor': colors[i] if i < len(colors) else 'rgb(200, 200, 200)',
+                        'borderWidth': 1,
+                        'categoryId': cat_id
+                    })
+
+            return JsonResponse({
+                'labels': labels,
+                'datasets': datasets,
+                'drilldown': True,
+                'drilldown_group_id': drilldown_group_id_int,
+                'drilldown_group_name': category_config.get(drilldown_group_id_int, {}).get('name', 'Unbekannt')
+            })
+
+        except (ValueError, TypeError):
+            pass  # Falls ungültige ID, fahre mit normalem View fort
+
+    # OVERVIEW: Aggregiere nach Monat und CategoryGroup
     monthly_data = {}
 
     if include_sigi:
@@ -4765,7 +4991,8 @@ def api_household_filtered_trend_chart(request):
                 'data': data,
                 'backgroundColor': category_config[group_id]['color'],
                 'borderColor': category_config[group_id]['color'],
-                'borderWidth': 1
+                'borderWidth': 1,
+                'groupId': group_id  # Für Drilldown
             })
 
     # Fallback wenn keine Daten vorhanden
@@ -4776,10 +5003,12 @@ def api_household_filtered_trend_chart(request):
             'data': [0],
             'backgroundColor': 'rgb(200, 200, 200)',
             'borderColor': 'rgb(200, 200, 200)',
-            'borderWidth': 1
+            'borderWidth': 1,
+            'groupId': 0
         }]
 
     return JsonResponse({
         'labels': labels,
-        'datasets': datasets
+        'datasets': datasets,
+        'drilldown': False
     })
