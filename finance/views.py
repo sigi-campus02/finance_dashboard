@@ -2731,6 +2731,119 @@ def household_dashboard(request):
 
 
 @login_required
+def api_household_filter_accounts(request):
+    """API: Gibt alle verfügbaren Konten für das Haushalt-Dashboard zurück"""
+    from django.http import JsonResponse
+
+    # Alle Konten von Sigi und Robert holen
+    sigi_accounts = DimAccount.objects.filter(
+        facttransactionssigi__flag_id=5
+    ).distinct().values('id', 'account_name').order_by('account_name')
+
+    robert_accounts = DimAccount.objects.filter(
+        facttransactionsrobert__isnull=False
+    ).distinct().values('id', 'account_name').order_by('account_name')
+
+    # Kombiniere und dedupliziere
+    accounts = {}
+    for acc in sigi_accounts:
+        accounts[acc['id']] = acc['account_name']
+    for acc in robert_accounts:
+        accounts[acc['id']] = acc['account_name']
+
+    # Sortiere nach Namen
+    sorted_accounts = [
+        {'id': k, 'name': v}
+        for k, v in sorted(accounts.items(), key=lambda x: x[1])
+    ]
+
+    return JsonResponse({'accounts': sorted_accounts})
+
+
+@login_required
+def api_household_filter_categories(request):
+    """API: Gibt alle verfügbaren Kategorien für das Haushalt-Dashboard zurück"""
+    from django.http import JsonResponse
+
+    # Alle Kategorien von Sigi und Robert holen (außer Ready to Assign)
+    sigi_categories = DimCategory.objects.filter(
+        facttransactionssigi__flag_id=5
+    ).exclude(id=1).distinct().values('id', 'name').order_by('name')
+
+    robert_categories = DimCategory.objects.filter(
+        facttransactionsrobert__isnull=False
+    ).exclude(id=1).distinct().values('id', 'name').order_by('name')
+
+    # Kombiniere und dedupliziere
+    categories = {}
+    for cat in sigi_categories:
+        categories[cat['id']] = cat['name']
+    for cat in robert_categories:
+        categories[cat['id']] = cat['name']
+
+    # Sortiere nach Namen
+    sorted_categories = [
+        {'id': k, 'name': v}
+        for k, v in sorted(categories.items(), key=lambda x: x[1])
+    ]
+
+    return JsonResponse({'categories': sorted_categories})
+
+
+@login_required
+def api_household_save_filter_favorite(request):
+    """API: Speichert Filter-Einstellungen als Favorit in der Session"""
+    from django.http import JsonResponse
+    import json
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            filter_name = data.get('name', 'Mein Filter')
+            filters = data.get('filters', {})
+
+            # In Session speichern
+            if 'household_filter_favorites' not in request.session:
+                request.session['household_filter_favorites'] = []
+
+            # Füge neuen Favoriten hinzu
+            favorite = {
+                'name': filter_name,
+                'filters': filters,
+                'created_at': datetime.now().isoformat()
+            }
+
+            request.session['household_filter_favorites'].append(favorite)
+            request.session.modified = True
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Filter "{filter_name}" wurde gespeichert.',
+                'favorite': favorite
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+    return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+
+@login_required
+def api_household_load_filter_favorites(request):
+    """API: Lädt gespeicherte Filter-Favoriten aus der Session"""
+    from django.http import JsonResponse
+
+    favorites = request.session.get('household_filter_favorites', [])
+
+    return JsonResponse({
+        'success': True,
+        'favorites': favorites
+    })
+
+
+@login_required
 def api_household_monthly_spending(request):
     """API: Monatliche Haushaltsausgaben (Gestapelt nach Person)"""
     year = request.GET.get('year', datetime.now().year)
