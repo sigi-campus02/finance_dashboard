@@ -2629,20 +2629,7 @@ def household_dashboard(request):
         yoy_change = current_month_spending - year_ago_spending
         yoy_change_percent = (yoy_change / year_ago_spending) * 100
 
-    # KPI 4: Ready to Assign Betrag
-    sigi_rta = FactTransactionsSigi.objects.filter(category_id=1).aggregate(
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow')
-    )
-    robert_rta = FactTransactionsRobert.objects.filter(category_id=1).aggregate(
-        total_outflow=Sum('outflow'),
-        total_inflow=Sum('inflow')
-    )
-    sigi_rta_amount = float((sigi_rta['total_inflow'] or 0) - (sigi_rta['total_outflow'] or 0))
-    robert_rta_amount = float((robert_rta['total_inflow'] or 0) - (robert_rta['total_outflow'] or 0))
-    ready_to_assign = sigi_rta_amount + robert_rta_amount
-
-    # KPI 5: Durchschnittliche Ausgaben pro Monat (aktuelles Jahr)
+    # KPI 4: Durchschnittliche Ausgaben pro Monat (aktuelles Jahr)
     year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
     sigi_year, robert_year = get_household_transactions(year_start, now)
     year_spending = get_netto_spending(sigi_year) + get_netto_spending(robert_year)
@@ -2727,7 +2714,6 @@ def household_dashboard(request):
         'mom_change_percent': mom_change_percent,
         'yoy_change': yoy_change,
         'yoy_change_percent': yoy_change_percent,
-        'ready_to_assign': ready_to_assign,
         'avg_monthly_spending': avg_monthly_spending,
         'top_categories': top_categories,
         'notable_transactions': notable_transactions,
