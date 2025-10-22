@@ -2650,10 +2650,10 @@ def household_dashboard(request):
     avg_monthly_spending = year_spending / months_elapsed if months_elapsed > 0 else 0
 
     # KPI 6: Top 5 Kategorien aktueller Monat
-    sigi_current_top = sigi_current.values('category__name').annotate(
+    sigi_current_top = sigi_current.values('category__category').annotate(
         total=Sum('outflow') - Sum('inflow')
     ).order_by('-total')[:5]
-    robert_current_top = robert_current.values('category__name').annotate(
+    robert_current_top = robert_current.values('category__category').annotate(
         total=Sum('outflow') - Sum('inflow')
     ).order_by('-total')[:5]
 
@@ -2661,11 +2661,11 @@ def household_dashboard(request):
     from collections import defaultdict
     category_totals = defaultdict(float)
     for item in sigi_current_top:
-        if item['category__name']:
-            category_totals[item['category__name']] += float(item['total'])
+        if item['category__category']:
+            category_totals[item['category__category']] += float(item['total'])
     for item in robert_current_top:
-        if item['category__name']:
-            category_totals[item['category__name']] += float(item['total'])
+        if item['category__category']:
+            category_totals[item['category__category']] += float(item['total'])
 
     top_categories = sorted(
         [{'name': k, 'amount': v} for k, v in category_totals.items()],
@@ -2689,7 +2689,7 @@ def household_dashboard(request):
             'person': 'Sigi',
             'date': trans.date,
             'payee': trans.payee.payee_name if trans.payee else '-',
-            'category': trans.category.name if trans.category else '-',
+            'category': trans.category.category if trans.category else '-',
             'amount': float(trans.outflow - trans.inflow),
             'memo': trans.memo or ''
         })
@@ -2698,7 +2698,7 @@ def household_dashboard(request):
             'person': 'Robert',
             'date': trans.date,
             'payee': trans.payee.payee_name if trans.payee else '-',
-            'category': trans.category.name if trans.category else '-',
+            'category': trans.category.category if trans.category else '-',
             'amount': float(trans.outflow - trans.inflow),
             'memo': trans.memo or ''
         })
@@ -2768,18 +2768,18 @@ def api_household_filter_categories(request):
     # Alle Kategorien von Sigi und Robert holen (außer Ready to Assign)
     sigi_categories = DimCategory.objects.filter(
         facttransactionssigi__flag_id=5
-    ).exclude(id=1).distinct().values('id', 'name').order_by('name')
+    ).exclude(id=1).distinct().values('id', 'category').order_by('category')
 
     robert_categories = DimCategory.objects.filter(
         facttransactionsrobert__isnull=False
-    ).exclude(id=1).distinct().values('id', 'name').order_by('name')
+    ).exclude(id=1).distinct().values('id', 'category').order_by('category')
 
     # Kombiniere und dedupliziere
     categories = {}
     for cat in sigi_categories:
-        categories[cat['id']] = cat['name']
+        categories[cat['id']] = cat['category']
     for cat in robert_categories:
-        categories[cat['id']] = cat['name']
+        categories[cat['id']] = cat['category']
 
     # Sortiere nach Namen
     sorted_categories = [
