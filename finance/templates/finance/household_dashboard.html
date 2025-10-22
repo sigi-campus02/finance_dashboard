@@ -865,25 +865,7 @@
             </div>
         </div>
 
-        <!-- KPI 3: Ready to Assign -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="kpi-card">
-                <div class="kpi-card-title">
-                    <i class="bi bi-piggy-bank"></i>
-                    <span>Ready to Assign</span>
-                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top"
-                       title="Verfügbares Budget zum Zuweisen"></i>
-                </div>
-                <div class="kpi-card-value" style="color: {% if ready_to_assign >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %}">
-                    {{ ready_to_assign|floatformat:2 }} €
-                </div>
-                <div class="kpi-card-comparison">
-                    <span class="text-muted">Verfügbares Budget</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- KPI 4: Durchschnitt pro Monat -->
+        <!-- KPI 3: Durchschnitt pro Monat -->
         <div class="col-12 col-sm-6 col-lg-3">
             <div class="kpi-card">
                 <div class="kpi-card-title">
@@ -1119,8 +1101,8 @@
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="bi bi-info-circle"></i>
         <strong>Hinweis:</strong>
-        Dieses Dashboard zeigt alle Transaktionen von Robert sowie Sigis Transaktionen mit Flag "Relevant für Haushaltsbudget".
-        Transfers, Kursschwankungen und "Ready to Assign" sind ausgeschlossen.
+        Dieses Dashboard zeigt alle Transaktionen von Robert sowie nur Sigis Transaktionen mit Flag "Relevant für Haushaltsbudget" (flag_id=5).
+        Transfers und Kursschwankungen sind ausgeschlossen.
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
