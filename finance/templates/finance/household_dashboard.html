@@ -386,6 +386,153 @@
         }
     }
 
+    /* PHASE 4: Offcanvas Styles */
+    .offcanvas-large {
+        width: 600px !important;
+        max-width: 90vw;
+    }
+
+    @media (max-width: 768px) {
+        .offcanvas-large {
+            width: 100% !important;
+        }
+    }
+
+    .detail-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--color-card-border);
+    }
+
+    .detail-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .detail-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--color-sigi);
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed var(--color-card-border);
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        font-size: 0.875rem;
+        color: var(--color-neutral);
+        font-weight: 500;
+    }
+
+    .detail-value {
+        font-size: 0.875rem;
+        color: #212529;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .similar-transaction-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: var(--color-card-bg);
+        border: 1px solid var(--color-card-border);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .similar-transaction-item:hover {
+        background-color: rgba(91, 155, 213, 0.05);
+        border-color: var(--color-sigi);
+    }
+
+    .transaction-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 0.5rem;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--color-sigi);
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px var(--color-sigi);
+    }
+
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: -1.05rem;
+        top: 1.2rem;
+        width: 2px;
+        height: calc(100% - 0.7rem);
+        background-color: var(--color-card-border);
+    }
+
+    .timeline-item:last-child::after {
+        display: none;
+    }
+
+    .timeline-date {
+        font-size: 0.75rem;
+        color: var(--color-neutral);
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-content {
+        font-size: 0.875rem;
+        color: #212529;
+    }
+
+    .stat-card {
+        background: var(--color-card-bg);
+        border: 1px solid var(--color-card-border);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-sigi);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--color-neutral);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
     .chart-container-horizontal {
         position: relative;
         height: 600px;
@@ -2059,6 +2206,63 @@
             <i class="bi bi-building" style="color: rgb(74, 144, 226);"></i>
             <span>Betriebskosten</span>
         </a>
+    </div>
+
+    <!-- Transaction Details Offcanvas (PHASE 4) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="transactionDetailsOffcanvas" aria-labelledby="transactionDetailsOffcanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="transactionDetailsOffcanvasLabel">
+                <i class="bi bi-receipt"></i> Transaktions-Details
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="transactionDetailsContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payee History Offcanvas (PHASE 4) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="payeeHistoryOffcanvas" aria-labelledby="payeeHistoryOffcanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="payeeHistoryOffcanvasLabel">
+                <i class="bi bi-person-badge"></i> <span id="payeeHistoryName">Payee</span>
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="payeeHistoryContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Analysis Offcanvas (PHASE 4) -->
+    <div class="offcanvas offcanvas-end offcanvas-large" tabindex="-1" id="categoryAnalysisOffcanvas" aria-labelledby="categoryAnalysisOffcanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="categoryAnalysisOffcanvasLabel">
+                <i class="bi bi-bar-chart-line"></i> <span id="categoryAnalysisName">Kategorie</span>
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="categoryAnalysisContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -4086,13 +4290,330 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-// Transaction Details anzeigen (Platzhalter)
+// ===== PHASE 4: TRANSACTION DETAILS & DRILLDOWN =====
+
+// Transaction Details anzeigen
 function viewTransactionDetails(trans) {
-    console.log('Transaction details:', trans);
-    // TODO: Phase 4 - Offcanvas mit Details öffnen
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('transactionDetailsOffcanvas'));
+    const content = document.getElementById('transactionDetailsContent');
+
+    // Zeige Offcanvas
+    offcanvas.show();
+
+    // Baue Detail-Content
+    content.innerHTML = `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-info-circle"></i> Basis-Informationen
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Datum</span>
+                <span class="detail-value">${formatDate(trans.date)}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Payee</span>
+                <span class="detail-value">
+                    <a href="#" onclick="event.preventDefault(); viewPayeeHistory('${trans.payee}', '${trans.person}')" class="text-primary text-decoration-none">
+                        ${trans.payee} <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Konto</span>
+                <span class="detail-value">${trans.account}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Kategorie</span>
+                <span class="detail-value">
+                    <a href="#" onclick="event.preventDefault(); viewCategoryAnalysis('${trans.category}')" class="text-primary text-decoration-none">
+                        ${trans.category} <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Person</span>
+                <span class="detail-value">
+                    <span class="person-badge person-badge-${trans.person.toLowerCase()}">${trans.person}</span>
+                </span>
+            </div>
+            ${trans.memo ? `
+                <div class="detail-row">
+                    <span class="detail-label">Memo</span>
+                    <span class="detail-value">${trans.memo}</span>
+                </div>
+            ` : ''}
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-cash-stack"></i> Beträge
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Ausgaben</span>
+                <span class="detail-value text-danger">${trans.outflow > 0 ? formatCurrency(trans.outflow) + ' €' : '-'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Einnahmen</span>
+                <span class="detail-value text-success">${trans.inflow > 0 ? formatCurrency(trans.inflow) + ' €' : '-'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label fw-bold">Netto</span>
+                <span class="detail-value fw-bold" style="color: ${trans.amount > 0 ? 'var(--color-negative)' : trans.amount < 0 ? 'var(--color-positive)' : 'var(--color-neutral)'}">
+                    ${formatCurrency(Math.abs(trans.amount))} €
+                </span>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-pen"></i> Aktionen
+            </div>
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" onclick="editTransaction(${trans.id})">
+                    <i class="bi bi-pencil"></i> Transaktion bearbeiten
+                </button>
+                <button class="btn btn-outline-primary" onclick="viewPayeeHistory('${trans.payee}', '${trans.person}')">
+                    <i class="bi bi-clock-history"></i> Payee-Historie anzeigen
+                </button>
+                <button class="btn btn-outline-secondary" onclick="viewCategoryAnalysis('${trans.category}')">
+                    <i class="bi bi-bar-chart-line"></i> Kategorie-Analyse
+                </button>
+            </div>
+        </div>
+    `;
 }
 
-// Transaction bearbeiten (Platzhalter)
+// Payee-Historie anzeigen
+async function viewPayeeHistory(payeeName, person) {
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('payeeHistoryOffcanvas'));
+    const content = document.getElementById('payeeHistoryContent');
+    const nameElement = document.getElementById('payeeHistoryName');
+
+    nameElement.textContent = payeeName;
+    offcanvas.show();
+
+    // Loading state
+    content.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Laden...</span>
+            </div>
+            <p class="mt-3 text-muted">Lade Transaktionen...</p>
+        </div>
+    `;
+
+    try {
+        // Lade Transaktionen für diesen Payee
+        const params = new URLSearchParams();
+        params.append('search', payeeName);
+        if (person && person !== 'all') {
+            params.append('person', person.toLowerCase());
+        }
+        params.append('page_size', 100);
+
+        const response = await fetch(`/finance/api/household-transactions-list/?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.transactions.length === 0) {
+            content.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Keine Transaktionen gefunden für "${payeeName}".
+                </div>
+            `;
+            return;
+        }
+
+        // Berechne Statistiken
+        const totalCount = data.transactions.length;
+        const totalAmount = data.transactions.reduce((sum, t) => sum + t.amount, 0);
+        const avgAmount = totalAmount / totalCount;
+        const latestDate = data.transactions[0].date;
+        const oldestDate = data.transactions[data.transactions.length - 1].date;
+
+        // Baue Content
+        content.innerHTML = `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="bi bi-graph-up"></i> Statistik
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-value">${totalCount}</div>
+                            <div class="stat-label">Transaktionen</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-value">${formatCurrency(avgAmount)} €</div>
+                            <div class="stat-label">Ø Betrag</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Erste Transaktion</span>
+                    <span class="detail-value">${formatDate(oldestDate)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Letzte Transaktion</span>
+                    <span class="detail-value">${formatDate(latestDate)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Gesamt-Netto</span>
+                    <span class="detail-value fw-bold" style="color: ${totalAmount > 0 ? 'var(--color-negative)' : 'var(--color-positive)'}">
+                        ${formatCurrency(Math.abs(totalAmount))} €
+                    </span>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="bi bi-clock-history"></i> Transaktions-Historie
+                </div>
+                <div class="transaction-timeline">
+                    ${data.transactions.slice(0, 20).map(t => `
+                        <div class="timeline-item">
+                            <div class="timeline-date">${formatDate(t.date)}</div>
+                            <div class="timeline-content">
+                                <strong>${formatCurrency(Math.abs(t.amount))} €</strong> - ${t.category}
+                                ${t.memo ? `<br><small class="text-muted">${t.memo}</small>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ${data.transactions.length > 20 ? `
+                    <div class="alert alert-info mt-3">
+                        <small><i class="bi bi-info-circle"></i> Zeige die letzten 20 von ${totalCount} Transaktionen.</small>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Fehler beim Laden der Payee-Historie:', error);
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Fehler beim Laden der Daten.
+            </div>
+        `;
+    }
+}
+
+// Kategorie-Analyse anzeigen
+async function viewCategoryAnalysis(categoryName) {
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('categoryAnalysisOffcanvas'));
+    const content = document.getElementById('categoryAnalysisContent');
+    const nameElement = document.getElementById('categoryAnalysisName');
+
+    nameElement.textContent = categoryName;
+    offcanvas.show();
+
+    content.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Laden...</span>
+            </div>
+            <p class="mt-3 text-muted">Lade Kategorie-Daten...</p>
+        </div>
+    `;
+
+    try {
+        // Lade Transaktionen für diese Kategorie
+        const params = new URLSearchParams();
+        params.append('search', categoryName);
+        params.append('page_size', 100);
+
+        const response = await fetch(`/finance/api/household-transactions-list/?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.transactions.length === 0) {
+            content.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Keine Transaktionen gefunden für Kategorie "${categoryName}".
+                </div>
+            `;
+            return;
+        }
+
+        // Aggregiere nach Monat
+        const monthlyData = {};
+        data.transactions.forEach(t => {
+            const monthKey = t.date.substring(0, 7); // YYYY-MM
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { total: 0, count: 0 };
+            }
+            monthlyData[monthKey].total += t.amount;
+            monthlyData[monthKey].count += 1;
+        });
+
+        const sortedMonths = Object.keys(monthlyData).sort().reverse().slice(0, 12);
+
+        // Baue Content
+        content.innerHTML = `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="bi bi-graph-up"></i> Übersicht
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-value">${data.transactions.length}</div>
+                            <div class="stat-label">Transaktionen</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-value">${formatCurrency(data.totals.netto)} €</div>
+                            <div class="stat-label">Gesamt-Netto</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="bi bi-calendar3"></i> Monatliche Ausgaben (letzte 12 Monate)
+                </div>
+                ${sortedMonths.map(month => `
+                    <div class="detail-row">
+                        <span class="detail-label">${month}</span>
+                        <span class="detail-value">
+                            ${formatCurrency(Math.abs(monthlyData[month].total))} €
+                            <small class="text-muted">(${monthlyData[month].count}x)</small>
+                        </span>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="bi bi-list-ul"></i> Letzte Transaktionen
+                </div>
+                ${data.transactions.slice(0, 10).map(t => `
+                    <div class="similar-transaction-item" onclick="viewTransactionDetails(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+                        <div>
+                            <div><strong>${t.payee}</strong></div>
+                            <small class="text-muted">${formatDate(t.date)} • ${t.person}</small>
+                        </div>
+                        <div class="text-end">
+                            <strong style="color: ${t.amount > 0 ? 'var(--color-negative)' : 'var(--color-positive)'}">
+                                ${formatCurrency(Math.abs(t.amount))} €
+                            </strong>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Fehler beim Laden der Kategorie-Analyse:', error);
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Fehler beim Laden der Daten.
+            </div>
+        `;
+    }
+}
+
+// Transaction bearbeiten
 function editTransaction(transId) {
     window.location.href = `/finance/transactions/edit/${transId}/`;
 }
