@@ -2694,7 +2694,7 @@ def household_dashboard(request):
         notable_transactions.append({
             'person': 'Sigi',
             'date': trans.date,
-            'payee': trans.payee.payee_name if trans.payee else '-',
+            'payee': trans.payee.payee if trans.payee else '-',
             'category': trans.category.category if trans.category else '-',
             'amount': float(trans.outflow - trans.inflow),
             'memo': trans.memo or ''
@@ -2703,7 +2703,7 @@ def household_dashboard(request):
         notable_transactions.append({
             'person': 'Robert',
             'date': trans.date,
-            'payee': trans.payee.payee_name if trans.payee else '-',
+            'payee': trans.payee.payee if trans.payee else '-',
             'category': trans.category.category if trans.category else '-',
             'amount': float(trans.outflow - trans.inflow),
             'memo': trans.memo or ''
