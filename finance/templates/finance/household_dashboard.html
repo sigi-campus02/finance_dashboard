@@ -4355,6 +4355,41 @@ document.addEventListener('DOMContentLoaded', function() {
             const isMobile = window.innerWidth < 768;
             const legendPosition = isMobile ? 'bottom' : 'right';
 
+            // Berechne Gesamtsumme für Center Text
+            const totalAmount = data.datasets[0].data.reduce((a, b) => a + b, 0);
+
+            // Plugin für Text in der Mitte
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: function(chart) {
+                    const width = chart.width;
+                    const height = chart.height;
+                    const ctx = chart.ctx;
+
+                    ctx.restore();
+                    const fontSize = (height / 160).toFixed(2);
+                    ctx.font = `bold ${fontSize}em sans-serif`;
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#333';
+
+                    const text = `€ ${totalAmount.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2 - 10;
+
+                    ctx.fillText(text, textX, textY);
+
+                    // Label "Gesamt" darunter
+                    ctx.font = `${(fontSize * 0.6)}em sans-serif`;
+                    ctx.fillStyle = '#666';
+                    const labelText = 'Gesamt';
+                    const labelX = Math.round((width - ctx.measureText(labelText).width) / 2);
+                    const labelY = height / 2 + 20;
+                    ctx.fillText(labelText, labelX, labelY);
+
+                    ctx.save();
+                }
+            };
+
             filteredDonutChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: data,
@@ -4426,7 +4461,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     }
-                }
+                },
+                plugins: [centerTextPlugin]
             });
 
             // UI Updates für Drilldown
@@ -4440,10 +4476,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('donutChartSubtitle').textContent =
                     'Gesamtausgaben nach Kategoriegruppen';
             }
-
-            // Zeige Gesamtsumme in der Mitte (optional)
-            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-            console.log('Donut Gesamtsumme:', total.toFixed(2), '€');
 
         } catch (error) {
             console.error('Fehler beim Laden des Donut Charts:', error);
