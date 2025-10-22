@@ -4319,9 +4319,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return params;
     }
 
-    // Lade Donut Chart
-    async function loadDonutChart() {
+    // Lade Donut Chart (mit optionalem Drilldown)
+    async function loadDonutChart(drilldownGroupId = null) {
         const params = getFilterParams();
+
+        // Drilldown-Parameter hinzufügen
+        if (drilldownGroupId) {
+            params.append('drilldown_group_id', drilldownGroupId);
+            currentDonutDrilldownGroupId = drilldownGroupId;
+        } else {
+            currentDonutDrilldownGroupId = null;
+        }
 
         try {
             const response = await fetch(`/api/household-filtered-donut-chart/?${params}`);
@@ -4351,6 +4359,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                 font: {
                                     size: 12
                                 }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                // Custom onClick für Drilldown statt Hide
+                                if (!data.drilldown && legendItem.index !== undefined) {
+                                    const groupIds = data.datasets[0].groupIds;
+                                    if (groupIds && groupIds[legendItem.index]) {
+                                        const groupId = groupIds[legendItem.index];
+                                        loadDonutChart(groupId);
+                                    }
+                                }
+                                // Bei Drilldown: Standard-Verhalten (Hide/Show)
+                                else if (data.drilldown) {
+                                    Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+                                }
                             }
                         },
                         tooltip: {
@@ -4368,18 +4390,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            // UI Updates für Drilldown
+            if (data.drilldown) {
+                document.getElementById('donutBackButton').classList.remove('d-none');
+                document.getElementById('donutDrilldownInfo').textContent = data.drilldown_group_name;
+                document.getElementById('donutChartSubtitle').textContent =
+                    `Kategorien in ${data.drilldown_group_name}`;
+            } else {
+                document.getElementById('donutBackButton').classList.add('d-none');
+                document.getElementById('donutChartSubtitle').textContent =
+                    'Gesamtausgaben nach Kategoriegruppen';
+            }
+
             // Zeige Gesamtsumme in der Mitte (optional)
             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-            console.log('Gesamtsumme:', total.toFixed(2), '€');
+            console.log('Donut Gesamtsumme:', total.toFixed(2), '€');
 
         } catch (error) {
             console.error('Fehler beim Laden des Donut Charts:', error);
         }
     }
 
-    // Lade Trend Chart
-    async function loadTrendChart() {
+    // Lade Trend Chart (mit optionalem Drilldown)
+    async function loadTrendChart(drilldownGroupId = null) {
         const params = getFilterParams();
+
+        // Drilldown-Parameter hinzufügen
+        if (drilldownGroupId) {
+            params.append('drilldown_group_id', drilldownGroupId);
+            currentTrendDrilldownGroupId = drilldownGroupId;
+        } else {
+            currentTrendDrilldownGroupId = null;
+        }
 
         try {
             const response = await fetch(`/api/household-filtered-trend-chart/?${params}`);
@@ -4426,6 +4468,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                 font: {
                                     size: 12
                                 }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                // Custom onClick für Drilldown statt Hide
+                                if (!data.drilldown && legendItem.datasetIndex !== undefined) {
+                                    const dataset = data.datasets[legendItem.datasetIndex];
+                                    if (dataset && dataset.groupId) {
+                                        loadTrendChart(dataset.groupId);
+                                    }
+                                }
+                                // Bei Drilldown: Standard-Verhalten (Hide/Show)
+                                else if (data.drilldown) {
+                                    Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+                                }
                             }
                         },
                         tooltip: {
@@ -4448,10 +4503,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            // UI Updates für Drilldown
+            if (data.drilldown) {
+                document.getElementById('trendBackButton').classList.remove('d-none');
+                document.getElementById('trendDrilldownInfo').textContent = data.drilldown_group_name;
+                document.getElementById('trendChartSubtitle').textContent =
+                    `Kategorien in ${data.drilldown_group_name}`;
+            } else {
+                document.getElementById('trendBackButton').classList.add('d-none');
+                document.getElementById('trendChartSubtitle').textContent =
+                    'Monatliche Entwicklung nach Kategoriegruppen';
+            }
+
         } catch (error) {
             console.error('Fehler beim Laden des Trend Charts:', error);
         }
     }
+
+    // Reset-Funktionen für Drilldown (global für onclick)
+    window.resetDonutDrilldown = function() {
+        loadDonutChart();
+    };
+
+    window.resetTrendDrilldown = function() {
+        loadTrendChart();
+    };
 
     // Filter zurücksetzen
     btnResetFilters.addEventListener('click', function() {
