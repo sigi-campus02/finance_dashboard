@@ -1185,15 +1185,21 @@
         <div class="row mb-4" id="section-filter-charts">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-funnel-fill"></i> Ausgaben-Analyse mit Filtern
-                        </h5>
-                        <small>Interaktive Filterung nach Kategorien, Personen und Zeitraum</small>
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="bi bi-funnel-fill"></i> Ausgaben-Analyse mit Filtern
+                            </h5>
+                            <small>Interaktive Filterung nach Kategorien, Personen und Zeitraum</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#filterSectionCollapse" aria-expanded="true" aria-controls="filterSectionCollapse">
+                            <i class="bi bi-chevron-up" id="filterChevronIcon"></i>
+                        </button>
                     </div>
-                    <div class="card-body">
-                        <!-- Filter-Bereich -->
-                        <div class="filter-section mb-4">
+                    <div class="collapse show" id="filterSectionCollapse">
+                        <div class="card-body">
+                            <!-- Filter-Bereich -->
+                            <div class="filter-section mb-4">
                             <div class="row g-3">
                                 <!-- CategoryGroup Filter -->
                                 <div class="col-md-3">
@@ -1338,20 +1344,31 @@
                                 </div>
                             </div>
                         </div>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- ===== TRANSAKTIONEN TABELLE ===== -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-white">
+
+    <!-- ===== TRANSAKTIONEN TABELLE ===== -->
+    <div class="section-wrapper section-bg-overview">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <div>
                             <h6 class="mb-0">
                                 <i class="bi bi-list-ul"></i> Transaktionen
                                 <span id="transactionCountBadge" class="badge bg-primary ms-2">0</span>
                             </h6>
                         </div>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#transactionsTableCollapse" aria-expanded="true" aria-controls="transactionsTableCollapse">
+                            <i class="bi bi-chevron-up" id="transactionsChevronIcon"></i>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="transactionsTableCollapse">
                         <div class="card-body">
                             <!-- Loading Indicator -->
                             <div id="transactionsLoadingIndicator" class="text-center py-4 d-none">
@@ -4187,6 +4204,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const chartContainerDonut = document.getElementById('chartContainerDonut');
     const chartContainerTrend = document.getElementById('chartContainerTrend');
 
+    // Chevron Icon Rotation für Collapse-Sektionen
+    const filterSectionCollapse = document.getElementById('filterSectionCollapse');
+    const filterChevronIcon = document.getElementById('filterChevronIcon');
+    const transactionsTableCollapse = document.getElementById('transactionsTableCollapse');
+    const transactionsChevronIcon = document.getElementById('transactionsChevronIcon');
+
+    // Event Listener für Filter-Sektion Collapse
+    if (filterSectionCollapse && filterChevronIcon) {
+        filterSectionCollapse.addEventListener('show.bs.collapse', function() {
+            filterChevronIcon.classList.remove('bi-chevron-down');
+            filterChevronIcon.classList.add('bi-chevron-up');
+        });
+        filterSectionCollapse.addEventListener('hide.bs.collapse', function() {
+            filterChevronIcon.classList.remove('bi-chevron-up');
+            filterChevronIcon.classList.add('bi-chevron-down');
+        });
+    }
+
+    // Event Listener für Transaktionen-Tabelle Collapse
+    if (transactionsTableCollapse && transactionsChevronIcon) {
+        transactionsTableCollapse.addEventListener('show.bs.collapse', function() {
+            transactionsChevronIcon.classList.remove('bi-chevron-down');
+            transactionsChevronIcon.classList.add('bi-chevron-up');
+        });
+        transactionsTableCollapse.addEventListener('hide.bs.collapse', function() {
+            transactionsChevronIcon.classList.remove('bi-chevron-up');
+            transactionsChevronIcon.classList.add('bi-chevron-down');
+        });
+    }
+
     // Lade Filter-Optionen
     async function loadFilterOptions() {
         try {
@@ -4367,23 +4414,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     const ctx = chart.ctx;
 
                     ctx.restore();
-                    const fontSize = (height / 160).toFixed(2);
+                    const fontSize = (height / 280).toFixed(2);
                     ctx.font = `bold ${fontSize}em sans-serif`;
                     ctx.textBaseline = 'middle';
                     ctx.fillStyle = '#333';
 
                     const text = `€ ${totalAmount.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                    const textY = height / 2 - 10;
+                    const textY = height / 2 - 15;
 
                     ctx.fillText(text, textX, textY);
 
                     // Label "Gesamt" darunter
-                    ctx.font = `${(fontSize * 0.6)}em sans-serif`;
+                    ctx.font = `${(fontSize * 0.65)}em sans-serif`;
                     ctx.fillStyle = '#666';
                     const labelText = 'Gesamt';
                     const labelX = Math.round((width - ctx.measureText(labelText).width) / 2);
-                    const labelY = height / 2 + 20;
+                    const labelY = height / 2 + 15;
                     ctx.fillText(labelText, labelX, labelY);
 
                     ctx.save();
