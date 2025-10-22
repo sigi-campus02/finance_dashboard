@@ -2783,6 +2783,139 @@ def api_household_filter_categories(request):
 
 
 @login_required
+def api_household_transactions_list(request):
+    """API: Gibt gefilterte Transaktionsliste mit Pagination zurück"""
+    from django.http import JsonResponse
+    from django.core.paginator import Paginator
+
+    # Filter-Parameter
+    year = request.GET.get('year', '')
+    month = request.GET.get('month', '')
+    person = request.GET.get('person', '')
+    accounts = request.GET.getlist('accounts[]')
+    categories = request.GET.getlist('categories[]')
+    search = request.GET.get('search', '')
+    amount_min = request.GET.get('amount_min', '')
+    amount_max = request.GET.get('amount_max', '')
+
+    # Pagination
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 50))
+
+    # Base Querysets
+    sigi_qs = FactTransactionsSigi.objects.filter(flag_id=5).exclude(
+        category_id=1
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).select_related('account', 'category', 'payee')
+
+    robert_qs = FactTransactionsRobert.objects.exclude(
+        category_id=1
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    ).select_related('account', 'category', 'payee')
+
+    # Filter anwenden
+    if year:
+        sigi_qs = sigi_qs.filter(date__year=int(year))
+        robert_qs = robert_qs.filter(date__year=int(year))
+
+    if month:
+        sigi_qs = sigi_qs.filter(date__month=int(month))
+        robert_qs = robert_qs.filter(date__month=int(month))
+
+    if accounts:
+        sigi_qs = sigi_qs.filter(account_id__in=accounts)
+        robert_qs = robert_qs.filter(account_id__in=accounts)
+
+    if categories:
+        sigi_qs = sigi_qs.filter(category_id__in=categories)
+        robert_qs = robert_qs.filter(category_id__in=categories)
+
+    if search:
+        from django.db.models import Q
+        sigi_qs = sigi_qs.filter(
+            Q(payee__payee__icontains=search) | Q(memo__icontains=search)
+        )
+        robert_qs = robert_qs.filter(
+            Q(payee__payee__icontains=search) | Q(memo__icontains=search)
+        )
+
+    if amount_min:
+        from decimal import Decimal
+        min_val = Decimal(amount_min)
+        sigi_qs = sigi_qs.filter(Q(outflow__gte=min_val) | Q(inflow__gte=min_val))
+        robert_qs = robert_qs.filter(Q(outflow__gte=min_val) | Q(inflow__gte=min_val))
+
+    if amount_max:
+        from decimal import Decimal
+        max_val = Decimal(amount_max)
+        sigi_qs = sigi_qs.filter(Q(outflow__lte=max_val) | Q(inflow__lte=max_val))
+        robert_qs = robert_qs.filter(Q(outflow__lte=max_val) | Q(inflow__lte=max_val))
+
+    # Person-Filter
+    transactions = []
+    if person in ['', 'all', 'sigi']:
+        for trans in sigi_qs:
+            transactions.append({
+                'id': trans.id,
+                'person': 'Sigi',
+                'date': trans.date.strftime('%Y-%m-%d'),
+                'payee': trans.payee.payee if trans.payee else '-',
+                'account': trans.account.account_name if trans.account else '-',
+                'category': trans.category.category if trans.category else '-',
+                'memo': trans.memo or '',
+                'outflow': float(trans.outflow or 0),
+                'inflow': float(trans.inflow or 0),
+                'amount': float((trans.outflow or 0) - (trans.inflow or 0))
+            })
+
+    if person in ['', 'all', 'robert']:
+        for trans in robert_qs:
+            transactions.append({
+                'id': trans.id,
+                'person': 'Robert',
+                'date': trans.date.strftime('%Y-%m-%d'),
+                'payee': trans.payee.payee if trans.payee else '-',
+                'account': trans.account.account_name if trans.account else '-',
+                'category': trans.category.category if trans.category else '-',
+                'memo': trans.memo or '',
+                'outflow': float(trans.outflow or 0),
+                'inflow': float(trans.inflow or 0),
+                'amount': float((trans.outflow or 0) - (trans.inflow or 0))
+            })
+
+    # Sortiere nach Datum (neueste zuerst)
+    transactions.sort(key=lambda x: x['date'], reverse=True)
+
+    # Pagination
+    paginator = Paginator(transactions, page_size)
+    page_obj = paginator.get_page(page)
+
+    # Summen berechnen
+    total_outflow = sum(t['outflow'] for t in transactions)
+    total_inflow = sum(t['inflow'] for t in transactions)
+    total_netto = sum(t['amount'] for t in transactions)
+
+    return JsonResponse({
+        'transactions': list(page_obj),
+        'pagination': {
+            'page': page,
+            'page_size': page_size,
+            'total_count': len(transactions),
+            'total_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        },
+        'totals': {
+            'outflow': total_outflow,
+            'inflow': total_inflow,
+            'netto': total_netto
+        }
+    })
+
+
+@login_required
 def api_household_save_filter_favorite(request):
     """API: Speichert Filter-Einstellungen als Favorit in der Session"""
     from django.http import JsonResponse
