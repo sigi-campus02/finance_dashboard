@@ -193,6 +193,86 @@
         color: var(--color-robert);
     }
 
+    /* Filter Panel Styles */
+    .filter-panel-card {
+        border: 1px solid var(--color-card-border);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-panel-card .card-header {
+        border-bottom: 2px solid var(--color-card-border);
+        padding: 1rem 1.25rem;
+    }
+
+    .filter-panel-card .accordion-button {
+        font-size: 0.95rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .filter-panel-card .accordion-button:not(.collapsed) {
+        background-color: rgba(91, 155, 213, 0.05);
+        color: var(--color-sigi);
+    }
+
+    .filter-panel-card .accordion-body {
+        padding: 1.5rem 1rem;
+        background-color: #fafbfc;
+    }
+
+    /* Multi-Select Styling */
+    select[multiple] {
+        border: 1px solid var(--color-card-border);
+        border-radius: var(--radius-sm);
+    }
+
+    select[multiple]:focus {
+        border-color: var(--color-sigi);
+        box-shadow: 0 0 0 0.2rem rgba(91, 155, 213, 0.25);
+    }
+
+    select[multiple] option:checked {
+        background-color: var(--color-sigi);
+        color: white;
+    }
+
+    /* Filter Chips Container */
+    #appliedFiltersChipsContainer {
+        padding: 1rem;
+        background-color: rgba(91, 155, 213, 0.03);
+        border-radius: var(--radius-sm);
+        border: 1px dashed var(--color-card-border);
+    }
+
+    /* Filter Badge Count */
+    #activeFiltersCount {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Mobile Optimierung für Filter Panel */
+    @media (max-width: 768px) {
+        .filter-panel-card .card-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.75rem;
+        }
+
+        .filter-panel-card .card-header > div:last-child {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-panel-card .card-header button {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        select[multiple] {
+            font-size: 0.9rem;
+        }
+    }
+
     .chart-container-horizontal {
         position: relative;
         height: 600px;
@@ -894,6 +974,142 @@
                     <small class="text-primary">
                         <i class="bi bi-arrow-right"></i> Zur Übersicht
                     </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Erweitertes Filterpanel -->
+    <div class="card mb-4 filter-panel-card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-funnel"></i>
+                <h5 class="mb-0">Filter</h5>
+                <span class="badge bg-primary" id="activeFiltersCount" style="display: none;">0</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" id="resetFiltersBtn" onclick="resetAllFilters()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Zurücksetzen
+                </button>
+                <button class="btn btn-sm btn-outline-primary" id="saveFavoriteBtn" onclick="saveFilterFavorite()">
+                    <i class="bi bi-star"></i> Als Favorit speichern
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Basis-Filter -->
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-3">
+                    <label for="filterYear" class="form-label small text-muted">Jahr</label>
+                    <select id="filterYear" class="form-select form-select-sm">
+                        <option value="">Alle Jahre</option>
+                        {% for y in available_years %}
+                            <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="filterMonth" class="form-label small text-muted">Monat</label>
+                    <select id="filterMonth" class="form-select form-select-sm">
+                        <option value="">Alle Monate</option>
+                        <option value="1">Januar</option>
+                        <option value="2">Februar</option>
+                        <option value="3">März</option>
+                        <option value="4">April</option>
+                        <option value="5">Mai</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Dezember</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="filterPersonAdvanced" class="form-label small text-muted">Person</label>
+                    <select id="filterPersonAdvanced" class="form-select form-select-sm">
+                        <option value="">Alle Personen</option>
+                        <option value="sigi">Sigi</option>
+                        <option value="robert">Robert</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label small text-muted d-block">&nbsp;</label>
+                    <button class="btn btn-sm btn-primary w-100" id="applyBasicFiltersBtn" onclick="applyFilters()">
+                        <i class="bi bi-check-circle"></i> Filter anwenden
+                    </button>
+                </div>
+            </div>
+
+            <!-- Erweiterte Filter (Collapsible) -->
+            <div class="accordion" id="advancedFiltersAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="advancedFiltersHeader">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#advancedFiltersCollapse" aria-expanded="false"
+                                aria-controls="advancedFiltersCollapse">
+                            <i class="bi bi-sliders me-2"></i>
+                            Erweiterte Filter
+                        </button>
+                    </h2>
+                    <div id="advancedFiltersCollapse" class="accordion-collapse collapse"
+                         aria-labelledby="advancedFiltersHeader" data-bs-parent="#advancedFiltersAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <!-- Konto Filter -->
+                                <div class="col-12 col-md-4">
+                                    <label for="filterAccount" class="form-label small text-muted">Konto</label>
+                                    <select id="filterAccount" class="form-select form-select-sm" multiple size="4">
+                                        <option value="">Lade Konten...</option>
+                                    </select>
+                                    <small class="text-muted">Mehrfachauswahl mit Strg/Cmd</small>
+                                </div>
+
+                                <!-- Kategorie Filter (Multi-Select) -->
+                                <div class="col-12 col-md-4">
+                                    <label for="filterCategory" class="form-label small text-muted">Kategorie</label>
+                                    <select id="filterCategory" class="form-select form-select-sm" multiple size="4">
+                                        <option value="">Lade Kategorien...</option>
+                                    </select>
+                                    <small class="text-muted">Mehrfachauswahl mit Strg/Cmd</small>
+                                </div>
+
+                                <!-- Suche -->
+                                <div class="col-12 col-md-4">
+                                    <label for="filterSearch" class="form-label small text-muted">Suche (Payee/Memo)</label>
+                                    <input type="text" id="filterSearch" class="form-control form-control-sm"
+                                           placeholder="Suchbegriff eingeben...">
+                                    <small class="text-muted" id="searchResultsCount"></small>
+                                </div>
+
+                                <!-- Betragsbereiche -->
+                                <div class="col-12 col-md-6">
+                                    <label for="filterAmountMin" class="form-label small text-muted">Mindestbetrag (€)</label>
+                                    <input type="number" id="filterAmountMin" class="form-control form-control-sm"
+                                           placeholder="0.00" step="0.01">
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="filterAmountMax" class="form-label small text-muted">Höchstbetrag (€)</label>
+                                    <input type="number" id="filterAmountMax" class="form-control form-control-sm"
+                                           placeholder="999999.99" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Chips Feedback -->
+            <div class="mt-3" id="appliedFiltersChipsContainer" style="display: none;">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <small class="text-muted fw-bold">Aktive Filter:</small>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="clearAllFilterChips()">
+                        <small>Alle entfernen</small>
+                    </button>
+                </div>
+                <div class="filter-chips-container" id="appliedFiltersChips">
+                    <!-- Filter chips werden hier dynamisch eingefügt -->
                 </div>
             </div>
         </div>
@@ -3128,6 +3344,398 @@ function initializeTooltips() {
     });
 }
 
+// ===== PHASE 2: FILTER-MANAGEMENT =====
+
+// Global filter state
+let currentFilters = {
+    year: '',
+    month: '',
+    person: '',
+    accounts: [],
+    categories: [],
+    search: '',
+    amountMin: '',
+    amountMax: ''
+};
+
+// Filter-Optionen dynamisch laden
+async function loadFilterOptions() {
+    try {
+        // Konten laden
+        const accountsResponse = await fetch('/finance/api/household-filter-accounts/');
+        const accountsData = await accountsResponse.json();
+        const accountSelect = document.getElementById('filterAccount');
+
+        if (accountSelect && accountsData.accounts) {
+            accountSelect.innerHTML = '<option value="">Alle Konten</option>';
+            accountsData.accounts.forEach(acc => {
+                const option = document.createElement('option');
+                option.value = acc.id;
+                option.textContent = acc.name;
+                accountSelect.appendChild(option);
+            });
+        }
+
+        // Kategorien laden
+        const categoriesResponse = await fetch('/finance/api/household-filter-categories/');
+        const categoriesData = await categoriesResponse.json();
+        const categorySelect = document.getElementById('filterCategory');
+
+        if (categorySelect && categoriesData.categories) {
+            categorySelect.innerHTML = '<option value="">Alle Kategorien</option>';
+            categoriesData.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.name;
+                categorySelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden der Filter-Optionen:', error);
+    }
+}
+
+// Filter anwenden
+function applyFilters() {
+    // Sammle alle Filter-Werte
+    currentFilters.year = document.getElementById('filterYear')?.value || '';
+    currentFilters.month = document.getElementById('filterMonth')?.value || '';
+    currentFilters.person = document.getElementById('filterPersonAdvanced')?.value || '';
+
+    // Multi-Select Werte
+    const accountSelect = document.getElementById('filterAccount');
+    currentFilters.accounts = Array.from(accountSelect?.selectedOptions || [])
+        .map(opt => opt.value)
+        .filter(val => val !== '');
+
+    const categorySelect = document.getElementById('filterCategory');
+    currentFilters.categories = Array.from(categorySelect?.selectedOptions || [])
+        .map(opt => opt.value)
+        .filter(val => val !== '');
+
+    currentFilters.search = document.getElementById('filterSearch')?.value || '';
+    currentFilters.amountMin = document.getElementById('filterAmountMin')?.value || '';
+    currentFilters.amountMax = document.getElementById('filterAmountMax')?.value || '';
+
+    // Filter-Chips aktualisieren
+    updateAppliedFilterChips();
+
+    // Charts neu laden (später: mit Filtern)
+    // reloadAllCharts();
+
+    // Erfolgsbenachrichtigung
+    showFilterNotification('Filter wurden angewendet');
+}
+
+// Filter-Chips aktualisieren
+function updateAppliedFilterChips() {
+    const chipsContainer = document.getElementById('appliedFiltersChips');
+    const chipsWrapper = document.getElementById('appliedFiltersChipsContainer');
+    const activeCountBadge = document.getElementById('activeFiltersCount');
+
+    if (!chipsContainer) return;
+
+    chipsContainer.innerHTML = '';
+    let activeCount = 0;
+
+    // Jahr-Chip
+    if (currentFilters.year) {
+        chipsContainer.appendChild(createFilterChip('Jahr', currentFilters.year, 'year'));
+        activeCount++;
+    }
+
+    // Monat-Chip
+    if (currentFilters.month) {
+        const monthNames = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+        const monthName = monthNames[parseInt(currentFilters.month) - 1];
+        chipsContainer.appendChild(createFilterChip('Monat', monthName, 'month'));
+        activeCount++;
+    }
+
+    // Person-Chip
+    if (currentFilters.person) {
+        const personName = currentFilters.person.charAt(0).toUpperCase() + currentFilters.person.slice(1);
+        chipsContainer.appendChild(createFilterChip('Person', personName, 'person'));
+        activeCount++;
+    }
+
+    // Konten-Chips
+    if (currentFilters.accounts.length > 0) {
+        const accountSelect = document.getElementById('filterAccount');
+        currentFilters.accounts.forEach(accId => {
+            const option = accountSelect?.querySelector(`option[value="${accId}"]`);
+            if (option) {
+                chipsContainer.appendChild(createFilterChip('Konto', option.textContent, 'account', accId));
+                activeCount++;
+            }
+        });
+    }
+
+    // Kategorien-Chips
+    if (currentFilters.categories.length > 0) {
+        const categorySelect = document.getElementById('filterCategory');
+        currentFilters.categories.forEach(catId => {
+            const option = categorySelect?.querySelector(`option[value="${catId}"]`);
+            if (option) {
+                chipsContainer.appendChild(createFilterChip('Kategorie', option.textContent, 'category', catId));
+                activeCount++;
+            }
+        });
+    }
+
+    // Suche-Chip
+    if (currentFilters.search) {
+        chipsContainer.appendChild(createFilterChip('Suche', `"${currentFilters.search}"`, 'search'));
+        activeCount++;
+    }
+
+    // Betrag-Chips
+    if (currentFilters.amountMin) {
+        chipsContainer.appendChild(createFilterChip('Min', `${currentFilters.amountMin}€`, 'amountMin'));
+        activeCount++;
+    }
+    if (currentFilters.amountMax) {
+        chipsContainer.appendChild(createFilterChip('Max', `${currentFilters.amountMax}€`, 'amountMax'));
+        activeCount++;
+    }
+
+    // Container anzeigen/verstecken
+    if (activeCount > 0) {
+        chipsWrapper.style.display = 'block';
+        activeCountBadge.style.display = 'inline-block';
+        activeCountBadge.textContent = activeCount;
+    } else {
+        chipsWrapper.style.display = 'none';
+        activeCountBadge.style.display = 'none';
+    }
+}
+
+// Filter-Chip erstellen
+function createFilterChip(label, value, filterType, filterId = null) {
+    const chip = document.createElement('div');
+    chip.className = 'filter-chip';
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'text-muted me-1';
+    labelSpan.textContent = label + ':';
+
+    const valueSpan = document.createElement('strong');
+    valueSpan.textContent = value;
+
+    const removeIcon = document.createElement('i');
+    removeIcon.className = 'bi bi-x filter-chip-remove ms-2';
+    removeIcon.style.cursor = 'pointer';
+    removeIcon.onclick = () => removeFilterChip(filterType, filterId);
+
+    chip.appendChild(labelSpan);
+    chip.appendChild(valueSpan);
+    chip.appendChild(removeIcon);
+
+    return chip;
+}
+
+// Einzelnen Filter-Chip entfernen
+function removeFilterChip(filterType, filterId = null) {
+    switch (filterType) {
+        case 'year':
+            document.getElementById('filterYear').value = '';
+            currentFilters.year = '';
+            break;
+        case 'month':
+            document.getElementById('filterMonth').value = '';
+            currentFilters.month = '';
+            break;
+        case 'person':
+            document.getElementById('filterPersonAdvanced').value = '';
+            currentFilters.person = '';
+            break;
+        case 'account':
+            const accountSelect = document.getElementById('filterAccount');
+            const accountOption = accountSelect?.querySelector(`option[value="${filterId}"]`);
+            if (accountOption) accountOption.selected = false;
+            currentFilters.accounts = currentFilters.accounts.filter(id => id !== filterId);
+            break;
+        case 'category':
+            const categorySelect = document.getElementById('filterCategory');
+            const categoryOption = categorySelect?.querySelector(`option[value="${filterId}"]`);
+            if (categoryOption) categoryOption.selected = false;
+            currentFilters.categories = currentFilters.categories.filter(id => id !== filterId);
+            break;
+        case 'search':
+            document.getElementById('filterSearch').value = '';
+            currentFilters.search = '';
+            break;
+        case 'amountMin':
+            document.getElementById('filterAmountMin').value = '';
+            currentFilters.amountMin = '';
+            break;
+        case 'amountMax':
+            document.getElementById('filterAmountMax').value = '';
+            currentFilters.amountMax = '';
+            break;
+    }
+
+    updateAppliedFilterChips();
+    // reloadAllCharts();
+}
+
+// Alle Filter-Chips entfernen
+function clearAllFilterChips() {
+    resetAllFilters();
+}
+
+// Alle Filter zurücksetzen
+function resetAllFilters() {
+    // Formular zurücksetzen
+    document.getElementById('filterYear').value = '';
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterPersonAdvanced').value = '';
+
+    const accountSelect = document.getElementById('filterAccount');
+    if (accountSelect) {
+        Array.from(accountSelect.options).forEach(opt => opt.selected = false);
+    }
+
+    const categorySelect = document.getElementById('filterCategory');
+    if (categorySelect) {
+        Array.from(categorySelect.options).forEach(opt => opt.selected = false);
+    }
+
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterAmountMin').value = '';
+    document.getElementById('filterAmountMax').value = '';
+
+    // Filter-State zurücksetzen
+    currentFilters = {
+        year: '',
+        month: '',
+        person: '',
+        accounts: [],
+        categories: [],
+        search: '',
+        amountMin: '',
+        amountMax: ''
+    };
+
+    updateAppliedFilterChips();
+    // reloadAllCharts();
+
+    showFilterNotification('Alle Filter wurden zurückgesetzt');
+}
+
+// Filter als Favorit speichern
+async function saveFilterFavorite() {
+    const filterName = prompt('Name für diesen Filter:', 'Mein Filter ' + new Date().toLocaleDateString());
+
+    if (!filterName) return;
+
+    try {
+        const response = await fetch('/finance/api/household-save-filter-favorite/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                name: filterName,
+                filters: currentFilters
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showFilterNotification(data.message, 'success');
+        } else {
+            showFilterNotification('Fehler beim Speichern: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Fehler beim Speichern des Favoriten:', error);
+        showFilterNotification('Fehler beim Speichern des Favoriten', 'error');
+    }
+}
+
+// CSRF Token holen
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Benachrichtigung anzeigen
+function showFilterNotification(message, type = 'info') {
+    // Toast-Benachrichtigung erstellen (Bootstrap Toast)
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+    bsToast.show();
+
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Instant-Suche
+let searchTimeout;
+function setupInstantSearch() {
+    const searchInput = document.getElementById('filterSearch');
+    const searchResultsCount = document.getElementById('searchResultsCount');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+
+            if (this.value.length === 0) {
+                searchResultsCount.textContent = '';
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                // Simuliere Suche (später: echte API-Anfrage)
+                const query = this.value.toLowerCase();
+                searchResultsCount.textContent = `Suche nach "${query}"...`;
+
+                // Hier würde die echte Suche stattfinden
+                setTimeout(() => {
+                    searchResultsCount.textContent = `Gefunden: ~ Ergebnisse`;
+                }, 300);
+            }, 500);
+        });
+    }
+}
+
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     const yearSelect = document.getElementById('barChartYearSelect');
@@ -3138,6 +3746,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Filter-Chips initial setzen
     updateFilterChips();
+
+    // Phase 2: Filter-System initialisieren
+    loadFilterOptions();
+    setupInstantSearch();
 
     if (personSelect) {
         currentPerson = personSelect.value;
