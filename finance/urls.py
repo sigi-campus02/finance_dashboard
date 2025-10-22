@@ -76,6 +76,11 @@ urlpatterns = [
     path('api/categorygroup-quarterly-breakdown/', views.api_categorygroup_quarterly_breakdown, name='api_categorygroup_quarterly_breakdown'),
     path('api/categorygroup-stats/', views.api_categorygroup_stats, name='api_categorygroup_stats'),
 
+    # API Endpoints für gefilterte Diagramme im Haushalt-Dashboard
+    path('api/household-filter-categorygroups/', views.api_household_filter_categorygroups, name='api_household_filter_categorygroups'),
+    path('api/household-filtered-donut-chart/', views.api_household_filtered_donut_chart, name='api_household_filtered_donut_chart'),
+    path('api/household-filtered-trend-chart/', views.api_household_filtered_trend_chart, name='api_household_filtered_trend_chart'),
+
     # API Endpoints für Supermarkt-Bereich (Kategorie id=5)
     path('api/supermarket-monthly-trend/', views.api_supermarket_monthly_trend, name='api_supermarket_monthly_trend'),
     path('api/supermarket-year-comparison/', views.api_supermarket_year_comparison, name='api_supermarket_year_comparison'),

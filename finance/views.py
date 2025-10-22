@@ -4517,3 +4517,272 @@ def betriebskosten_chart(request):
             'labels': [],
             'datasets': []
         }, status=500)
+
+
+@login_required
+def api_household_filter_categorygroups(request):
+    """API: Gibt alle verfügbaren CategoryGroups für das Haushalt-Dashboard zurück"""
+    from django.http import JsonResponse
+
+    # Definiere die gewünschten CategoryGroups mit Farben (konsistent mit anderen Endpoints)
+    category_groups = [
+        {'id': 2, 'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},
+        {'id': 3, 'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},
+        {'id': 4, 'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},
+        {'id': 5, 'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},
+        {'id': 6, 'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},
+        {'id': 7, 'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},
+        {'id': 10, 'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}
+    ]
+
+    return JsonResponse({'categorygroups': category_groups})
+
+
+@login_required
+def api_household_filtered_donut_chart(request):
+    """API: Donut Chart für CategoryGroup Totals mit Filtern"""
+    from django.http import JsonResponse
+    from django.db.models import Sum, Q
+    from decimal import Decimal
+
+    # Filter-Parameter
+    categorygroup_ids = request.GET.getlist('categorygroups[]')
+    category_ids = request.GET.getlist('categories[]')
+    person = request.GET.get('person', 'all')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    # Parse person filter
+    include_sigi = person in ['all', 'sigi']
+    include_robert = person in ['all', 'robert']
+
+    # CategoryGroup Config mit Farben
+    category_config = {
+        2: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},
+        3: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},
+        4: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},
+        5: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},
+        6: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},
+        7: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},
+        10: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}
+    }
+
+    # Base Querysets
+    sigi_qs = FactTransactionsSigi.objects.filter(flag_id=5).exclude(
+        category_id=1  # Ready to Assign ausschließen
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    )
+
+    robert_qs = FactTransactionsRobert.objects.exclude(
+        category_id=1
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    )
+
+    # Anwenden von Filtern
+    if categorygroup_ids:
+        categorygroup_ids = [int(x) for x in categorygroup_ids]
+        sigi_qs = sigi_qs.filter(category__categorygroup_id__in=categorygroup_ids)
+        robert_qs = robert_qs.filter(category__categorygroup_id__in=categorygroup_ids)
+
+    if category_ids:
+        category_ids = [int(x) for x in category_ids]
+        sigi_qs = sigi_qs.filter(category_id__in=category_ids)
+        robert_qs = robert_qs.filter(category_id__in=category_ids)
+
+    if date_from:
+        sigi_qs = sigi_qs.filter(date__gte=date_from)
+        robert_qs = robert_qs.filter(date__gte=date_from)
+
+    if date_to:
+        sigi_qs = sigi_qs.filter(date__lte=date_to)
+        robert_qs = robert_qs.filter(date__lte=date_to)
+
+    # Aggregiere nach CategoryGroup
+    category_totals = {}
+
+    if include_sigi:
+        sigi_by_group = sigi_qs.values(
+            'category__categorygroup_id'
+        ).annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
+
+        for item in sigi_by_group:
+            group_id = item['category__categorygroup_id']
+            if group_id in category_config:
+                netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                category_totals[group_id] = category_totals.get(group_id, 0) + netto
+
+    if include_robert:
+        robert_by_group = robert_qs.values(
+            'category__categorygroup_id'
+        ).annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        )
+
+        for item in robert_by_group:
+            group_id = item['category__categorygroup_id']
+            if group_id in category_config:
+                netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                category_totals[group_id] = category_totals.get(group_id, 0) + netto
+
+    # Bereite Daten vor
+    labels = []
+    data = []
+    colors = []
+
+    for group_id in sorted(category_config.keys()):
+        if group_id in category_totals and category_totals[group_id] > 0:
+            labels.append(category_config[group_id]['name'])
+            data.append(round(category_totals[group_id], 2))
+            colors.append(category_config[group_id]['color'])
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': [{
+            'data': data,
+            'backgroundColor': colors,
+            'borderColor': colors,
+            'borderWidth': 1
+        }]
+    })
+
+
+@login_required
+def api_household_filtered_trend_chart(request):
+    """API: Stacked Bar Chart für monatliche Trends nach CategoryGroup mit Filtern"""
+    from django.http import JsonResponse
+    from django.db.models import Sum
+    from django.db.models.functions import TruncMonth
+    from datetime import datetime
+
+    # Filter-Parameter
+    categorygroup_ids = request.GET.getlist('categorygroups[]')
+    category_ids = request.GET.getlist('categories[]')
+    person = request.GET.get('person', 'all')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    # Parse person filter
+    include_sigi = person in ['all', 'sigi']
+    include_robert = person in ['all', 'robert']
+
+    # CategoryGroup Config mit Farben
+    category_config = {
+        2: {'name': 'Haushaltsausgaben', 'color': 'rgb(91, 155, 213)'},
+        3: {'name': 'Wohnung', 'color': 'rgb(237, 125, 49)'},
+        4: {'name': 'Restaurant & Lieferservice', 'color': 'rgb(132, 151, 176)'},
+        5: {'name': 'Ärzte & Gesundheit', 'color': 'rgb(255, 192, 0)'},
+        6: {'name': 'Freizeit & Hobby & Urlaub', 'color': 'rgb(112, 173, 71)'},
+        7: {'name': 'Geschenke', 'color': 'rgb(68, 114, 196)'},
+        10: {'name': 'KFZ', 'color': 'rgb(255, 0, 102)'}
+    }
+
+    # Base Querysets
+    sigi_qs = FactTransactionsSigi.objects.filter(flag_id=5).exclude(
+        category_id=1
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    )
+
+    robert_qs = FactTransactionsRobert.objects.exclude(
+        category_id=1
+    ).exclude(
+        payee__payee_type__in=['transfer', 'kursschwankung']
+    )
+
+    # Anwenden von Filtern
+    if categorygroup_ids:
+        categorygroup_ids = [int(x) for x in categorygroup_ids]
+        sigi_qs = sigi_qs.filter(category__categorygroup_id__in=categorygroup_ids)
+        robert_qs = robert_qs.filter(category__categorygroup_id__in=categorygroup_ids)
+
+    if category_ids:
+        category_ids = [int(x) for x in category_ids]
+        sigi_qs = sigi_qs.filter(category_id__in=category_ids)
+        robert_qs = robert_qs.filter(category_id__in=category_ids)
+
+    if date_from:
+        sigi_qs = sigi_qs.filter(date__gte=date_from)
+        robert_qs = robert_qs.filter(date__gte=date_from)
+
+    if date_to:
+        sigi_qs = sigi_qs.filter(date__lte=date_to)
+        robert_qs = robert_qs.filter(date__lte=date_to)
+
+    # Aggregiere nach Monat und CategoryGroup
+    monthly_data = {}
+
+    if include_sigi:
+        sigi_monthly = sigi_qs.annotate(
+            month=TruncMonth('date')
+        ).values('month', 'category__categorygroup_id').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        ).order_by('month')
+
+        for item in sigi_monthly:
+            month = item['month'].strftime('%Y-%m')
+            group_id = item['category__categorygroup_id']
+            if group_id in category_config:
+                netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                if month not in monthly_data:
+                    monthly_data[month] = {}
+                monthly_data[month][group_id] = monthly_data[month].get(group_id, 0) + netto
+
+    if include_robert:
+        robert_monthly = robert_qs.annotate(
+            month=TruncMonth('date')
+        ).values('month', 'category__categorygroup_id').annotate(
+            inflow=Sum('inflow'),
+            outflow=Sum('outflow')
+        ).order_by('month')
+
+        for item in robert_monthly:
+            month = item['month'].strftime('%Y-%m')
+            group_id = item['category__categorygroup_id']
+            if group_id in category_config:
+                netto = float((item['outflow'] or 0) - (item['inflow'] or 0))
+                if month not in monthly_data:
+                    monthly_data[month] = {}
+                monthly_data[month][group_id] = monthly_data[month].get(group_id, 0) + netto
+
+    # Sortiere Monate chronologisch
+    sorted_months = sorted(monthly_data.keys())
+
+    # Erstelle Labels (Monat Jahr Format)
+    labels = []
+    for month_key in sorted_months:
+        try:
+            month_obj = datetime.strptime(month_key, '%Y-%m')
+            # Formatiere als "Monat Jahr" (z.B. "Jan 2024")
+            labels.append(month_obj.strftime('%b %Y'))
+        except:
+            labels.append(month_key)
+
+    # Erstelle Datasets für jede CategoryGroup
+    datasets = []
+    for group_id in sorted(category_config.keys()):
+        data = []
+        for month_key in sorted_months:
+            value = monthly_data[month_key].get(group_id, 0)
+            data.append(round(value, 2))
+
+        # Nur hinzufügen, wenn es Daten gibt
+        if any(d > 0 for d in data):
+            datasets.append({
+                'label': category_config[group_id]['name'],
+                'data': data,
+                'backgroundColor': category_config[group_id]['color'],
+                'borderColor': category_config[group_id]['color'],
+                'borderWidth': 1
+            })
+
+    return JsonResponse({
+        'labels': labels,
+        'datasets': datasets
+    })
