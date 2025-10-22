@@ -2651,21 +2651,27 @@ def household_dashboard(request):
 
     # KPI 6: Top 5 Kategorien aktueller Monat
     sigi_current_top = sigi_current.values('category__category').annotate(
-        total=Sum('outflow') - Sum('inflow')
-    ).order_by('-total')[:5]
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    )
     robert_current_top = robert_current.values('category__category').annotate(
-        total=Sum('outflow') - Sum('inflow')
-    ).order_by('-total')[:5]
+        total_outflow=Sum('outflow'),
+        total_inflow=Sum('inflow')
+    )
 
     # Kombiniere und aggregiere Top Kategorien
     from collections import defaultdict
     category_totals = defaultdict(float)
     for item in sigi_current_top:
         if item['category__category']:
-            category_totals[item['category__category']] += float(item['total'])
+            outflow = float(item['total_outflow'] or 0)
+            inflow = float(item['total_inflow'] or 0)
+            category_totals[item['category__category']] += (outflow - inflow)
     for item in robert_current_top:
         if item['category__category']:
-            category_totals[item['category__category']] += float(item['total'])
+            outflow = float(item['total_outflow'] or 0)
+            inflow = float(item['total_inflow'] or 0)
+            category_totals[item['category__category']] += (outflow - inflow)
 
     top_categories = sorted(
         [{'name': k, 'amount': v} for k, v in category_totals.items()],
