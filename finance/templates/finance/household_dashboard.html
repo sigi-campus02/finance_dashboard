@@ -1002,6 +1002,102 @@
         scroll-behavior: smooth;
     }
 
+    /* Dark Mode Styles */
+    [data-theme="dark"] {
+        --color-card-bg: #1e1e1e;
+        --color-card-border: #343a40;
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] body {
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .card,
+    [data-theme="dark"] .kpi-card,
+    [data-theme="dark"] .drilldown-card,
+    [data-theme="dark"] .filter-panel-card {
+        background-color: #1e1e1e;
+        color: #e0e0e0;
+        border-color: #343a40;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .table-light {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .text-muted {
+        color: #9e9e9e !important;
+    }
+
+    [data-theme="dark"] .card-header.bg-white {
+        background-color: #2a2a2a !important;
+    }
+
+    /* Dark Mode Toggle */
+    .dark-mode-toggle {
+        position: relative;
+        width: 50px;
+        height: 26px;
+        background-color: #ccc;
+        border-radius: 13px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .dark-mode-toggle.active {
+        background-color: var(--color-sigi);
+    }
+
+    .dark-mode-toggle::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 22px;
+        height: 22px;
+        background-color: white;
+        border-radius: 50%;
+        transition: transform 0.3s ease;
+    }
+
+    .dark-mode-toggle.active::after {
+        transform: translateX(24px);
+    }
+
+    /* Breadcrumbs */
+    .breadcrumb-custom {
+        background: transparent;
+        padding: 0.5rem 0;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+    }
+
+    .breadcrumb-custom .breadcrumb-item + .breadcrumb-item::before {
+        content: "›";
+        color: var(--color-neutral);
+    }
+
+    .breadcrumb-custom a {
+        color: var(--color-sigi);
+        text-decoration: none;
+    }
+
+    .breadcrumb-custom a:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb-custom .active {
+        color: #6c757d;
+    }
+
     /* Improve page header spacing on mobile */
     @media (max-width: 576px) {
         .container-fluid > .d-flex:first-of-type {
@@ -1019,6 +1115,14 @@
 </style>
 
 <div class="container-fluid">
+    <!-- Breadcrumbs (PHASE 5) -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb breadcrumb-custom">
+            <li class="breadcrumb-item"><a href="{% url 'finance:dashboard' %}"><i class="bi bi-house-door"></i> Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Haushalt</li>
+        </ol>
+    </nav>
+
     <!-- Modernisierter Header -->
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div class="flex-grow-1">
@@ -1038,18 +1142,25 @@
                 </div>
             </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <!-- Dark Mode Toggle -->
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-sun-fill text-warning"></i>
+                <div class="dark-mode-toggle" id="darkModeToggle" role="switch" aria-checked="false" aria-label="Dark Mode umschalten" tabindex="0"></div>
+                <i class="bi bi-moon-fill text-primary"></i>
+            </div>
+
             <div class="person-filter-wrapper">
                 <div class="person-filter-card">
                     <label for="personFilter" class="form-label mb-0 text-muted small">Person</label>
-                    <select id="personFilter" class="form-select form-select-sm">
+                    <select id="personFilter" class="form-select form-select-sm" aria-label="Person Filter">
                         {% for option in person_options %}
                             <option value="{{ option.value }}" {% if option.value == current_person %}selected{% endif %}>{{ option.label }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-            <a href="{% url 'finance:add_transaction' %}" class="btn btn-primary">
+            <a href="{% url 'finance:add_transaction' %}" class="btn btn-primary" aria-label="Neue Transaktion hinzufügen">
                 <i class="bi bi-plus-circle"></i> Neue Transaktion
             </a>
         </div>
@@ -4149,9 +4260,13 @@ async function loadTransactions(append = false) {
         renderTransactions(data);
         updatePaginationInfo(data.pagination);
         updateTotals(data.totals);
+
+        // Announce für Screen Reader
+        announceUpdate(`${data.pagination.total_count} Transaktionen geladen`);
     } catch (error) {
         console.error('Fehler beim Laden der Transaktionen:', error);
         showFilterNotification('Fehler beim Laden der Transaktionen', 'error');
+        announceUpdate('Fehler beim Laden der Transaktionen');
     }
 }
 
@@ -4643,6 +4758,134 @@ function exportTransactions(format) {
     }
 }
 
+// ===== PHASE 5: DARK MODE & ACCESSIBILITY =====
+
+// Dark Mode Toggle
+function initializeDarkMode() {
+    const toggle = document.getElementById('darkModeToggle');
+    const htmlElement = document.documentElement;
+
+    // Lade gespeicherte Präferenz
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+
+    // Event Listener
+    toggle.addEventListener('click', toggleDarkMode);
+    toggle.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleDarkMode();
+        }
+    });
+
+    function toggleDarkMode() {
+        const currentTheme = htmlElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+    }
+
+    function setTheme(theme) {
+        htmlElement.setAttribute('data-theme', theme);
+        toggle.classList.toggle('active', theme === 'dark');
+        toggle.setAttribute('aria-checked', theme === 'dark');
+    }
+}
+
+// Keyboard Navigation für Tabelle
+function setupKeyboardNavigation() {
+    const table = document.getElementById('transactionsTable');
+    if (!table) return;
+
+    let currentRow = -1;
+    const rows = table.querySelectorAll('tbody tr');
+
+    document.addEventListener('keydown', function(e) {
+        // Nur wenn Focus auf Tabelle oder nirgends
+        if (!document.activeElement || document.activeElement === document.body) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentRow = Math.min(currentRow + 1, rows.length - 1);
+                rows[currentRow]?.focus();
+                rows[currentRow]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentRow = Math.max(currentRow - 1, 0);
+                rows[currentRow]?.focus();
+                rows[currentRow]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+    });
+
+    // Mache Rows fokussierbar
+    rows.forEach((row, index) => {
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('role', 'button');
+        row.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                row.click();
+            }
+        });
+    });
+}
+
+// Skip Navigation Link
+function setupSkipLinks() {
+    const skipLinks = document.querySelectorAll('a[href^="#"]');
+    skipLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href').substring(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                e.preventDefault();
+                target.setAttribute('tabindex', '-1');
+                target.focus();
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    });
+}
+
+// Focus Management für Offcanvas
+function setupOffcanvasFocusManagement() {
+    const offcanvases = document.querySelectorAll('.offcanvas');
+
+    offcanvases.forEach(offcanvas => {
+        offcanvas.addEventListener('shown.bs.offcanvas', function() {
+            // Fokussiere ersten fokussierbaren Element
+            const focusable = this.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable) {
+                setTimeout(() => focusable.focus(), 100);
+            }
+        });
+
+        offcanvas.addEventListener('hidden.bs.offcanvas', function() {
+            // Gebe Focus zurück zum Trigger-Element
+            document.activeElement?.blur();
+        });
+    });
+}
+
+// Live Region für dynamische Updates
+function announceUpdate(message) {
+    let liveRegion = document.getElementById('ariaLiveRegion');
+    if (!liveRegion) {
+        liveRegion = document.createElement('div');
+        liveRegion.id = 'ariaLiveRegion';
+        liveRegion.setAttribute('role', 'status');
+        liveRegion.setAttribute('aria-live', 'polite');
+        liveRegion.setAttribute('aria-atomic', 'true');
+        liveRegion.style.position = 'absolute';
+        liveRegion.style.left = '-10000px';
+        liveRegion.style.width = '1px';
+        liveRegion.style.height = '1px';
+        liveRegion.style.overflow = 'hidden';
+        document.body.appendChild(liveRegion);
+    }
+    liveRegion.textContent = message;
+}
+
 // Initialisierung beim Laden der Seite
 document.addEventListener('DOMContentLoaded', function() {
     const yearSelect = document.getElementById('barChartYearSelect');
@@ -4658,6 +4901,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadFilterOptions();
     setupInstantSearch();
 
+    // Phase 5: Dark Mode & Accessibility
+    initializeDarkMode();
+    setupKeyboardNavigation();
+    setupSkipLinks();
+    setupOffcanvasFocusManagement();
+
     if (personSelect) {
         currentPerson = personSelect.value;
         personSelect.addEventListener('change', function() {
@@ -4665,12 +4914,14 @@ document.addEventListener('DOMContentLoaded', function() {
             updateFilterChips();
             resetPieDrilldownState();
             reloadAllCharts();
+            announceUpdate(`Filter geändert auf ${this.options[this.selectedIndex].text}`);
         });
     }
 
     if (yearSelect) {
         yearSelect.addEventListener('change', function() {
             loadMonthlyChart(this.value);
+            announceUpdate(`Jahr geändert auf ${this.value}`);
         });
     }
 
