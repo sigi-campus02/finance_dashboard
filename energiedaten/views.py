@@ -182,9 +182,20 @@ def energiedaten_dashboard(request):
             parsed_rows = []
             invalid_rows = 0
 
-            for row_data in rows[1:]:  # Erste Zeile enthält normalerweise die Überschriften
+            for row_data in rows:
                 datum = _parse_excel_date(row_data.get(0))
-                verbrauch = _parse_excel_decimal(row_data.get(3))
+
+                # Der Verbrauch steht in vielen Dateien in der dritten Spalte.
+                verbrauch_roh = row_data.get(2)
+                if verbrauch_roh in (None, ""):
+                    # Fallback auf die vierte Spalte für ältere Exporte.
+                    verbrauch_roh = row_data.get(3)
+
+                verbrauch = _parse_excel_decimal(verbrauch_roh)
+
+                if datum is None and verbrauch is None:
+                    # Leere oder rein textuelle Zeilen (z.B. "Zählpunkt") überspringen wir still.
+                    continue
 
                 if not datum or verbrauch is None:
                     invalid_rows += 1
