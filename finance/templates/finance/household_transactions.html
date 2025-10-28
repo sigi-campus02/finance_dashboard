@@ -238,101 +238,117 @@
 <div class="card">
     <div class="card-body">
         <!-- Desktop Tabelle -->
-        <div class="table-responsive desktop-table">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Datum</th>
-                        <th>Payee</th>
-                        <th>Kategorie</th>
-                        <th>Memo</th>
-                        <th class="text-end">Ausgaben</th>
-                        <th class="text-end">Einnahmen</th>
-                        <th class="text-center">Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for trans in transactions %}
-                    <tr class="{% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}table-secondary{% endif %} {% if trans.person == 'Sigi' %}row-sigi{% else %}row-robert{% endif %}"
-                        {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}style="opacity: 0.6;"{% endif %}>
-                        <td>{{ trans.date|date:"d.m.Y" }}</td>
-                        <td>
-                            {{ trans.payee|default:"-" }}
-                            {% if trans.payee.payee_type == 'transfer' %}
-                                <span class="badge bg-secondary" title="Transfer zwischen Konten - nicht in Statistiken">
-                                    <i class="bi bi-arrow-left-right"></i> Transfer
-                                </span>
-                            {% elif trans.payee.payee_type == 'kursschwankung' %}
-                                <span class="badge bg-info" title="Kursschwankung bei Investments - nicht in Statistiken">
-                                    <i class="bi bi-graph-up-arrow"></i> Kursschwankung
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <small class="text-muted">{{ trans.category.categorygroup|default:"-" }}</small><br>
-                            {{ trans.category|default:"-" }}
-                        </td>
-                        <td class="memo-cell"><small>{{ trans.memo|default:"-" }}</small></td>
-                        <td class="text-end text-danger">
-                            {% if trans.outflow %}€ {{ trans.outflow|floatformat:2 }}{% else %}-{% endif %}
-                        </td>
-                        <td class="text-end text-success">
-                            {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
-                        </td>
-                        <td class="text-center">
-                            <div class="d-inline-flex align-items-center gap-2">
-                                <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
-                                   class="text-secondary action-icon"
-                                   title="Bearbeiten">
-                                    <i class="bi bi-pencil-square"></i>
-                                </a>
-                                <i class="bi bi-trash text-danger action-icon"
-                                   data-bs-toggle="modal"
-                                   data-bs-target="#deleteModal"
-                                   data-transaction-id="{{ trans.id }}"
-                                   data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
-                                   data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
-                                   data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
-                                   data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
-                                   data-transaction-person="{{ trans.person }}"
-                                   title="Löschen"></i>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center">Keine Transaktionen gefunden</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot class="table-light">
-                    <tr class="fw-bold">
-                        <td colspan="4" class="text-end">Summe Ausgaben (gefiltert):</td>
-                        <td class="text-end text-danger">€ {{ total_outflow|floatformat:2 }}</td>
-                        <td class="text-end">-</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td colspan="4" class="text-end">
-                            <small class="text-muted">
-                                Robert: <span class="badge bg-success">{{ robert_percentage|floatformat:1 }}%</span>
-                                |
-                                Sigi: <span class="badge bg-primary">{{ sigi_percentage|floatformat:1 }}%</span>
-                            </small>
-                        </td>
-                        <td colspan="2" class="text-end">
-                            <small class="text-muted">
-                                Robert: €{{ robert_outflow|floatformat:2 }} | Sigi: €{{ sigi_outflow|floatformat:2 }}
-                            </small>
-                        </td>
-                        <td></td>
-                    </tr>
-                </tfoot>
-            </table>
+        <div class="desktop-table">
+            <div class="card mb-3">
+                <div class="card-body bg-light d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                    <div class="mb-2 mb-lg-0">
+                        <strong>Summe Ausgaben (gefiltert)</strong>
+                        <div class="small text-muted">
+                            Robert: <span class="badge bg-success">{{ robert_percentage|floatformat:1 }}%</span>
+                            (€{{ robert_outflow|floatformat:2 }})
+                            |
+                            Sigi: <span class="badge bg-primary">{{ sigi_percentage|floatformat:1 }}%</span>
+                            (€{{ sigi_outflow|floatformat:2 }})
+                        </div>
+                    </div>
+                    <div class="text-lg-end">
+                        <span class="text-muted small d-block">Gesamtausgaben</span>
+                        <span class="h5 mb-0 text-danger">€ {{ total_outflow|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Payee</th>
+                            <th>Kategorie</th>
+                            <th>Memo</th>
+                            <th class="text-end">Ausgaben</th>
+                            <th class="text-end">Einnahmen</th>
+                            <th class="text-center">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trans in transactions %}
+                        <tr class="{% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}table-secondary{% endif %} {% if trans.person == 'Sigi' %}row-sigi{% else %}row-robert{% endif %}"
+                            {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}style="opacity: 0.6;"{% endif %}>
+                            <td>{{ trans.date|date:"d.m.Y" }}</td>
+                            <td>
+                                {{ trans.payee|default:"-" }}
+                                {% if trans.payee.payee_type == 'transfer' %}
+                                    <span class="badge bg-secondary" title="Transfer zwischen Konten - nicht in Statistiken">
+                                        <i class="bi bi-arrow-left-right"></i> Transfer
+                                    </span>
+                                {% elif trans.payee.payee_type == 'kursschwankung' %}
+                                    <span class="badge bg-info" title="Kursschwankung bei Investments - nicht in Statistiken">
+                                        <i class="bi bi-graph-up-arrow"></i> Kursschwankung
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ trans.category.categorygroup|default:"-" }}</small><br>
+                                {{ trans.category|default:"-" }}
+                            </td>
+                            <td class="memo-cell"><small>{{ trans.memo|default:"-" }}</small></td>
+                            <td class="text-end text-danger">
+                                {% if trans.outflow %}€ {{ trans.outflow|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                            <td class="text-end text-success">
+                                {% if trans.inflow %}€ {{ trans.inflow|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-inline-flex align-items-center gap-2">
+                                    <a href="{% url 'finance:edit_transaction' trans.id %}?next={{ request.get_full_path|urlencode }}"
+                                       class="text-secondary action-icon"
+                                       title="Bearbeiten">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <i class="bi bi-trash text-danger action-icon"
+                                       data-bs-toggle="modal"
+                                       data-bs-target="#deleteModal"
+                                       data-transaction-id="{{ trans.id }}"
+                                       data-transaction-date="{{ trans.date|date:'d.m.Y' }}"
+                                       data-transaction-payee="{{ trans.payee|default:'Unbekannt' }}"
+                                       data-transaction-amount="€ {{ trans.outflow|default:trans.inflow|floatformat:2 }}"
+                                       data-transaction-category="{{ trans.category|default:'Unbekannt' }}"
+                                       data-transaction-person="{{ trans.person }}"
+                                       title="Löschen"></i>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">Keine Transaktionen gefunden</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Mobile Card Ansicht -->
         <div class="mobile-cards">
+            <div class="card mt-2">
+                <div class="card-body bg-light" style="padding: 0.75rem;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>Summe Ausgaben:</strong>
+                        <strong class="text-danger">€ {{ total_outflow|floatformat:2 }}</strong>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-success">{{ robert_percentage|floatformat:1 }}%</span>
+                            <small class="ms-1">€{{ robert_outflow|floatformat:2 }}</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">{{ sigi_percentage|floatformat:1 }}%</span>
+                            <small class="ms-1">€{{ sigi_outflow|floatformat:2 }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
             {% for trans in transactions %}
             <div class="card transaction-card {% if trans.payee.payee_type == 'transfer' or trans.payee.payee_type == 'kursschwankung' %}card-transfer{% elif trans.person == 'Sigi' %}card-sigi{% else %}card-robert{% endif %}">
                 <div class="card-body">
@@ -400,26 +416,6 @@
             </div>
             {% endfor %}
 
-            <!-- Mobile Summen -->
-            <div class="card mt-2">
-                <div class="card-body bg-light" style="padding: 0.75rem;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong>Summe Ausgaben:</strong>
-                        <strong class="text-danger">€ {{ total_outflow|floatformat:2 }}</strong>
-                    </div>
-                    <hr class="my-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-success">{{ robert_percentage|floatformat:1 }}%</span>
-                            <small class="ms-1">€{{ robert_outflow|floatformat:2 }}</small>
-                        </div>
-                        <div>
-                            <span class="badge bg-primary">{{ sigi_percentage|floatformat:1 }}%</span>
-                            <small class="ms-1">€{{ sigi_outflow|floatformat:2 }}</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
