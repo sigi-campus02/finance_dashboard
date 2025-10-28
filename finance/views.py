@@ -1078,7 +1078,7 @@ def edit_transaction(request, pk):
         initial = {
             'account': transaction.account,
             'flag': transaction.flag,
-            'date': transaction.date,
+            'date': transaction.date.strftime('%Y-%m-%d') if transaction.date else '',
             'payee': transaction.payee.payee if transaction.payee else '',
             'category_group': transaction.category.categorygroup if transaction.category else None,
             'category': transaction.category,
