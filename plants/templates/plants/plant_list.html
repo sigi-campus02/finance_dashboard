@@ -1,0 +1,317 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Meine Pflanzen{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Header mit "Neue Pflanze" Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-flower1"></i> Meine Pflanzen</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPlantModal">
+            <i class="bi bi-plus-lg"></i> Neue Pflanze
+        </button>
+    </div>
+
+    <!-- Statistik Cards (Optional) -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-flower1 text-success" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ plants.count }}</h3>
+                    <p class="text-muted mb-0 small">Pflanzen</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-camera text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ total_images }}</h3>
+                    <p class="text-muted mb-0 small">Fotos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pflanzen Grid -->
+    {% if plants %}
+    <div class="row g-3">
+        {% for plant in plants %}
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <a href="{% url 'plants:plant_timeline' plant.id %}" class="text-decoration-none">
+                <div class="card plant-card h-100 shadow-sm">
+                    <!-- Bild -->
+                    <div class="plant-image-container">
+                        {% if plant.latest_image %}
+                            <img src="{{ plant.latest_image.image.url }}" 
+                                 class="card-img-top plant-thumbnail" 
+                                 alt="{{ plant.name }}"
+                                 loading="lazy">
+                            <div class="image-overlay">
+                                <span class="badge bg-dark">
+                                    <i class="bi bi-images"></i> {{ plant.images.count }}
+                                </span>
+                            </div>
+                        {% else %}
+                            <div class="card-img-top plant-thumbnail-placeholder">
+                                <i class="bi bi-flower1"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Info -->
+                    <div class="card-body">
+                        <h5 class="card-title mb-1">{{ plant.name }}</h5>
+                        {% if plant.species %}
+                        <p class="card-text text-muted small mb-2">
+                            <i class="bi bi-info-circle"></i> {{ plant.species }}
+                        </p>
+                        {% endif %}
+                        
+                        <!-- Letztes Update -->
+                        {% if plant.latest_image %}
+                        <p class="card-text small text-muted mb-0">
+                            <i class="bi bi-clock"></i> 
+                            {{ plant.latest_image.captured_at|date:"d.m.Y" }}
+                        </p>
+                        {% else %}
+                        <p class="card-text small text-muted mb-0">
+                            <i class="bi bi-camera"></i> Noch keine Fotos
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Footer mit Quick Actions -->
+                    <div class="card-footer bg-transparent border-top-0 pt-0">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary flex-fill" 
+                                    onclick="event.preventDefault(); openCamera({{ plant.id }})">
+                                <i class="bi bi-camera-fill"></i> Foto
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" 
+                                    onclick="event.preventDefault(); editPlant({{ plant.id }}, '{{ plant.name }}', '{{ plant.species }}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+        <i class="bi bi-flower1" style="font-size: 5rem; color: #dee2e6;"></i>
+        <h3 class="mt-3 text-muted">Noch keine Pflanzen</h3>
+        <p class="text-muted">Lege deine erste Pflanze an und starte die Timeline!</p>
+        <button class="btn btn-primary btn-lg mt-3" data-bs-toggle="modal" data-bs-target="#createPlantModal">
+            <i class="bi bi-plus-lg"></i> Erste Pflanze anlegen
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Neue Pflanze anlegen -->
+<div class="modal fade" id="createPlantModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Neue Pflanze
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'plants:create_plant' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="plantName" class="form-label">Name *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="plantName" 
+                               name="name" 
+                               placeholder="z.B. Avokado, Monstera, Bonsai"
+                               required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="plantSpecies" class="form-label">Art/Sorte</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="plantSpecies" 
+                               name="species" 
+                               placeholder="z.B. Monstera deliciosa (optional)">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Anlegen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Pflanze bearbeiten -->
+<div class="modal fade" id="editPlantModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil"></i> Pflanze bearbeiten
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editPlantForm">
+                {% csrf_token %}
+                <input type="hidden" name="plant_id" id="editPlantId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editPlantName" class="form-label">Name *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="editPlantName" 
+                               name="name" 
+                               required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPlantSpecies" class="form-label">Art/Sorte</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="editPlantSpecies" 
+                               name="species">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="deletePlant()">
+                        <i class="bi bi-trash"></i> Löschen
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Plant Card Styling */
+.plant-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+}
+
+.plant-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
+}
+
+/* Bild Container */
+.plant-image-container {
+    position: relative;
+    padding-top: 100%; /* 1:1 Aspect Ratio */
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.plant-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.plant-thumbnail-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    font-size: 4rem;
+    color: #adb5bd;
+}
+
+.image-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.image-overlay .badge {
+    backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.6) !important;
+}
+
+/* Card Body */
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+/* Mobile Optimierungen */
+@media (max-width: 576px) {
+    .plant-card .card-body {
+        padding: 0.75rem;
+    }
+    
+    .plant-card .card-footer {
+        padding: 0.75rem;
+    }
+}
+</style>
+
+<script>
+// Kamera für Quick Action öffnen
+function openCamera(plantId) {
+    window.location.href = `/plants/${plantId}/`;  // ← Zur Timeline statt add-image
+}
+
+// Pflanze bearbeiten
+const editModal = new bootstrap.Modal(document.getElementById('editPlantModal'));
+
+function editPlant(plantId, name, species) {
+    document.getElementById('editPlantId').value = plantId;
+    document.getElementById('editPlantName').value = name;
+    document.getElementById('editPlantSpecies').value = species || '';
+    document.getElementById('editPlantForm').action = `/plants/${plantId}/edit/`;
+    editModal.show();
+}
+
+// Pflanze löschen
+function deletePlant() {
+    if (confirm('Möchtest du diese Pflanze wirklich löschen? Alle Fotos werden ebenfalls gelöscht!')) {
+        const plantId = document.getElementById('editPlantId').value;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/plants/${plantId}/delete/`;
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        form.appendChild(csrfInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

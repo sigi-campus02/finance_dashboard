@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'billa',
     'energiedaten',
     'bitpanda',
+    'plants',
 ]
 
 MIDDLEWARE = [
@@ -262,6 +263,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # File Upload Settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB
 
 # ========================================
 # CLOUDFLARE R2 STORAGE
@@ -289,3 +291,10 @@ if USE_R2_STORAGE:
 
     # Storage Backend
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+    # ← NEU: Separate Bucket-Namen für verschiedene Zwecke
+    BILLA_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', 'billainvoices')
+    PLANT_PHOTOS_BUCKET_NAME = os.environ.get('PLANT_PHOTOS_BUCKET_NAME', 'plant-photos')
+
+    # ← NEU: Public URL für Pflanzenfotos (nach Public Access Aktivierung)
+    PLANT_PHOTOS_PUBLIC_URL = os.environ.get('PLANT_PHOTOS_PUBLIC_URL', '')
