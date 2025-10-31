@@ -152,7 +152,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Navbar -->
+<!-- Navbar -->
     <nav class="navbar navbar-dark bg-primary">
         <div class="container-fluid">
         
@@ -169,47 +169,109 @@
             <div class="collapse d-md-none" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                 
-                    <!-- PRIVAT -->
+                    <!-- ==================== PRIVAT BEREICH (nur für Sigi) ==================== -->
                     {% if user.username != 'robert' %}
+                    <li class="nav-item mt-2 mb-1">
+                        <span class="nav-link text-white-50 fw-bold small">
+                            <i class="bi bi-lock-fill"></i> PRIVAT
+                        </span>
+                    </li>
+                    
+                    <!-- Dashboard -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:dashboard' %}">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                           href="{% url 'finance:dashboard' %}">
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
+                    
+                    <!-- Transaktionen -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
+                           href="{% url 'finance:transactions' %}">
+                            <i class="bi bi-list"></i> Transaktionen
+                        </a>
+                    </li>
+                    
+                    <!-- Scheduled Transactions (alle) -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' %}active{% endif %}"
+                           href="{% url 'finance:scheduled_transactions' %}">
+                            <i class="bi bi-calendar-event"></i> Scheduled Transactions
+                        </a>
+                    </li>
+                    
+                    <!-- Vermögensübersicht -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
+                           href="{% url 'finance:asset_overview' %}">
+                            <i class="bi bi-wallet2"></i> Vermögensübersicht
+                        </a>
+                    </li>
+                    
+                    <!-- Bitpanda Portfolio -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.namespace == 'bitpanda' %}active{% endif %}"
+                           href="{% url 'bitpanda:bitpanda_dashboard' %}">
+                            <i class="bi bi-currency-bitcoin"></i> Bitpanda Portfolio
+                        </a>
+                    </li>
+                    
+                    <!-- Investmentanpassung -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'adjust_investments' %}active{% endif %}"
+                           href="{% url 'finance:adjust_investments' %}">
+                            <i class="bi bi-graph-up-arrow"></i> Investmentanpassung
+                        </a>
+                    </li>
+                    
+                    <!-- Geräteverwaltung -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
+                           href="{% url 'finance:manage_devices' %}">
+                            <i class="bi bi-laptop"></i> Geräteverwaltung
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <hr class="text-white-50 my-2">
+                    </li>
                     {% endif %}
-                
-                    <!-- Haushalt -->
+                    
+                    <!-- ==================== HAUSHALT BEREICH (für Sigi & Robert) ==================== -->
+                    <li class="nav-item mt-2 mb-1">
+                        <span class="nav-link text-white-50 fw-bold small">
+                            <i class="bi bi-house-fill"></i> HAUSHALT
+                        </span>
+                    </li>
+                    
+                    <!-- Haushalt Dashboard -->
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}"
                            href="{% url 'finance:household_dashboard' %}">
-                            <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
+                            <i class="bi bi-bar-chart-fill"></i> Haushalt Dashboard
                         </a>
                     </li>
-
+                    
+                    <!-- Transaktionen Haushalt -->
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.namespace == 'energiedaten' %}active{% endif %}"
-                           href="{% url 'energiedaten:dashboard' %}">
-                            <i class="bi bi-lightning-charge"></i> Energieverbrauch
+                        <a class="nav-link {% if request.resolver_match.url_name == 'household_transactions' %}active{% endif %}"
+                           href="{% url 'finance:household_transactions' %}">
+                            <i class="bi bi-house-door"></i> Transaktionen Haushalt
                         </a>
                     </li>
-                
-                    <!-- PRIVAT -->
-                    {% if user.username != 'robert' %}
-                    <li>
-                        <a class="nav-link" href="{% url 'finance:transactions' %}">
-                        <i class="bi bi-list"></i> Alle Transaktionen
+                    
+                    <!-- Scheduled Transactions (nur für Robert) -->
+                    {% if user.username == 'robert' %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' %}active{% endif %}"
+                           href="{% url 'finance:scheduled_transactions' %}">
+                            <i class="bi bi-calendar-event"></i> Scheduled Transactions
                         </a>
                     </li>
                     {% endif %}
-                
-                    <!-- Haushalt -->
-                    <li>
-                        <a class="nav-link" href="{% url 'finance:household_transactions' %}">
-                        <i class="bi bi-house-door"></i> Transaktionen Haushalt
-                        </a>
-                    </li>
-                
-                    <!-- Haushalt -->
+                    
+                    <!-- Transaktion hinzufügen -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
@@ -223,8 +285,16 @@
                             </a></li>
                         </ul>
                     </li>
-
-                    <!-- Haushalt -->
+                    
+                    <!-- Energieverbrauch -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.namespace == 'energiedaten' %}active{% endif %}"
+                           href="{% url 'energiedaten:dashboard' %}">
+                            <i class="bi bi-lightning-charge"></i> Energieverbrauch
+                        </a>
+                    </li>
+                    
+                    <!-- Billa (mit Submenu) -->
                     <li class="nav-item">
                         <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
                            href="#"
@@ -283,44 +353,18 @@
                             </ul>
                         </div>
                     </li>
-
-                    <!-- PRIVAT -->
-                    {% if user.username != 'robert' %}
+                    
+                    <!-- Pflanzen -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:scheduled_transactions' %}">
-                            <i class="bi bi-calendar-event"></i> Scheduled Transactions
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'finance:asset_overview' %}">
-                            <i class="bi bi-wallet2"></i> Vermögen
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'adjust_investments' %}active{% endif %}"
-                           href="{% url 'finance:adjust_investments' %}">
-                            <i class="bi bi-graph-up-arrow"></i> Investment-Anpassung
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
-                           href="{% url 'finance:manage_devices' %}">
-                            <i class="bi bi-laptop"></i> Geräteverwaltung
-                        </a>
-                    </li>
-                        
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'plants:plant_list' %}">
+                        <a class="nav-link {% if request.resolver_match.namespace == 'plants' %}active{% endif %}"
+                           href="{% url 'plants:plant_list' %}">
                             <i class="bi bi-flower1"></i> Pflanzen
                         </a>
                     </li>
-                    {% endif %}
                     
+                    <!-- Logout -->
                     {% if user.is_authenticated %}
-                    <li class="nav-item">
+                    <li class="nav-item mt-3">
                         <form method="post" action="{% url 'logout' %}" class="d-inline">
                             {% csrf_token %}
                             <button type="submit" class="nav-link btn btn-link text-white-50" style="border: none; background: none;">
@@ -331,6 +375,7 @@
                     {% endif %}
                 </ul>
             </div>
+            
             <!-- Logout Button auf Desktop (d-none d-md-block) -->
             {% if user.is_authenticated %}
             <div class="d-none d-md-block ms-auto">
@@ -349,58 +394,114 @@
     <div class="container-fluid">
         <div class="row">
 
-            <!-- ✅ Sidebar - ERWEITERT -->
+<!-- ✅ Sidebar - ERWEITERT -->
             <nav class="col-md-2 d-none d-md-block sidebar">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
                     
-                        <!-- PRIVAT -->
+                        <!-- ==================== PRIVAT BEREICH (nur für Sigi) ==================== -->
                         {% if user.username != 'robert' %}
+                        <li class="nav-item mb-2">
+                            <span class="nav-link text-muted fw-bold small">
+                                <i class="bi bi-lock-fill"></i> PRIVAT
+                            </span>
+                        </li>
+                        
+                        <!-- Dashboard -->
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
                                href="{% url 'finance:dashboard' %}">
-                                <i class="bi bi-speedometer2"></i>
-                                Übersicht
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        
+                        <!-- Transaktionen -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
+                               href="{% url 'finance:transactions' %}">
+                                <i class="bi bi-list-ul"></i> Transaktionen
+                            </a>
+                        </li>
+                        
+                        <!-- Scheduled Transactions (alle) -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
+                               href="{% url 'finance:scheduled_transactions' %}">
+                                <i class="bi bi-calendar-event"></i> Scheduled Transactions
+                            </a>
+                        </li>
+                        
+                        <!-- Vermögensübersicht -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
+                               href="{% url 'finance:asset_overview' %}">
+                                <i class="bi bi-wallet2"></i> Vermögensübersicht
+                            </a>
+                        </li>
+                        
+                        <!-- Bitpanda Portfolio -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.namespace == 'bitpanda' %}active{% endif %}"
+                               href="{% url 'bitpanda:bitpanda_dashboard' %}">
+                                <i class="bi bi-currency-bitcoin"></i> Bitpanda Portfolio
+                            </a>
+                        </li>
+                        
+                        <!-- Investmentanpassung -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'adjust_investments' %}active{% endif %}"
+                               href="{% url 'finance:adjust_investments' %}">
+                                <i class="bi bi-graph-up-arrow"></i> Investmentanpassung
+                            </a>
+                        </li>
+                        
+                        <!-- Geräteverwaltung -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
+                               href="{% url 'finance:manage_devices' %}">
+                                <i class="bi bi-laptop"></i> Geräteverwaltung
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item my-2">
+                            <hr class="text-muted">
+                        </li>
+                        {% endif %}
+                        
+                        <!-- ==================== HAUSHALT BEREICH (für Sigi & Robert) ==================== -->
+                        <li class="nav-item mb-2">
+                            <span class="nav-link text-muted fw-bold small">
+                                <i class="bi bi-house-fill"></i> HAUSHALT
+                            </span>
+                        </li>
+                        
+                        <!-- Haushalt Dashboard -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}"
+                               href="{% url 'finance:household_dashboard' %}">
+                                <i class="bi bi-bar-chart-fill"></i> Haushalt Dashboard
+                            </a>
+                        </li>
+                        
+                        <!-- Transaktionen Haushalt -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'household_transactions' %}active{% endif %}"
+                               href="{% url 'finance:household_transactions' %}">
+                                <i class="bi bi-house-door"></i> Transaktionen Haushalt
+                            </a>
+                        </li>
+                        
+                        <!-- Scheduled Transactions (nur für Robert) -->
+                        {% if user.username == 'robert' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
+                               href="{% url 'finance:scheduled_transactions' %}">
+                                <i class="bi bi-calendar-event"></i> Scheduled Transactions
                             </a>
                         </li>
                         {% endif %}
                         
-                        <!-- Haushalt -->
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'household_dashboard' %}active{% endif %}"
-                               href="{% url 'finance:household_dashboard' %}">
-                                <i class="bi bi-bar-chart-fill"></i> Dashboard Haushalt
-                            </a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.namespace == 'energiedaten' %}active{% endif %}"
-                               href="{% url 'energiedaten:dashboard' %}">
-                                <i class="bi bi-lightning-charge"></i>
-                                Energieverbrauch
-                            </a>
-                        </li>
-                    
-                        <!-- PRIVAT -->
-                        {% if user.username != 'robert' %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
-                               href="{% url 'finance:transactions' %}">
-                                <i class="bi bi-list-ul"></i>
-                                Alle Transaktionen
-                            </a>
-                        </li>
-                        {% endif %}
-                    
-                        <!-- Haushalt -->
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'household_transactions' %}active{% endif %}"
-                               href="{% url 'finance:household_transactions' %}">
-                                <i class="bi bi-house-door"></i>
-                                Transaktionen Haushalt
-                            </a>
-                        </li>
-                    
+                        <!-- Transaktion hinzufügen -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="addTransactionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-plus-circle"></i> Transaktion hinzufügen
@@ -414,34 +515,16 @@
                                 </a></li>
                             </ul>
                         </li>
-                    
-                        <!-- PRIVAT -->
-                        {% if user.username != 'robert' %}
+                        
+                        <!-- Energieverbrauch -->
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'scheduled_transactions' or request.resolver_match.url_name == 'scheduled_transaction_create' or request.resolver_match.url_name == 'scheduled_transaction_edit' %}active{% endif %}"
-                               href="{% url 'finance:scheduled_transactions' %}">
-                                <i class="bi bi-calendar-event"></i>
-                                Scheduled Transactions
+                            <a class="nav-link {% if request.resolver_match.namespace == 'energiedaten' %}active{% endif %}"
+                               href="{% url 'energiedaten:dashboard' %}">
+                                <i class="bi bi-lightning-charge"></i> Energieverbrauch
                             </a>
                         </li>
-                            
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'asset_overview' %}active{% endif %}"
-                               href="{% url 'finance:asset_overview' %}">
-                                <i class="bi bi-wallet2"></i>
-                                Vermögen
-                            </a>
-                        </li>
-                            
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'adjust_investments' %}active{% endif %}"
-                               href="{% url 'finance:adjust_investments' %}">
-                                <i class="bi bi-graph-up-arrow"></i>
-                                Investment-Anpassung
-                            </a>
-                        </li>
-                            
-                        <!-- Haushalt -->
+                        
+                        <!-- Billa (mit Submenu) -->
                         <li class="nav-item">
                             <a class="nav-link dropdown-toggle {% if 'billa' in request.resolver_match.url_name %}active{% endif %}"
                                href="#"
@@ -501,13 +584,13 @@
                             </div>
                         </li>
                         
+                        <!-- Pflanzen -->
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'manage_devices' %}active{% endif %}"
-                               href="{% url 'finance:manage_devices' %}">
-                                <i class="bi bi-laptop"></i> Geräteverwaltung
+                            <a class="nav-link {% if request.resolver_match.namespace == 'plants' %}active{% endif %}"
+                               href="{% url 'plants:plant_list' %}">
+                                <i class="bi bi-flower1"></i> Pflanzen
                             </a>
                         </li>
-                        {% endif %}
                     </ul>
                 </div>
             </nav>

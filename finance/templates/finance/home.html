@@ -145,8 +145,12 @@
     .card-transactions { --card-color: #f39c12; }
     .card-scheduled { --card-color: #9b59b6; }
     .card-assets { --card-color: #27ae60; }
+    .card-bitpanda { --card-color: #f7931a; }
+    .card-investment { --card-color: #16a085; }
+    .card-devices { --card-color: #95a5a6; }
     .card-billa { --card-color: #34a853; }
     .card-energy { --card-color: #0d6efd; }
+    .card-plants { --card-color: #2ecc71; }
 
     /* Quick Actions */
     .quick-actions {
@@ -299,28 +303,26 @@
                     <span>Neue Transaktion</span>
                 </a>
             </div>
-            {% if user.username != 'robert' %}
-            <div class="{% if user.username != 'robert' %}col-md-6{% else %}col-12{% endif %}">
+            <div class="col-md-6">
                 <a href="{% url 'billa:billa_import' %}" class="quick-action-btn w-100">
                     <i class="bi bi-upload quick-action-icon"></i>
                     <span>Rechnung hochladen</span>
                 </a>
             </div>
-            {% endif %}
         </div>
     </div>
 
-    <!-- Hauptbereiche -->
+    <!-- ==================== PRIVAT BEREICH (nur für Sigi) ==================== -->
     {% if user.username != 'robert' %}
     <div class="section-header">
         <h2 class="section-title">
-            <span class="section-icon">📊</span>
-            Übersichten & Analysen
+            <span class="section-icon">🔒</span>
+            Privat
         </h2>
     </div>
 
     <div class="nav-grid">
-        <!-- Dashboard -->
+        <!-- Übersicht / Dashboard -->
         <a href="{% url 'finance:dashboard' %}" class="nav-card card-dashboard">
             <div class="card-icon">📈</div>
             <div class="card-content">
@@ -331,18 +333,29 @@
             </div>
         </a>
 
-        <!-- Haushalt Dashboard -->
-        <a href="{% url 'finance:household_dashboard' %}" class="nav-card card-household">
-            <div class="card-icon">🏠</div>
+        <!-- Transaktionen -->
+        <a href="{% url 'finance:transactions' %}" class="nav-card card-transactions">
+            <div class="card-icon">📝</div>
             <div class="card-content">
-                <div class="card-title">Haushalt Dashboard</div>
+                <div class="card-title">Transaktionen</div>
                 <div class="card-description">
-                    Detaillierte Analyse deiner Haushaltsausgaben mit Kategorien und Trends
+                    Alle deine Transaktionen im Überblick - filtern, suchen und analysieren
                 </div>
             </div>
         </a>
 
-        <!-- Vermögen -->
+        <!-- Geplante Transaktionen (alle) -->
+        <a href="{% url 'finance:scheduled_transactions' %}" class="nav-card card-scheduled">
+            <div class="card-icon">🔄</div>
+            <div class="card-content">
+                <div class="card-title">Scheduled Transactions</div>
+                <div class="card-description">
+                    Verwalte wiederkehrende Zahlungen wie Miete, Abos und regelmäßige Ausgaben
+                </div>
+            </div>
+        </a>
+
+        <!-- Vermögensübersicht -->
         <a href="{% url 'finance:asset_overview' %}" class="nav-card card-assets">
             <div class="card-icon">💰</div>
             <div class="card-content">
@@ -353,6 +366,7 @@
             </div>
         </a>
 
+        <!-- Bitpanda Portfolio -->
         <a href="{% url 'bitpanda:bitpanda_dashboard' %}" class="nav-card card-bitpanda">
             <div class="card-icon">₿</div>
             <div class="card-content">
@@ -363,24 +377,35 @@
             </div>
         </a>
 
-
-        <!-- Energieverbrauch -->
-        <a href="{% url 'energiedaten:dashboard' %}" class="nav-card card-energy">
-            <div class="card-icon">⚡</div>
+        <!-- Investmentanpassung -->
+        <a href="{% url 'finance:adjust_investments' %}" class="nav-card card-investment">
+            <div class="card-icon">📊</div>
             <div class="card-content">
-                <div class="card-title">Energieverbrauch</div>
+                <div class="card-title">Investmentanpassung</div>
                 <div class="card-description">
-                    Visualisiere Stromverbrauch, erkenne Spitzenzeiten und optimiere deine Haushaltsenergie
+                    Passe deine Investment-Strategie an und optimiere dein Portfolio
+                </div>
+            </div>
+        </a>
+
+        <!-- Geräteverwaltung -->
+        <a href="{% url 'finance:manage_devices' %}" class="nav-card card-devices">
+            <div class="card-icon">📱</div>
+            <div class="card-content">
+                <div class="card-title">Geräteverwaltung</div>
+                <div class="card-description">
+                    Verwalte deine angemeldeten Geräte und Sessions
                 </div>
             </div>
         </a>
     </div>
-    {% else %}
-    <!-- Hauptbereiche für Robert -->
+    {% endif %}
+
+    <!-- ==================== HAUSHALT BEREICH (für Sigi & Robert) ==================== -->
     <div class="section-header">
         <h2 class="section-title">
-            <span class="section-icon">📊</span>
-            Übersicht
+            <span class="section-icon">🏠</span>
+            Haushalt
         </h2>
     </div>
 
@@ -400,12 +425,25 @@
         <a href="{% url 'finance:household_transactions' %}" class="nav-card card-transactions">
             <div class="card-icon">📝</div>
             <div class="card-content">
-                <div class="card-title">Haushalt Transaktionen</div>
+                <div class="card-title">Transaktionen Haushalt</div>
                 <div class="card-description">
                     Alle Haushaltsbuchungen im Überblick - filtern, suchen und analysieren
                 </div>
             </div>
         </a>
+
+        <!-- Scheduled Transactions (nur Robert) -->
+        {% if user.username == 'robert' %}
+        <a href="{% url 'finance:scheduled_transactions' %}" class="nav-card card-scheduled">
+            <div class="card-icon">🔄</div>
+            <div class="card-content">
+                <div class="card-title">Scheduled Transactions</div>
+                <div class="card-description">
+                    Geplante Haushaltszahlungen und wiederkehrende Ausgaben
+                </div>
+            </div>
+        </a>
+        {% endif %}
 
         <!-- Energieverbrauch -->
         <a href="{% url 'energiedaten:dashboard' %}" class="nav-card card-energy">
@@ -413,63 +451,29 @@
             <div class="card-content">
                 <div class="card-title">Energieverbrauch</div>
                 <div class="card-description">
-                    Behalte deinen täglichen Stromverbrauch im Blick und entdecke Einsparpotenziale
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endif %}
-
-    <!-- Transaktionsverwaltung -->
-    {% if user.username != 'robert' %}
-    <div class="section-header">
-        <h2 class="section-title">
-            <span class="section-icon">💳</span>
-            Transaktionsverwaltung
-        </h2>
-    </div>
-
-    <div class="nav-grid">
-        <!-- Transaktionen -->
-        <a href="{% url 'finance:transactions' %}" class="nav-card card-transactions">
-            <div class="card-icon">📝</div>
-            <div class="card-content">
-                <div class="card-title">Transaktionen</div>
-                <div class="card-description">
-                    Alle deine Transaktionen im Überblick - filtern, suchen und analysieren
+                    Visualisiere Stromverbrauch, erkenne Spitzenzeiten und optimiere Haushaltsenergie
                 </div>
             </div>
         </a>
 
-        <!-- Geplante Transaktionen -->
-        <a href="{% url 'finance:scheduled_transactions' %}" class="nav-card card-scheduled">
-            <div class="card-icon">🔄</div>
-            <div class="card-content">
-                <div class="card-title">Geplante Transaktionen</div>
-                <div class="card-description">
-                    Verwalte wiederkehrende Zahlungen wie Miete, Abos und regelmäßige Ausgaben
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endif %}
-
-    <!-- Billa Bereich -->
-    <div class="section-header">
-        <h2 class="section-title">
-            <span class="section-icon">🛒</span>
-            Supermarkt Analysen
-        </h2>
-    </div>
-
-    <div class="nav-grid">
         <!-- Billa Dashboard -->
         <a href="{% url 'billa:billa_dashboard' %}" class="nav-card card-billa">
-            <div class="card-icon">📊</div>
+            <div class="card-icon">🛒</div>
             <div class="card-content">
-                <div class="card-title">Billa Dashboard</div>
+                <div class="card-title">Billa</div>
                 <div class="card-description">
                     Detaillierte Analysen deiner Billa-Einkäufe mit Produkten, Marken und Preisentwicklung
+                </div>
+            </div>
+        </a>
+
+        <!-- Pflanzen -->
+        <a href="{% url 'plants:plant_list' %}" class="nav-card card-plants">
+            <div class="card-icon">🌱</div>
+            <div class="card-content">
+                <div class="card-title">Pflanzen</div>
+                <div class="card-description">
+                    Verfolge das Wachstum deiner Pflanzen mit Fotos und Notizen
                 </div>
             </div>
         </a>
@@ -482,7 +486,7 @@
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
+            if target) {
                 target.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'

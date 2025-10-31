@@ -18,7 +18,6 @@ def plant_group_list(request):
     """
     groups = (
         PlantGroup.objects
-        .filter(user=request.user)
         .annotate(
             plant_count=Count("plants", distinct=True),
             photo_count=Count("plants__images", distinct=True),
@@ -32,7 +31,6 @@ def plant_group_list(request):
     cover_map = {}
     cover_qs = (
         PlantImage.objects
-        .filter(plant__group__user=request.user)
         .select_related("plant", "plant__group")
         .order_by("plant__group_id", "-captured_at")
     )
@@ -53,7 +51,7 @@ def plant_group_list(request):
 @login_required
 def plant_list(request, group_id=None):
     # --- Stammdaten für Selects
-    groups = PlantGroup.objects.filter(user=request.user).order_by("name")
+    groups = PlantGroup.objects.order_by("name")
 
     # GET-Filter
     selected_group = request.GET.get("group") or (str(group_id) if group_id else "")
@@ -61,7 +59,6 @@ def plant_list(request, group_id=None):
 
     qs = (
         Plant.objects
-        .filter(user=request.user)
         .prefetch_related("images", "group")
         .order_by("group__name", "name")
     )
@@ -84,12 +81,10 @@ def plant_list(request, group_id=None):
     # - sonst alle
     if selected_group:
         plant_options = Plant.objects.filter(
-            user=request.user, group_id=selected_group
+            group_id=selected_group
         ).order_by("name")
     else:
-        plant_options = Plant.objects.filter(
-            user=request.user
-        ).order_by("group__name", "name")
+        plant_options = Plant.objects.order_by("group__name", "name")
 
     total_images = sum(p.images.count() for p in plants)
 
@@ -107,7 +102,7 @@ def plant_list(request, group_id=None):
 @login_required
 def plant_timeline(request, plant_id):
     """Timeline für einzelne Pflanze"""
-    plant = get_object_or_404(Plant, id=plant_id, user=request.user)
+    plant = get_object_or_404(Plant, id=plant_id)
     images = plant.images.all()  # Bereits sortiert durch Meta ordering
     return render(request, 'plants/plant_timeline.html', {
         'plant': plant,
