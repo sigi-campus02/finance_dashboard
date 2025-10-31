@@ -31,8 +31,28 @@ def plant_image_upload_to(instance, filename: str) -> str:
     dt = getattr(instance, "captured_at", None) or timezone.now()
     return f"plants/{dt:%Y/%m}/{filename}"
 
+class PlantRoom(models.Model):
+    """
+    Räume/Standorte für Pflanzen (z. B. Wohnzimmer, Balkon, Schlafzimmer …)
+    Pro User eindeutig nach Name.
+    """
+    name = models.CharField(max_length=100, verbose_name="Raum")
+    is_outdoor = models.BooleanField(default=False, verbose_name="Außenbereich")
+    icon = models.CharField(max_length=50, blank=True, verbose_name="Icon (Bootstrap-Icon-Key, optional)")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Pflanzenraum"
+        verbose_name_plural = "Pflanzenräume"
+        unique_together = ["name", "user"]
+
+    def __str__(self):
+        return self.name
+
 
 class PlantGroup(models.Model):
+    # (unverändert)
     name = models.CharField(max_length=200, verbose_name="Gruppenname")
     description = models.TextField(blank=True, verbose_name="Beschreibung")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -50,7 +70,6 @@ class PlantGroup(models.Model):
     def plant_count(self):
         return self.plants.count()
 
-
 class Plant(models.Model):
     name = models.CharField(max_length=200, verbose_name="Pflanzenname")
     species = models.CharField(max_length=200, blank=True, verbose_name="Art/Sorte")
@@ -61,6 +80,13 @@ class Plant(models.Model):
         blank=True,
         related_name="plants",
         verbose_name="Gruppe",
+    )
+    # NEU: Räume
+    rooms = models.ManyToManyField(
+        PlantRoom,
+        blank=True,
+        related_name="plants",
+        verbose_name="Räume/Standorte"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -83,15 +109,14 @@ class Plant(models.Model):
 class PlantImage(models.Model):
     plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(
-        upload_to=plant_image_upload_to,   # nutzt captured_at für YYYY/MM
-        storage=get_plant_storage(),       # R2 wenn aktiv, sonst Default
+        upload_to=plant_image_upload_to,
+        storage=get_plant_storage(),
     )
-    # Wichtig: KEIN auto_now_add -> Datum wird vom Command gesetzt!
     captured_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name="Aufnahmedatum")
     notes = models.TextField(blank=True, verbose_name="Notizen")
 
     class Meta:
-        ordering = ["-captured_at"]  # Neueste zuerst
+        ordering = ["-captured_at"]
         verbose_name = "Pflanzenbild"
         verbose_name_plural = "Pflanzenbilder"
 

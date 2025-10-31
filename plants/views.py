@@ -1,9 +1,8 @@
-from django.db.models.functions import datetime
 from django.http import HttpResponseBadRequest
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from .models import Plant, PlantImage, PlantGroup
+from .models import Plant, PlantImage, PlantGroup, PlantRoom
 from django.core.files.base import ContentFile
 from django.db.models import Count, Max
 from PIL import Image, ExifTags
@@ -51,45 +50,42 @@ def plant_group_list(request):
     })
 
 
+
 @login_required
 def plant_list(request, group_id=None):
-    # --- Stammdaten für Selects
-    groups = PlantGroup.objects.order_by("name")
+    groups = PlantGroup.objects.filter(user=request.user).order_by("name")
+    rooms_all = PlantRoom.objects.filter(user=request.user).order_by("name")
 
-    # GET-Filter
     selected_group = request.GET.get("group") or (str(group_id) if group_id else "")
     selected_plant = request.GET.get("plant") or ""
+    selected_room  = request.GET.get("room") or ""
 
     qs = (
         Plant.objects
-        .prefetch_related("images", "group")
+        .filter(user=request.user)
+        .prefetch_related("images", "group", "rooms")
         .order_by("group__name", "name")
     )
 
     current_group = None
     if selected_group:
         qs = qs.filter(group_id=selected_group)
-        try:
-            current_group = groups.get(id=selected_group)
-        except PlantGroup.DoesNotExist:
-            current_group = None
+        current_group = groups.filter(id=selected_group).first()
+
+    if selected_room:
+        qs = qs.filter(rooms__id=selected_room)
 
     if selected_plant:
         qs = qs.filter(id=selected_plant)
 
-    plants = list(qs)
-
-    # Plant-Optionen im Select:
-    # - wenn Gruppe gewählt: nur Pflanzen dieser Gruppe
-    # - sonst alle
-    if selected_group:
-        plant_options = Plant.objects.filter(
-            group_id=selected_group
-        ).order_by("name")
-    else:
-        plant_options = Plant.objects.order_by("group__name", "name")
-
+    plants = list(qs.distinct())
     total_images = sum(p.images.count() for p in plants)
+
+    # Plant-Options (wie zuvor)
+    if selected_group:
+        plant_options = Plant.objects.filter(user=request.user, group_id=selected_group).order_by("name")
+    else:
+        plant_options = Plant.objects.filter(user=request.user).order_by("group__name", "name")
 
     return render(request, "plants/plant_list.html", {
         "plants": plants,
@@ -97,8 +93,10 @@ def plant_list(request, group_id=None):
         "current_group": current_group,
         "groups": groups,
         "plant_options": plant_options,
+        "rooms_all": rooms_all,
         "selected_group": selected_group,
         "selected_plant": selected_plant,
+        "selected_room": selected_room,
     })
 
 
