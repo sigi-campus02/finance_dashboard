@@ -1,0 +1,51 @@
+{
+  "groups": {
+    "Gruppe Petersilie": [
+      "AnzuchtPetersilie",
+      "PetersilieAfrodite",
+      "PetersilieGigante",
+      "PetersilieGrandeur",
+      "PetersilieWalser"
+    ],
+    "Gruppe Avokado": [
+      "AvokadoErde",
+      "AvokadoGlas"
+    ],
+    "Gruppe Yucca": [
+      "BabyPamela",
+      "YuccaMama",
+      "YuccaSpitze",
+      "YuccaStamm"
+    ],
+    "Gruppe Basilikum": [
+      "BasilikumChianti_Anzucht",
+      "BasilikumChianti_eckigerTon",
+      "BasilikumChianti_großerTon",
+      "BasilikumChianti_kleinerTon",
+      "BasilikumChianti_Plastik",
+      "BasilikumGenoveser_großerTon",
+      "BasilikumGenoveser_Vase",
+      "BasilikumProspera_großerTon",
+      "GroßerBasilikum"
+    ],
+    "Gruppe Rosen": [
+      "RosenAlt",
+      "RosenPlantura"
+    ],
+    "Gruppe Salat": [
+      "Salat",
+      "SalatFensterbank"
+    ]
+  },
+  "plants_without_group": [
+    "Blutgras",
+    "Crysantheme",
+    "Dachwurz",
+    "Glücksfeder",
+    "Heidenelke",
+    "Himbeere",
+    "Schnittlauch",
+    "WilderWein",
+    "Zitrone"
+  ]
+}

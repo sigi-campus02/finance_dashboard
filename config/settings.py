@@ -295,6 +295,3 @@ if USE_R2_STORAGE:
     # ← NEU: Separate Bucket-Namen für verschiedene Zwecke
     BILLA_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', 'billainvoices')
     PLANT_PHOTOS_BUCKET_NAME = os.environ.get('PLANT_PHOTOS_BUCKET_NAME', 'plant-photos')
-
-    # ← NEU: Public URL für Pflanzenfotos (nach Public Access Aktivierung)
-    PLANT_PHOTOS_PUBLIC_URL = os.environ.get('PLANT_PHOTOS_PUBLIC_URL', '')
