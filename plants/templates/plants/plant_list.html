@@ -13,6 +13,31 @@
             <i class="bi bi-plus-lg"></i> Neue Pflanze
         </button>
     </div>
+<!-- Breadcrumbs -->
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{% url 'plants:plant_group_list' %}">
+        <i class="bi bi-collection"></i> Gruppen
+      </a>
+    </li>
+
+    {% if current_group %}
+      <li class="breadcrumb-item">
+        <a href="{% url 'plants:plant_list' %}">
+          Alle Pflanzen
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        {{ current_group.name }}
+      </li>
+    {% else %}
+      <li class="breadcrumb-item active" aria-current="page">
+        Alle Pflanzen
+      </li>
+    {% endif %}
+  </ol>
+</nav>
 
     <!-- Statistik Cards (Optional) -->
     <div class="row mb-4">

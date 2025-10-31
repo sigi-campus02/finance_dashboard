@@ -1,0 +1,81 @@
+{% extends 'finance/base.html' %}
+{% load static %}
+
+{% block title %}Pflanzengruppen{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-collection"></i> Pflanzengruppen</h1>
+    <a href="{% url 'plants:plant_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-list"></i> Alle Pflanzen
+    </a>
+  </div>
+
+  {% if groups_with_cover %}
+  <div class="row g-3">
+    {% for group, cover in groups_with_cover %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+      <a href="{% url 'plants:plant_list_by_group' group.id %}" class="text-decoration-none">
+        <div class="card h-100 shadow-sm group-card">
+          <div class="group-image-container">
+            {% if cover %}
+              <img src="{{ cover.image.url }}" class="card-img-top group-thumbnail" alt="{{ group.name }}" loading="lazy">
+            {% else %}
+              <div class="card-img-top group-thumbnail-placeholder">
+                <i class="bi bi-collection"></i>
+              </div>
+            {% endif %}
+            <div class="image-overlay">
+              {% if group.plant_count %}
+                <span class="badge bg-dark me-1">
+                  <i class="bi bi-flower1"></i> {{ group.plant_count }}
+                </span>
+              {% endif %}
+              {% if group.photo_count %}
+                <span class="badge bg-dark">
+                  <i class="bi bi-camera"></i> {{ group.photo_count }}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card-body">
+            <h5 class="card-title mb-1">{{ group.name }}</h5>
+            {% if group.last_photo_at %}
+            <p class="card-text small text-muted mb-0">
+              <i class="bi bi-clock"></i>
+              {{ group.last_photo_at|date:"d.m.Y" }}
+            </p>
+            {% else %}
+            <p class="card-text small text-muted mb-0">
+              <i class="bi bi-camera"></i> Noch keine Fotos
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="alert alert-info">Noch keine Gruppen vorhanden.</div>
+  {% endif %}
+</div>
+
+<style>
+.group-card { transition: transform .2s, box-shadow .2s; overflow: hidden; }
+.group-card:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,.12)!important; }
+
+.group-image-container { position: relative; padding-top: 56.25%; background:#f8f9fa; }
+.group-thumbnail { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
+.group-thumbnail-placeholder {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#e9ecef 0%,#dee2e6 100%); font-size:3rem; color:#adb5bd;
+}
+.image-overlay { position:absolute; top:10px; right:10px; }
+.image-overlay .badge { backdrop-filter: blur(4px); background: rgba(0,0,0,.6)!important; }
+</style>
+{% endblock %}

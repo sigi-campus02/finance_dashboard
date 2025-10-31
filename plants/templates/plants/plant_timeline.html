@@ -5,515 +5,504 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-flower1"></i> {{ plant.name }}</h1>
-        <a href="{% url 'plants:plant_list' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Zurück
-        </a>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-flower1"></i> {{ plant.name }}</h1>
+    <a href="{% url 'plants:plant_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Zurück
+    </a>
+  </div>
+
+  <!-- Floating Kamera-Button -->
+  <div class="floating-camera-btn">
+    <button id="addPhotoBtn" class="btn btn-primary btn-lg rounded-circle shadow">
+      <i class="bi bi-plus-lg"></i>
+    </button>
+  </div>
+
+  <!-- Versteckter File Input -->
+  <input type="file" id="galleryInput" accept="image/*" style="display:none;">
+
+  <!-- Toolbar -->
+  <div class="timeline-toolbar d-flex align-items-center justify-content-between mb-3">
+    <div class="text-muted small">
+      <i class="bi bi-images me-1"></i> {{ images|length }} Fotos
     </div>
-
-    <!-- Kamera Button (Sticky oben rechts auf Mobile) -->
-    <div class="floating-camera-btn">
-        <button id="addPhotoBtn" class="btn btn-primary btn-lg rounded-circle shadow">
-            <i class="bi bi-plus-lg"></i>
-        </button>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm timeline-prev"
+              type="button" aria-label="Vorherige Bilder" aria-controls="timelineH">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <button class="btn btn-outline-secondary btn-sm timeline-next"
+              type="button" aria-label="Nächste Bilder" aria-controls="timelineH">
+        <i class="bi bi-chevron-right"></i>
+      </button>
     </div>
+  </div>
 
-    <!-- ========== NEU: Versteckter File Input für Galerie ========== -->
-    <input type="file"
-           id="galleryInput"
-           accept="image/*"
-           style="display: none;">
+  <!-- Horizontale Timeline -->
+  <div class="timeline-h-wrapper">
+    <div class="fade-edge fade-left"></div>
+    <div class="fade-edge fade-right"></div>
 
-    <!-- Timeline Container -->
-    <div class="timeline-container">
-        {% for image in images %}
-        <div class="timeline-item">
-            <div class="timeline-date">
-                {{ image.captured_at|date:"d.m.Y H:i" }}
-            </div>
-            <div class="image-card">
-                <img src="{{ image.image.url }}"
-                     alt="{{ plant.name }}"
-                     loading="lazy"
-                     onclick="openImageModal('{{ image.image.url }}')">
-                {% if image.notes %}
-                <div class="image-notes">{{ image.notes }}</div>
-                {% endif %}
-            </div>
+    <div class="timeline-h" id="timelineH" tabindex="0"
+         aria-label="Bilder-Timeline, horizontal scrollbar">
+      {% for image in images %}
+      <article class="timeline-card" role="group" aria-roledescription="Dia"
+               aria-label="{{ image.captured_at|date:'d.m.Y H:i' }}">
+        <div class="timeline-stamp">
+          <i class="bi bi-calendar-event"></i>
+          {{ image.captured_at|date:"d.m.Y" }}
         </div>
-        {% empty %}
-        <div class="alert alert-info">
-            Noch keine Fotos vorhanden. Klicke auf das Plus-Symbol, um das erste Foto hinzuzufügen!
-        </div>
-        {% endfor %}
-    </div>
-</div>
 
-<!-- ========== NEU: Action Sheet Modal ========== -->
-<div id="photoActionSheet" class="modal fade" tabindex="-1">
+        <div class="timeline-photo">
+        <img src="{{ image.image.url }}"
+             alt="{{ plant.name }} am {{ image.captured_at|date:'d.m.Y H:i' }}"
+             loading="lazy"
+             decoding="async"
+             fetchpriority="low"
+             sizes="(max-width: 767px) 92vw, 900px"
+             onclick="openImageModal('{{ image.image.url }}')">
+        </div>
+
+        {% if image.notes %}
+        <div class="timeline-notes">
+          {{ image.notes }}
+        </div>
+        {% endif %}
+      </article>
+      {% empty %}
+      <div class="alert alert-info">
+        Noch keine Fotos vorhanden. Klicke auf das Plus-Symbol, um das erste Foto hinzuzufügen!
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Action Sheet Modal -->
+  <div id="photoActionSheet" class="modal fade" tabindex="-1">
     <div class="modal-dialog modal-dialog-bottom">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title">Foto hinzufügen</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body pb-4">
-                <div class="d-grid gap-2">
-                    <button class="btn btn-lg btn-primary" onclick="openCameraFromSheet()">
-                        <i class="bi bi-camera-fill me-2"></i> Kamera
-                    </button>
-                    <button class="btn btn-lg btn-outline-primary" onclick="openGalleryFromSheet()">
-                        <i class="bi bi-images me-2"></i> Galerie / Google Fotos
-                    </button>
-                    <button class="btn btn-lg btn-outline-secondary" data-bs-dismiss="modal">
-                        Abbrechen
-                    </button>
-                </div>
-            </div>
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title">Foto hinzufügen</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body pb-4">
+          <div class="d-grid gap-2">
+            <button class="btn btn-lg btn-primary" onclick="openCameraFromSheet()">
+              <i class="bi bi-camera-fill me-2"></i> Kamera
+            </button>
+            <button class="btn btn-lg btn-outline-primary" onclick="openGalleryFromSheet()">
+              <i class="bi bi-images me-2"></i> Galerie / Google Fotos
+            </button>
+            <button class="btn btn-lg btn-outline-secondary" data-bs-dismiss="modal">
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Modal für Kamera -->
-<div id="cameraModal" class="modal fade" tabindex="-1">
+  <!-- Kamera Modal -->
+  <div id="cameraModal" class="modal fade" tabindex="-1">
     <div class="modal-dialog modal-fullscreen-sm-down">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Foto aufnehmen</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <!-- Live-Kamera-Feed -->
-                <video id="cameraFeed" autoplay playsinline class="w-100 mb-3" style="max-height: 400px;"></video>
-
-                <!-- Canvas für Snapshot (versteckt) -->
-                <canvas id="photoCanvas" style="display: none;"></canvas>
-
-                <!-- Preview des aufgenommenen Fotos -->
-                <img id="photoPreview" class="w-100 mb-3" style="display: none; max-height: 400px;">
-
-                <!-- Notizen -->
-                <textarea id="photoNotes" class="form-control mb-3"
-                          placeholder="Notizen (optional)"
-                          rows="2"></textarea>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <button id="captureBtn" class="btn btn-primary btn-lg w-100">
-                    <i class="bi bi-camera-fill"></i> Foto aufnehmen
-                </button>
-                <div id="afterCaptureButtons" style="display: none; width: 100%;">
-                    <button id="retakeBtn" class="btn btn-warning btn-lg mb-2 w-100">
-                        <i class="bi bi-arrow-repeat"></i> Wiederholen
-                    </button>
-                    <button id="saveBtn" class="btn btn-success btn-lg w-100">
-                        <i class="bi bi-check-lg"></i> Speichern
-                    </button>
-                </div>
-            </div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Foto aufnehmen</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body text-center">
+          <video id="cameraFeed" autoplay playsinline class="w-100 mb-3" style="max-height:400px;"></video>
+          <canvas id="photoCanvas" style="display:none;"></canvas>
+          <img id="photoPreview" class="w-100 mb-3" style="display:none;max-height:400px;">
+          <textarea id="photoNotes" class="form-control mb-3" placeholder="Notizen (optional)" rows="2"></textarea>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button id="captureBtn" class="btn btn-primary btn-lg w-100">
+            <i class="bi bi-camera-fill"></i> Foto aufnehmen
+          </button>
+          <div id="afterCaptureButtons" style="display:none;width:100%;">
+            <button id="retakeBtn" class="btn btn-warning btn-lg mb-2 w-100">
+              <i class="bi bi-arrow-repeat"></i> Wiederholen
+            </button>
+            <button id="saveBtn" class="btn btn-success btn-lg w-100">
+              <i class="bi bi-check-lg"></i> Speichern
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Fullscreen Image Modal -->
-<div id="imageModal" class="modal fade" tabindex="-1" onclick="this.querySelector('.btn-close').click()">
+  <!-- Fullscreen Image Modal -->
+  <div id="imageModal" class="modal fade" tabindex="-1" onclick="this.querySelector('.btn-close').click()">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content bg-transparent border-0">
-            <div class="modal-header border-0">
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0">
-                <img id="modalImage" class="w-100" src="" style="cursor: zoom-out;">
-            </div>
+      <div class="modal-content bg-transparent border-0">
+        <div class="modal-header border-0">
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body p-0">
+          <img id="modalImage" class="w-100" src="" style="cursor:zoom-out;">
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<style>
-.floating-camera-btn {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    z-index: 1000;
-}
+  <style>
+    /* Wrapper + Fades */
+    .timeline-h-wrapper { position: relative; }
+    .fade-edge { position: absolute; top:0; bottom:0; width:36px; pointer-events:none; z-index:2; opacity:1; transition: opacity .15s ease; }
+    .fade-left  { left:0;  background:linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0)); }
+    .fade-right { right:0; background:linear-gradient(to left,  rgba(255,255,255,1), rgba(255,255,255,0)); }
 
-.floating-camera-btn button {
-    width: 60px;
-    height: 60px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
+    /* Scroller */
+    .timeline-h {
+      display:flex;
+      gap:14px;
+      overflow-x:auto;
+      padding:6px 8px 12px;
+      scroll-snap-type:x mandatory;
+      overscroll-behavior-x:contain;
+      scroll-padding-inline:10px;
+      scrollbar-gutter:stable both-edges;
+      scroll-behavior:smooth;
+      -webkit-overflow-scrolling:touch;
+    }
+    .timeline-h.dragging { user-select:none; }
 
-.timeline-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding-bottom: 100px;
-}
+    /* Karten */
+    .timeline-card {
+      flex:0 0 82vw;          /* Mobile */
+      max-width:540px;        /* Desktop-Komfort */
+      scroll-snap-align:center;
+      scroll-snap-stop:always;
+      background:#fff;
+      border-radius:14px;
+      box-shadow:0 3px 10px rgba(0,0,0,.10);
+      overflow:hidden;
+      border:1px solid rgba(0,0,0,.06);
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;
+    }
+    @media (min-width:768px){ .timeline-card{ flex-basis:380px; } }
+    @media (min-width:1200px){ .timeline-card{ flex-basis:420px; } }
 
-.timeline-item {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #dee2e6;
-}
+    /* Datum */
+    .timeline-stamp { font-size:.85rem; color:#495057; padding:10px 12px 0 12px; }
 
-.timeline-item:last-child {
-    border-bottom: none;
-}
-
-.timeline-date {
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin-bottom: 0.5rem;
-}
-
-.image-card {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.image-card img {
-    width: 100%;
-    height: auto;
-    display: block;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.image-card img:hover {
-    transform: scale(1.02);
-}
-
-.image-notes {
-    padding: 1rem;
-    background: #f8f9fa;
-    font-size: 0.9rem;
-}
-
-#cameraFeed, #photoPreview {
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-#imageModal .modal-dialog {
-    max-width: 90vw;
-}
-
-#imageModal .modal-body img {
-    border-radius: 8px;
-}
-
-/* ========== NEU: Action Sheet Styles ========== */
-.modal-dialog-bottom {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: 0;
-    max-width: 100%;
-}
-
-.modal-dialog-bottom .modal-content {
-    border-radius: 20px 20px 0 0;
-}
-
-@media (min-width: 768px) {
-    .modal-dialog-bottom {
-        position: relative;
-        max-width: 500px;
-        margin: 1.75rem auto;
+    /* Karten bleiben responsiv, aber etwas schmaler */
+    .timeline-card {
+      flex: 0 0 auto;
+      max-width: 80vw;                 /* vorher 92vw */
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.10);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,.06);
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .modal-dialog-bottom .modal-content {
-        border-radius: 12px;
+    /* Bildcontainer: minimale Höhenreduktion -> mehr Platz in der Breite */
+    .timeline-photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f2f4f6;
+      height: clamp(240px, 68dvh, 700px);   /* vorher 75dvh / 760px */
+      max-width: 88vw;                      /* vorher 92vw */
     }
-}
-</style>
 
-<script>
-let stream = null;
-let capturedImageData = null;
+    /* Bild: volle Breite/volle Höhe innerhalb des Containers, ohne Beschnitt */
+    .timeline-photo img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      cursor: pointer;
+      transition: transform .2s ease;
+    }
+    .timeline-photo img:hover { transform: scale(1.015); }
 
-// Modal-Elemente
-const cameraModalEl = document.getElementById('cameraModal');
-const actionSheetEl = document.getElementById('photoActionSheet');
-const cameraFeed = document.getElementById('cameraFeed');
-const canvas = document.getElementById('photoCanvas');
-const photoPreview = document.getElementById('photoPreview');
-const captureBtn = document.getElementById('captureBtn');
-const saveBtn = document.getElementById('saveBtn');
-const retakeBtn = document.getElementById('retakeBtn');
-const photoNotes = document.getElementById('photoNotes');
-const afterCaptureButtons = document.getElementById('afterCaptureButtons');
-const galleryInput = document.getElementById('galleryInput');
+    /* Desktop: ebenfalls etwas kleiner, damit Querformat komplett reinpasst */
+    @media (min-width: 992px) {
+      .timeline-card  { max-width: min(860px, 88vw); }     /* vorher 900px */
+      .timeline-photo { height: clamp(300px, 62vh, 780px); }/* vorher ~70–75vh */
+    }
 
-let cameraModal = null;
-let actionSheet = null;
+    /* (Optional) ganz leichte Reduktion der horizontalen Innenabstände,
+       damit die Breite bestmöglich genutzt wird */
+    .timeline-h {
+      gap: 12px;                 /* vorher 14px */
+      padding: 6px 6px 12px;     /* vorher 6px 8px 12px */
+    }
 
-// Warte bis DOM geladen ist
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof bootstrap !== 'undefined') {
+
+
+    /* Notiz */
+    .timeline-notes { padding:10px 12px 12px; background:#f8f9fa; font-size:.92rem; color:#495057; border-top:1px solid #eee; }
+
+    /* Toolbar */
+    .timeline-toolbar .btn { padding:.25rem .5rem; }
+
+    /* Scrollbar */
+    .timeline-h::-webkit-scrollbar { height:8px; }
+    .timeline-h::-webkit-scrollbar-thumb { background:rgba(0,0,0,.18); border-radius:10px; }
+    .timeline-h::-webkit-scrollbar-track { background:transparent; }
+
+    /* Floating Add Button */
+    .floating-camera-btn { position:fixed; bottom:80px; right:20px; z-index:1000; }
+    .floating-camera-btn button { width:60px; height:60px; box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+
+    /* Kamera/Modal */
+    #cameraFeed, #photoPreview { border-radius:8px; object-fit:cover; }
+    #imageModal .modal-dialog { max-width:90vw; }
+    #imageModal .modal-body img { border-radius:8px; }
+
+    /* Action Sheet */
+    .modal-dialog-bottom { position:fixed; bottom:0; left:0; right:0; margin:0; max-width:100%; }
+    .modal-dialog-bottom .modal-content { border-radius:20px 20px 0 0; }
+    @media (min-width:768px){
+      .modal-dialog-bottom { position:relative; max-width:500px; margin:1.75rem auto; }
+      .modal-dialog-bottom .modal-content { border-radius:12px; }
+    }
+  </style>
+
+  <script>
+    (function() {
+      const scroller = document.getElementById('timelineH');
+      if (!scroller) return;
+
+      const prevBtn = document.querySelector('.timeline-prev');
+      const nextBtn = document.querySelector('.timeline-next');
+      const fadeL = document.querySelector('.fade-left');
+      const fadeR = document.querySelector('.fade-right');
+
+      function slideWidth() {
+        const card = scroller.querySelector('.timeline-card');
+        return card ? card.getBoundingClientRect().width + 14 : scroller.clientWidth * 0.85;
+      }
+
+      function updateControls() {
+        const max = scroller.scrollWidth - scroller.clientWidth - 1;
+        const atStart = scroller.scrollLeft <= 1;
+        const atEnd   = scroller.scrollLeft >= max;
+
+        prevBtn?.toggleAttribute('disabled', atStart);
+        nextBtn?.toggleAttribute('disabled', atEnd);
+        if (fadeL) fadeL.style.opacity = atStart ? '0' : '1';
+        if (fadeR) fadeR.style.opacity = atEnd   ? '0' : '1';
+      }
+
+      // Init + Events
+      updateControls();
+      scroller.addEventListener('scroll', updateControls, { passive:true });
+      window.addEventListener('resize', () => setTimeout(updateControls, 50));
+
+      prevBtn?.addEventListener('click', () => scroller.scrollBy({ left: -slideWidth(), behavior:'smooth' }));
+      nextBtn?.addEventListener('click', () => scroller.scrollBy({ left:  slideWidth(), behavior:'smooth' }));
+
+      // Keyboard
+      scroller.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight'){ e.preventDefault(); scroller.scrollBy({ left:  slideWidth(), behavior:'smooth' }); }
+        if (e.key === 'ArrowLeft'){  e.preventDefault(); scroller.scrollBy({ left: -slideWidth(), behavior:'smooth' }); }
+        if (e.key === 'Home'){       e.preventDefault(); scroller.scrollTo({ left: 0, behavior:'smooth' }); }
+        if (e.key === 'End'){        e.preventDefault(); scroller.scrollTo({ left: scroller.scrollWidth, behavior:'smooth' }); }
+      });
+
+      // Drag to scroll + No-Click-After-Drag
+      let isDown=false, startX=0, startScroll=0, dragged=false;
+      scroller.addEventListener('pointerdown', (e) => {
+        isDown = true; dragged = false;
+        scroller.classList.add('dragging');
+        scroller.setPointerCapture(e.pointerId);
+        startX = e.clientX; startScroll = scroller.scrollLeft;
+      });
+      scroller.addEventListener('pointermove', (e) => {
+        if (!isDown) return;
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 5) dragged = true;
+        scroller.scrollLeft = startScroll - dx;
+      });
+      ['pointerup','pointercancel','pointerleave'].forEach(ev => {
+        scroller.addEventListener(ev, () => {
+          isDown = false;
+          scroller.classList.remove('dragging');
+        });
+      });
+      scroller.addEventListener('click', (e) => {
+        if (dragged) { e.preventDefault(); e.stopPropagation(); dragged=false; }
+      }, true);
+
+      // Shift+Wheel → horizontal
+      scroller.addEventListener('wheel', (e) => {
+        if (!e.shiftKey) return;
+        e.preventDefault();
+        scroller.scrollLeft += e.deltaY;
+      }, { passive:false });
+    })();
+  </script>
+
+  <script>
+    let stream=null, capturedImageData=null;
+
+    // Modal-Elemente
+    const cameraModalEl = document.getElementById('cameraModal');
+    const actionSheetEl = document.getElementById('photoActionSheet');
+    const cameraFeed = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('photoCanvas');
+    const photoPreview = document.getElementById('photoPreview');
+    const captureBtn = document.getElementById('captureBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const photoNotes = document.getElementById('photoNotes');
+    const afterCaptureButtons = document.getElementById('afterCaptureButtons');
+    const galleryInput = document.getElementById('galleryInput');
+    let cameraModal=null, actionSheet=null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof bootstrap !== 'undefined') {
         cameraModal = new bootstrap.Modal(cameraModalEl);
         actionSheet = new bootstrap.Modal(actionSheetEl);
-    }
-});
+      }
+    });
 
-// ========== NEU: Plus-Button öffnet Action Sheet ==========
-document.getElementById('addPhotoBtn').addEventListener('click', () => {
-    console.log('Plus-Button geklickt');
-    if (actionSheet) {
-        actionSheet.show();
-    } else {
-        // Fallback ohne Bootstrap: Direkt Galerie öffnen
-        galleryInput.click();
-    }
-});
+    document.getElementById('addPhotoBtn').addEventListener('click', () => {
+      if (actionSheet) actionSheet.show(); else galleryInput.click();
+    });
 
-// ========== NEU: Kamera aus Action Sheet öffnen ==========
-function openCameraFromSheet() {
-    console.log('Kamera aus Action Sheet');
-    if (actionSheet) actionSheet.hide();
-    openCameraModal();
-}
+    function openCameraFromSheet(){ if (actionSheet) actionSheet.hide(); openCameraModal(); }
+    function openGalleryFromSheet(){ if (actionSheet) actionSheet.hide(); galleryInput.click(); }
 
-// ========== NEU: Galerie aus Action Sheet öffnen ==========
-function openGalleryFromSheet() {
-    console.log('Galerie aus Action Sheet');
-    if (actionSheet) actionSheet.hide();
-    galleryInput.click();
-}
-
-galleryInput.addEventListener('change', function(e) {
-    console.log('Galerie-Datei ausgewählt');
-    if (this.files && this.files[0]) {
-        const file = this.files[0];
-        const reader = new FileReader();
-
+    galleryInput.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        const file = this.files[0], reader=new FileReader();
         reader.onload = function(e) {
-            // ← Bild durch Canvas laufen lassen zur Komprimierung
-            const img = new Image();
-            img.onload = function() {
-                // Canvas erstellen
-                const tempCanvas = document.createElement('canvas');
-                const maxWidth = 1920;
-                const maxHeight = 1920;
-
-                let width = img.width;
-                let height = img.height;
-
-                // Größe anpassen wenn zu groß
-                if (width > maxWidth || height > maxHeight) {
-                    if (width > height) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    } else {
-                        width *= maxHeight / height;
-                        height = maxHeight;
-                    }
-                }
-
-                tempCanvas.width = width;
-                tempCanvas.height = height;
-
-                const ctx = tempCanvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Komprimiert als JPEG mit 70% Qualität
-                capturedImageData = tempCanvas.toDataURL('image/jpeg', 0.7);
-
-                // Preview im Modal zeigen
-                cameraFeed.style.display = 'none';
-                photoPreview.src = capturedImageData;
-                photoPreview.style.display = 'block';
-                captureBtn.style.display = 'none';
-                afterCaptureButtons.style.display = 'block';
-                photoNotes.value = '';
-
-                if (cameraModal) {
-                    cameraModal.show();
-                } else {
-                    cameraModalEl.classList.add('show');
-                    cameraModalEl.style.display = 'block';
-                }
-
-                console.log('Galerie-Foto geladen und komprimiert');
-            };
-            img.src = e.target.result;
-        };
-
-        reader.readAsDataURL(file);
-    }
-
-    // Input zurücksetzen
-    this.value = '';
-});
-
-// Kamera Modal öffnen
-async function openCameraModal() {
-    console.log('Kamera wird geöffnet');
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'environment',
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
+          const img=new Image();
+          img.onload = function(){
+            const tempCanvas=document.createElement('canvas');
+            const maxW=1920, maxH=1920;
+            let w=img.width, h=img.height;
+            if (w>maxW || h>maxH){
+              if (w>h){ h*=maxW/w; w=maxW; } else { w*=maxH/h; h=maxH; }
             }
+            tempCanvas.width=w; tempCanvas.height=h;
+            const ctx=tempCanvas.getContext('2d');
+            ctx.drawImage(img,0,0,w,h);
+            capturedImageData = tempCanvas.toDataURL('image/jpeg', 0.7);
+
+            cameraFeed.style.display='none';
+            photoPreview.src=capturedImageData;
+            photoPreview.style.display='block';
+            captureBtn.style.display='none';
+            afterCaptureButtons.style.display='block';
+            photoNotes.value='';
+
+            if (cameraModal) cameraModal.show(); else { cameraModalEl.classList.add('show'); cameraModalEl.style.display='block'; }
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+      this.value='';
+    });
+
+    async function openCameraModal(){
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:{ facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
         });
-        cameraFeed.srcObject = stream;
-
-        // UI zurücksetzen
-        cameraFeed.style.display = 'block';
-        photoPreview.style.display = 'none';
-        captureBtn.style.display = 'block';
-        afterCaptureButtons.style.display = 'none';
-        photoNotes.value = '';
-
-        if (cameraModal) {
-            cameraModal.show();
-        } else {
-            cameraModalEl.classList.add('show');
-            cameraModalEl.style.display = 'block';
-        }
-
-        console.log('Kamera gestartet');
-    } catch (err) {
+        cameraFeed.srcObject=stream;
+        cameraFeed.style.display='block';
+        photoPreview.style.display='none';
+        captureBtn.style.display='block';
+        afterCaptureButtons.style.display='none';
+        photoNotes.value='';
+        if (cameraModal) cameraModal.show(); else { cameraModalEl.classList.add('show'); cameraModalEl.style.display='block'; }
+      }catch(err){
         console.error('Kamera-Fehler:', err);
-        alert('Kamera-Zugriff fehlgeschlagen: ' + err.message + '\n\nBitte stelle sicher, dass du der Website Kamera-Zugriff erlaubt hast.');
-    }
-}
-
-// Foto aufnehmen (mit Komprimierung)
-captureBtn.addEventListener('click', () => {
-    console.log('Capture-Button geklickt');
-
-    const context = canvas.getContext('2d');
-    canvas.width = cameraFeed.videoWidth;
-    canvas.height = cameraFeed.videoHeight;
-    context.drawImage(cameraFeed, 0, 0);
-
-    // ← KOMPRIMIERUNG: Qualität auf 0.7 reduzieren (statt 0.9)
-    capturedImageData = canvas.toDataURL('image/jpeg', 0.7);  // 70% Qualität
-
-    // UI umschalten
-    cameraFeed.style.display = 'none';
-    photoPreview.src = capturedImageData;
-    photoPreview.style.display = 'block';
-    captureBtn.style.display = 'none';
-    afterCaptureButtons.style.display = 'block';
-
-    // Kamera stoppen
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
+        alert('Kamera-Zugriff fehlgeschlagen: ' + err.message + '\n\nBitte Website-Zugriff erlauben.');
+      }
     }
 
-    console.log('Foto aufgenommen (komprimiert)');
-});
+    captureBtn.addEventListener('click', () => {
+      const ctx=canvas.getContext('2d');
+      canvas.width=cameraFeed.videoWidth; canvas.height=cameraFeed.videoHeight;
+      ctx.drawImage(cameraFeed,0,0);
+      capturedImageData = canvas.toDataURL('image/jpeg', 0.7);
+      cameraFeed.style.display='none';
+      photoPreview.src=capturedImageData; photoPreview.style.display='block';
+      captureBtn.style.display='none'; afterCaptureButtons.style.display='block';
+      if (stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    });
 
-// Foto erneut aufnehmen
-retakeBtn.addEventListener('click', async () => {
-    console.log('Retake-Button geklickt');
-
-    // Prüfen ob von Galerie oder Kamera
-    if (stream === null && cameraFeed.srcObject === null) {
-        // War von Galerie - erneut Galerie öffnen
+    retakeBtn.addEventListener('click', async () => {
+      if (stream===null && cameraFeed.srcObject===null){
         if (cameraModal) cameraModal.hide();
         galleryInput.click();
         return;
-    }
-
-    // War von Kamera - Kamera neu starten
-    try {
+      }
+      try{
         stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'environment',
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-            }
+          video:{ facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
         });
-        cameraFeed.srcObject = stream;
-
-        cameraFeed.style.display = 'block';
-        photoPreview.style.display = 'none';
-        captureBtn.style.display = 'block';
-        afterCaptureButtons.style.display = 'none';
-    } catch (err) {
+        cameraFeed.srcObject=stream;
+        cameraFeed.style.display='block';
+        photoPreview.style.display='none';
+        captureBtn.style.display='block';
+        afterCaptureButtons.style.display='none';
+      }catch(err){
         console.error('Kamera-Neustart fehlgeschlagen:', err);
         alert('Kamera konnte nicht erneut gestartet werden: ' + err.message);
-    }
-});
-
-// Foto speichern
-saveBtn.addEventListener('click', async () => {
-    console.log('Save-Button geklickt');
-
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-    const formData = new FormData();
-    formData.append('image_data', capturedImageData);
-    formData.append('notes', photoNotes.value);
-    formData.append('csrfmiddlewaretoken', csrfToken);
-
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Wird gespeichert...';
-
-    try {
-        const response = await fetch('{% url "plants:add_image" plant.id %}', {
-            method: 'POST',
-            body: formData
-        });
-
-        console.log('Response Status:', response.status);
-
-        if (response.ok) {
-            window.location.reload();
-        } else {
-            const errorText = await response.text();
-            console.error('Server-Fehler:', errorText);
-            alert('Fehler beim Speichern: Server antwortete mit Status ' + response.status);
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Speichern';
-        }
-    } catch (err) {
-        console.error('Netzwerkfehler:', err);
-        alert('Netzwerkfehler beim Speichern: ' + err.message);
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Speichern';
-    }
-});
-
-// Modal schließen Buttons
-document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
-        }
+      }
     });
-});
 
-// Fullscreen Image Modal
-function openImageModal(src) {
-    const imgModal = document.getElementById('imageModal');
-    document.getElementById('modalImage').src = src;
+    saveBtn.addEventListener('click', async () => {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const formData = new FormData();
+      formData.append('image_data', capturedImageData);
+      formData.append('notes', photoNotes.value);
+      formData.append('csrfmiddlewaretoken', csrfToken);
 
-    if (typeof bootstrap !== 'undefined') {
-        new bootstrap.Modal(imgModal).show();
-    } else {
-        imgModal.classList.add('show');
-        imgModal.style.display = 'block';
+      saveBtn.disabled=true;
+      saveBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Wird gespeichert...';
+      try{
+        const res = await fetch('{% url "plants:add_image" plant.id %}', { method:'POST', body:formData });
+        if (res.ok){ window.location.reload(); }
+        else{
+          console.error('Server-Fehler:', await res.text());
+          alert('Fehler beim Speichern (Status ' + res.status + ')');
+          saveBtn.disabled=false; saveBtn.innerHTML='<i class="bi bi-check-lg"></i> Speichern';
+        }
+      }catch(err){
+        console.error('Netzwerkfehler:', err);
+        alert('Netzwerkfehler: ' + err.message);
+        saveBtn.disabled=false; saveBtn.innerHTML='<i class="bi bi-check-lg"></i> Speichern';
+      }
+    });
+
+    document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn=>{
+      btn.addEventListener('click', () => {
+        if (stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      });
+    });
+
+    // global
+    window.openImageModal = function(src){
+      const imgModal = document.getElementById('imageModal');
+      document.getElementById('modalImage').src = src;
+      if (typeof bootstrap !== 'undefined') new bootstrap.Modal(imgModal).show();
+      else { imgModal.classList.add('show'); imgModal.style.display='block'; }
+    };
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Kamera nicht verfügbar - nur Galerie-Upload möglich');
     }
-}
+  </script>
 
-// Prüfe Kamera-Verfügbarkeit
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.warn('Kamera nicht verfügbar - nur Galerie-Upload möglich');
-}
-
-console.log('Plant Timeline Script geladen');
-</script>
-
-<!-- CSRF Token -->
-{% csrf_token %}
-
+  <!-- CSRF Token -->
+  {% csrf_token %}
+</div>
 {% endblock %}

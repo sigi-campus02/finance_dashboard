@@ -6,18 +6,76 @@ import base64
 from django.core.files.base import ContentFile
 
 
+# plants/views.py (Ergänzungen)
+from django.db.models import Count, Max
+from .models import PlantGroup, Plant, PlantImage
+
 @login_required
-def plant_list(request):
-    """Übersicht aller Pflanzen mit Statistiken"""
-    plants = Plant.objects.filter(user=request.user).prefetch_related('images')
+def plant_group_list(request):
+    """
+    Übersicht aller Pflanzengruppen mit:
+    - Anzahl Pflanzen
+    - Anzahl Fotos (gesamt)
+    - Letztes Foto-Datum
+    - Cover-Bild (letztes Bild aus der Gruppe, wenn vorhanden)
+    """
+    groups = (
+        PlantGroup.objects
+        .filter(user=request.user)
+        .annotate(
+            plant_count=Count("plants", distinct=True),
+            photo_count=Count("plants__images", distinct=True),
+            last_photo_at=Max("plants__images__captured_at"),
+        )
+        .order_by("name")
+    )
 
-    # ← ERGÄNZT: Gesamtanzahl Bilder berechnen
-    total_images = sum(plant.images.count() for plant in plants)
+    # Cover-Bilder minimalinvasiv bestimmen (vermeidet komplexe Subqueries):
+    # hole für Gruppen mit Fotos jeweils 1 jüngstes Bild
+    cover_map = {}
+    cover_qs = (
+        PlantImage.objects
+        .filter(plant__group__user=request.user)
+        .select_related("plant", "plant__group")
+        .order_by("plant__group_id", "-captured_at")
+    )
+    for img in cover_qs:
+        gid = img.plant.group_id
+        if gid and gid not in cover_map:
+            cover_map[gid] = img
+    # mappen
+    groups_with_cover = [
+        (g, cover_map.get(g.id)) for g in groups
+    ]
 
-    return render(request, 'plants/plant_list.html', {
-        'plants': plants,
-        'total_images': total_images  # ← ERGÄNZT
+    return render(request, "plants/plant_group_list.html", {
+        "groups_with_cover": groups_with_cover,
     })
+
+
+@login_required
+def plant_list(request, group_id=None):
+    """Übersicht Pflanzen (optional gefiltert nach Gruppe)"""
+    qs = (
+        Plant.objects
+        .filter(user=request.user)
+        .prefetch_related("images", "group")
+        .order_by("group__name", "name")
+    )
+    current_group = None
+    if group_id is not None:
+        current_group = get_object_or_404(PlantGroup, id=group_id, user=request.user)
+        qs = qs.filter(group=current_group)
+
+    plants = list(qs)
+    total_images = sum(p.images.count() for p in plants)
+
+    return render(request, "plants/plant_list.html", {
+        "plants": plants,
+        "total_images": total_images,
+        "current_group": current_group,
+    })
+
 
 
 @login_required

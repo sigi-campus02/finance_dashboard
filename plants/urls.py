@@ -4,6 +4,8 @@ from . import views
 app_name = 'plants'
 
 urlpatterns = [
+    path("groups/", views.plant_group_list, name="plant_group_list"),
+    path("groups/<int:group_id>/", views.plant_list, name="plant_list_by_group"),
     path('', views.plant_list, name='plant_list'),
     path('<int:plant_id>/', views.plant_timeline, name='plant_timeline'),
     path('<int:plant_id>/add-image/', views.add_image, name='add_image'),
