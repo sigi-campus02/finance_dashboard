@@ -13,53 +13,78 @@
             <i class="bi bi-plus-lg"></i> Neue Pflanze
         </button>
     </div>
-<!-- Breadcrumbs -->
-<nav aria-label="breadcrumb" class="mb-3">
-  <ol class="breadcrumb">
-    <li class="breadcrumb-item">
-      <a href="{% url 'plants:plant_group_list' %}">
-        <i class="bi bi-collection"></i> Gruppen
-      </a>
-    </li>
+    <!-- Breadcrumbs -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'plants:plant_group_list' %}">
+            <i class="bi bi-collection"></i> Gruppen
+          </a>
+        </li>
 
-    {% if current_group %}
-      <li class="breadcrumb-item">
-        <a href="{% url 'plants:plant_list' %}">
-          Alle Pflanzen
-        </a>
-      </li>
-      <li class="breadcrumb-item active" aria-current="page">
-        {{ current_group.name }}
-      </li>
-    {% else %}
-      <li class="breadcrumb-item active" aria-current="page">
-        Alle Pflanzen
-      </li>
-    {% endif %}
-  </ol>
-</nav>
+        {% if current_group %}
+          <li class="breadcrumb-item">
+            <a href="{% url 'plants:plant_list' %}">
+              Alle Pflanzen
+            </a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            {{ current_group.name }}
+          </li>
+        {% else %}
+          <li class="breadcrumb-item active" aria-current="page">
+            Alle Pflanzen
+          </li>
+        {% endif %}
+      </ol>
+    </nav>
 
-    <!-- Statistik Cards (Optional) -->
-    <div class="row mb-4">
-        <div class="col-6 col-md-3 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-flower1 text-success" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">{{ plants.count }}</h3>
-                    <p class="text-muted mb-0 small">Pflanzen</p>
-                </div>
-            </div>
+    <!-- Filterbar -->
+    <form method="get" class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <!-- Gruppen-Filter -->
+          <div class="col-12 col-md-5">
+            <label for="filterGroup" class="form-label mb-1">
+              <i class="bi bi-collection me-1"></i> Pflanzengruppe
+            </label>
+            <select id="filterGroup" name="group" class="form-select">
+              <option value="">Alle Gruppen</option>
+              {% for g in groups %}
+                <option value="{{ g.id }}" {% if selected_group|default:'' == g.id|stringformat:"s" %}selected{% endif %}>
+                  {{ g.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Pflanzen-Filter -->
+          <div class="col-12 col-md-5">
+            <label for="filterPlant" class="form-label mb-1">
+              <i class="bi bi-flower1 me-1"></i> Pflanze
+            </label>
+            <select id="filterPlant" name="plant" class="form-select">
+              <option value="">Alle Pflanzen</option>
+              {% for p in plant_options %}
+                <option value="{{ p.id }}" {% if selected_plant|default:'' == p.id|stringformat:"s" %}selected{% endif %}>
+                  {% if p.group %}{{ p.group.name }} → {% endif %}{{ p.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Apply / Reset -->
+          <div class="col-12 col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-funnel"></i> Anwenden
+            </button>
+            <a href="{% url 'plants:plant_list' %}" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-x-circle"></i> Reset
+            </a>
+          </div>
         </div>
-        <div class="col-6 col-md-3 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-camera text-primary" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2">{{ total_images }}</h3>
-                    <p class="text-muted mb-0 small">Fotos</p>
-                </div>
-            </div>
-        </div>
-    </div>
+      </div>
+    </form>
 
     <!-- Pflanzen Grid -->
     {% if plants %}

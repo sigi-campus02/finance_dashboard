@@ -1,14 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.utils import timezone  # ← ERGÄNZT
-from .models import Plant, PlantImage
+from django.utils import timezone
+from .models import Plant, PlantImage, PlantGroup
 import base64
 from django.core.files.base import ContentFile
-
-
-# plants/views.py (Ergänzungen)
 from django.db.models import Count, Max
-from .models import PlantGroup, Plant, PlantImage
+
 
 @login_required
 def plant_group_list(request):
@@ -55,27 +52,56 @@ def plant_group_list(request):
 
 @login_required
 def plant_list(request, group_id=None):
-    """Übersicht Pflanzen (optional gefiltert nach Gruppe)"""
+    # --- Stammdaten für Selects
+    groups = PlantGroup.objects.filter(user=request.user).order_by("name")
+
+    # GET-Filter
+    selected_group = request.GET.get("group") or (str(group_id) if group_id else "")
+    selected_plant = request.GET.get("plant") or ""
+
     qs = (
         Plant.objects
         .filter(user=request.user)
         .prefetch_related("images", "group")
         .order_by("group__name", "name")
     )
+
     current_group = None
-    if group_id is not None:
-        current_group = get_object_or_404(PlantGroup, id=group_id, user=request.user)
-        qs = qs.filter(group=current_group)
+    if selected_group:
+        qs = qs.filter(group_id=selected_group)
+        try:
+            current_group = groups.get(id=selected_group)
+        except PlantGroup.DoesNotExist:
+            current_group = None
+
+    if selected_plant:
+        qs = qs.filter(id=selected_plant)
 
     plants = list(qs)
+
+    # Plant-Optionen im Select:
+    # - wenn Gruppe gewählt: nur Pflanzen dieser Gruppe
+    # - sonst alle
+    if selected_group:
+        plant_options = Plant.objects.filter(
+            user=request.user, group_id=selected_group
+        ).order_by("name")
+    else:
+        plant_options = Plant.objects.filter(
+            user=request.user
+        ).order_by("group__name", "name")
+
     total_images = sum(p.images.count() for p in plants)
 
     return render(request, "plants/plant_list.html", {
         "plants": plants,
         "total_images": total_images,
         "current_group": current_group,
+        "groups": groups,
+        "plant_options": plant_options,
+        "selected_group": selected_group,
+        "selected_plant": selected_plant,
     })
-
 
 
 @login_required
